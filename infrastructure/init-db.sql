@@ -1,0 +1,4 @@
+CREATE DATABASE profile_db;
+CREATE DATABASE catalog_db;
+CREATE DATABASE diary_db;
+CREATE DATABASE keycloak_db;

@@ -1,0 +1,166 @@
+# ==============================================================================
+# Git Ignore for «Бюджетный нутрициолог» (Android KMP + Spring Boot Microservices)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Gradle & Kotlin Build Artifacts
+# ------------------------------------------------------------------------------
+.gradle/
+build/
+**/build/
+!src/**/build/
+.kotlin/
+kotlin-js-store/
+
+# ------------------------------------------------------------------------------
+# 2. Android & Local SDK Configuration
+# ------------------------------------------------------------------------------
+# Локальные пути к Android SDK / NDK (генерируются на каждой машине индивидуально)
+local.properties
+
+# Собранные бинарники и пакеты приложения
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Android Profiler, Memory Dumps & Diagnostics
+captures/
+*.hprof
+
+# NDK / CMake / C++
+.externalNativeBuild/
+.cxx/
+cmake-build-*/
+
+# ------------------------------------------------------------------------------
+# 3. Keystores, Signing Keys & Certificates (КРИТИЧЕСКИ ВАЖНО: никогда в Git!)
+# ------------------------------------------------------------------------------
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.mobileprovision
+
+# ------------------------------------------------------------------------------
+# 4. Secrets, Credentials & Local Environment Files
+# ------------------------------------------------------------------------------
+# Файлы переменных окружения с паролями и токенами
+.env
+.env.*
+*.env
+!*.env.example
+
+# Локальные конфигурации Spring Boot с секретами/паролями
+**/application-local.yml
+**/application-local.properties
+**/application-secrets.yml
+**/application-secrets.properties
+
+# Google Services / Firebase конфигурации (содержат клиентские API-ключи)
+google-services.json
+GoogleService-Info.plist
+
+# HashiCorp Vault / Cloud Tokens
+.vault-token
+*credentials*.json
+
+# ------------------------------------------------------------------------------
+# 5. Infrastructure, Docker & Database Volumes
+# ------------------------------------------------------------------------------
+# Данные локальных баз данных и очередей (PostgreSQL, Redis, Kafka)
+postgres_data/
+**/postgres_data/
+redis_data/
+**/redis_data/
+kafka_data/
+**/kafka_data/
+
+# Локальные файлы баз данных (SQLite, Room in-memory/dumps)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Kubernetes / Helm секреты
+*secrets*.yaml
+*values*.local.yaml
+!*secret-template*.yaml
+
+# ------------------------------------------------------------------------------
+# 6. Backend (JVM / Spring Boot) & Logs
+# ------------------------------------------------------------------------------
+# Скомпилированные jar/war архивы
+*.jar
+*.war
+*.ear
+!gradle/wrapper/gradle-wrapper.jar
+
+# Логи работы сервисов
+*.log
+logs/
+**/logs/
+
+# ------------------------------------------------------------------------------
+# 7. iOS / Xcode (KMP mobile module)
+# ------------------------------------------------------------------------------
+xcuserdata/
+DerivedData/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+.swiftpm/
+Pods/
+
+# ------------------------------------------------------------------------------
+# 8. IDEs & Editors
+# ------------------------------------------------------------------------------
+# IntelliJ IDEA / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Временные файлы редакторов
+*.swp
+*~
+*.bak
+
+# ------------------------------------------------------------------------------
+# 9. Operating System Files
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+
+# Linux
+.directory
+
+# ------------------------------------------------------------------------------
+# 10. Node.js & Temporary directories
+# ------------------------------------------------------------------------------
+node_modules/
+tmp/
+temp/
+scratch/

@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - DEFAULT
+    - COMMENTS
+  except:
+    - PACKAGE_VERSION_SUFFIX
+  enum_zero_value_suffix: _UNSPECIFIED
+  rpc_allow_google_protobuf_empty_requests: true
+breaking:
+  use:
+    - FILE
