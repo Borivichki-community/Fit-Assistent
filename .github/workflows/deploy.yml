@@ -1,44 +1,27 @@
 name: CD — Docker Build & Helm Deploy
 
 on:
-  # Запускается вручную из вкладки Actions в любой момент
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Целевое окружение для деплоя'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
-  # Автозапуск при пуше в master/main только когда реально изменился код бэкенда или K8s-чарты
   push:
-    branches: [ "master", "main" ]
+    # Деплой запускается СТРОГО только при попадании кода в релизную ветку
+    branches: [ "master" ]
     paths:
       - 'backend/**'
       - 'infrastructure/docker/**'
       - 'infrastructure/k8s/**'
+  workflow_dispatch: # Позволяет запустить деплой вручную кнопкой
 
 jobs:
-  deploy:
-    name: Build Images & Deploy to Kubernetes
+  deploy-to-cluster:
+    name: Build Images & Deploy via Helm
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Check if backend services are ready for Docker build
+      - name: Check Backend
         id: check_ready
-        run: |
-          if [ -n "$(find backend -name 'build.gradle.kts' 2>/dev/null)" ]; then
-            echo "ready=true" >> $GITHUB_OUTPUT
-          else
-            echo "ready=false" >> $GITHUB_OUTPUT
-            echo "Микросервисы в папке backend/ пока не содержат build.gradle.kts. Пропускаем сборку Docker-образов и деплой."
-          fi
+        run: if [ -n "$(find backend -name 'build.gradle.kts' 2>/dev/null)" ]; then echo "ready=true" >> $GITHUB_OUTPUT; else echo "ready=false" >> $GITHUB_OUTPUT; fi
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         if: steps.check_ready.outputs.ready == 'true'
         uses: docker/login-action@v3
         with:
@@ -46,6 +29,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deploy status summary
+      # --- Задел на будущее: здесь будет сборка docker build ... ---
+      - name: Build Docker Images (Placeholder)
+        if: steps.check_ready.outputs.ready == 'true'
+        run: echo "Здесь будет сборка образов (например, профиль, каталог, дневник)"
+
+      # --- Задел на будущее: здесь будет helm upgrade ... ---
+      - name: Deploy via Helm
+        if: steps.check_ready.outputs.ready == 'true'
         run: |
-          echo "CD Pipeline checked successfully."
+          echo "Здесь будет деплой Helm."
+          echo "При релизе через cherry-pick мы будем применять обновлённую версию из Chart.yaml"
+
+      - name: Deploy status summary
+        run: echo "Deploy pipeline completed."

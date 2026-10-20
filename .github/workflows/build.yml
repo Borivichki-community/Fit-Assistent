@@ -2,107 +2,70 @@ name: CI — Build, Test & Verify
 
 on:
   push:
-    branches: [ "master", "main", "feature/**" ]
+    # Запускаем сборку при пуше в любые рабочие и релизные ветки
+    branches: [ "master", "develop", "feature/**", "release/**" , "fix/**"]
   pull_request:
-    branches: [ "master", "main" ]
+    # При PR в develop и main
+    branches: [ "main", "master", "develop" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # 1. Проверка .proto контрактов через Buf CLI
   proto-verify:
-    name: Proto Contracts (Buf Lint & Breaking)
+    name: Proto Contracts (Buf)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Buf CLI
-        uses: bufbuild/buf-setup-action@v1
-
+      - uses: bufbuild/buf-setup-action@v1
       - name: Run buf lint
         run: |
-          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then
-            buf lint proto
-          else
-            echo "Файлы .proto ещё не созданы — пропускаем шаг линтинга."
-          fi
-
-      - name: Run buf breaking against base branch
+          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then buf lint proto; fi
+      - name: Run buf breaking
         if: github.event_name == 'pull_request'
         run: |
-          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then
-            buf breaking proto --against ".git#branch=${{ github.base_ref }},subdir=proto"
-          else
-            echo "Файлы .proto ещё не созданы — пропускаем проверку breaking changes."
-          fi
+          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then buf breaking proto --against ".git#branch=${{ github.base_ref }},subdir=proto"; fi
 
-  # 2. Сборка и тестирование KMP (:mobile:shared) и Android (:mobile:androidApp)
   mobile-verify:
-    name: Mobile & KMP Shared (Tests & APK)
+    name: Mobile & KMP (Tests & APK)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Run KMP Shared Unit Tests (Fakes & Turbine)
+      - uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - name: Run KMP Shared Tests
         run: ./gradlew :mobile:shared:allTests --no-daemon
-
-      - name: Assemble Android Debug APK
+      - name: Assemble Android Debug
         run: ./gradlew :mobile:androidApp:assembleDebug --no-daemon
 
-  # 3. Сборка, Testcontainers и Trivy для микросервисов Backend
   backend-verify:
-    name: Backend Microservices (JUnit5, Testcontainers & Trivy)
+    name: Backend (JUnit5 & Trivy)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check if backend Gradle modules exist
+      - uses: actions/checkout@v4
+      - name: Check Backend
         id: check_backend
-        run: |
-          if [ -n "$(find backend -name 'build.gradle.kts' 2>/dev/null)" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Модули backend ещё в виде каркаса README.md — пропускаем запуск Gradle для бэкенда."
-          fi
-
-      - name: Set up JDK 21
+        run: if [ -n "$(find backend -name 'build.gradle.kts' 2>/dev/null)" ]; then echo "exists=true" >> $GITHUB_OUTPUT; else echo "exists=false" >> $GITHUB_OUTPUT; fi
+      - uses: actions/setup-java@v4
         if: steps.check_backend.outputs.exists == 'true'
-        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
-
-      - name: Setup Gradle
+      - uses: gradle/actions/setup-gradle@v4
         if: steps.check_backend.outputs.exists == 'true'
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Run Backend Tests (Testcontainers)
+      - name: Run Backend Tests
         if: steps.check_backend.outputs.exists == 'true'
         run: |
           chmod +x gradlew
           ./gradlew test --no-daemon
-
-      - name: Run Trivy vulnerability scanner on repo
+      - name: Run Trivy scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
