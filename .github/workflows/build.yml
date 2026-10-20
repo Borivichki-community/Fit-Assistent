@@ -1,0 +1,55 @@
+# .github/workflows/build.yml
+name: Build & Quality Gates
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  kotlin-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '21', distribution: 'temurin' }
+      - name: Gradle Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.toml', '**/*.kts') }}
+      - name: ktlint
+        run: ./gradlew ktlintCheck
+      - name: detekt
+        run: ./gradlew detekt
+      - name: Buf lint
+        uses: bufbuild/buf-action@v1
+        with:
+          lint: true
+          breaking: true
+          breaking_against: 'https://github.com/${{ github.repository }}.git#branch=main'
+      - name: Unit Tests (shared)
+        run: ./gradlew :mobile:shared:testDebugUnitTest
+      - name: Build APK (debug)
+        run: ./gradlew :mobile:androidApp:assembleDebug
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: kotlin-quality
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -f infrastructure/docker/Dockerfile.service -t budget-nutritionist:${{ github.sha }} .
+      - name: Trivy scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'budget-nutritionist:${{ github.sha }}'
+          severity: 'CRITICAL,HIGH'
