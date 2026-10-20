@@ -1,0 +1,61 @@
+- name: Check Jules API Key & Trigger Session
+    id: trigger_jules
+    env:
+      JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+      PR_BRANCH: ${{ github.head_ref }}
+      BASE_BRANCH: ${{ github.base_ref }}
+      REPO_FULL_NAME: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      # Добавляем получение описания Pull Request из GitHub
+      PR_BODY: ${{ github.event.pull_request.body }}
+    run: |
+      if [ -z "$JULES_API_KEY" ]; then
+        echo "::warning::Секрет JULES_API_KEY не задан. Пропускаем автозапуск Jules."
+        echo "triggered=false" >> $GITHUB_OUTPUT
+        exit 0
+      fi
+      
+      # Формируем умный промпт, который заставляет Jules читать описание задачи
+      PROMPT="Ты проводишь QA-ревью Pull Request #${PR_NUMBER}: «${PR_TITLE}».
+      
+      Описание фичи от разработчика:
+      «${PR_BODY}»
+      
+      Твоя задача — сфокусироваться СТРОГО на фиче, описанной выше, и изменённых файлах:
+      1. Изучи бизнес-логику изменённых файлов. Придумай неочевидные краевые случаи (edge cases) ИМЕННО для этой фичи (например: обрыв сети, пустые данные, двойные клики, ошибки идемпотентности).
+      2. Проверь старые тесты, которые связаны с изменёнными классами — не сломалась ли их логика?
+      3. Строго соблюдай правила из AGENTS.md и навыки из .agents/skills/.
+      4. Допиши недостающие тесты на найденные краевые случаи для новой фичи и создай Pull Request с этими тестами в ветку ${PR_BRANCH}."
+      
+      RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://jules.googleapis.com/v1alpha/sessions" \
+        -H "Content-Type: application/json" \
+        -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+        -d "$(jq -n \
+          --arg title "QA Review: ${PR_TITLE}" \
+          --arg prompt "$PROMPT" \
+          --arg repo "sources/github/${REPO_FULL_NAME}" \
+          --arg branch "$PR_BRANCH" \
+          '{
+            title: $title,
+            prompt: $prompt,
+            sourceContext: {
+              source: $repo,
+              githubRepoContext: {
+                startingBranch: $branch
+              }
+            },
+            automationMode: "AUTO_CREATE_PR"
+          }')")
+      
+      HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+      BODY=$(echo "$RESPONSE" | sed '$d')
+      
+      if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+        SESSION_NAME=$(echo "$BODY" | jq -r '.name // "created"')
+        echo "session_name=$SESSION_NAME" >> $GITHUB_OUTPUT
+        echo "triggered=true" >> $GITHUB_OUTPUT
+      else
+        echo "::warning::Не удалось создать сессию Jules (код $HTTP_CODE)."
+        echo "triggered=false" >> $GITHUB_OUTPUT
+      fi
