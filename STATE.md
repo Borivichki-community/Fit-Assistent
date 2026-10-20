@@ -38,7 +38,8 @@
 - [x] **Локальная верификация и запуск:**
   - `infrastructure/docker-compose.local.yml`: удалён устаревший атрибут `version: "3.9"`, все 5 контейнеров успешно запущены и функционируют (`postgres` [healthy], `redis` [healthy], `kafka`, `schema-registry`, `keycloak`);
   - `mobile/androidApp`: добавлены необходимые Compose-зависимости (`compose.runtime`, `compose.foundation`, `compose.material3`, `compose.ui`), синхронизирован Gradle;
-  - Сборка и тесты: `:mobile:shared:assemble`, `:mobile:androidApp:assembleDebug`, `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN).
+  - Сборка и тесты: `:mobile:shared:assemble`, `:mobile:androidApp:assembleDebug`, `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN);
+  - Добавлена интерактивная мини-фича на `MainScreen` (кнопка добавления приёма пищи со счётчиком) для проверки полного пайплайна CI/CD.
 
 ---
 
