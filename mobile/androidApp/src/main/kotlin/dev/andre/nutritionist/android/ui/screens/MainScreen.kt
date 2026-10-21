@@ -40,13 +40,13 @@ fun MainScreen(modifier: Modifier = Modifier) {
             Button(
                 onClick = { clickCount++ },
             ) {
-                Text(text = "Добавить приём пищи")
+                Text(text = "Добавить приём пищи (маленькая кнопка)")
             }
             if (clickCount > 0) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Добавлено приёмов пищи: $clickCount",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
