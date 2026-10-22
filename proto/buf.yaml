@@ -4,7 +4,6 @@ modules:
 lint:
   use:
     - STANDARD
-    - COMMENTS
   except:
     - PACKAGE_VERSION_SUFFIX
     - PACKAGE_DIRECTORY_MATCH

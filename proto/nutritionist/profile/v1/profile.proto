@@ -20,17 +20,17 @@ enum GenderProto {
 
 enum ActivityLevelProto {
   ACTIVITY_LEVEL_UNSPECIFIED = 0;
-  ACTIVITY_LEVEL_SEDENTARY = 1;      // Сидячий образ жизни
-  ACTIVITY_LEVEL_LIGHT = 2;          // Легкая активность (1-3 тренировки)
-  ACTIVITY_LEVEL_MODERATE = 3;       // Умеренная (3-5 тренировок)
-  ACTIVITY_LEVEL_VERY_ACTIVE = 4;    // Высокая (6-7 тренировок)
+  ACTIVITY_LEVEL_SEDENTARY = 1;
+  ACTIVITY_LEVEL_LIGHT = 2;
+  ACTIVITY_LEVEL_MODERATE = 3;
+  ACTIVITY_LEVEL_VERY_ACTIVE = 4;
 }
 
 enum GoalTypeProto {
   GOAL_TYPE_UNSPECIFIED = 0;
-  GOAL_TYPE_LOSE_WEIGHT = 1;         // Похудение
-  GOAL_TYPE_MAINTAIN = 2;            // Поддержание
-  GOAL_TYPE_GAIN_WEIGHT = 3;         // Набор массы
+  GOAL_TYPE_LOSE_WEIGHT = 1;
+  GOAL_TYPE_MAINTAIN = 2;
+  GOAL_TYPE_GAIN_WEIGHT = 3;
 }
 
 message NutritionGoalProto {
