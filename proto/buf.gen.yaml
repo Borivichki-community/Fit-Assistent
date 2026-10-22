@@ -6,8 +6,6 @@ managed:
       value: com.budgetntr.proto
     - file_option: java_multiple_files
       value: "true"
-    - file_option: kotlin_package
-      value: com.budgetntr.proto
 plugins:
   - remote: buf.build/protocolbuffers/java
     out: ../backend
