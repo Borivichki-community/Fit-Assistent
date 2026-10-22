@@ -27,7 +27,7 @@ class ProfileGrpcRemoteDataSource(
                 val request = GetProfileRequest(userId = userId.raw)
                 val response = client.getProfile(request)
                 response.toDomain()
-            }
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
         }
 
     override suspend fun updateProfile(profile: Profile): Result<Profile> =
@@ -36,6 +36,6 @@ class ProfileGrpcRemoteDataSource(
                 val request = profile.toUpdateRequest()
                 val response = client.updateProfile(request)
                 response.toDomain()
-            }
+            }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
         }
 }
