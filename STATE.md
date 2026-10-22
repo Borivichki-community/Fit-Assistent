@@ -40,6 +40,14 @@
   - `mobile/androidApp`: добавлены необходимые Compose-зависимости (`compose.runtime`, `compose.foundation`, `compose.material3`, `compose.ui`), синхронизирован Gradle;
   - Сборка и тесты: `:mobile:shared:assemble`, `:mobile:androidApp:assembleDebug`, `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN);
   - Добавлена интерактивная мини-фича на `MainScreen` (кнопка добавления приёма пищи со счётчиком) для проверки полного пайплайна CI/CD.
+- [x] **Шаг 4 (Profile Remote):** Реализация gRPC-клиента Profile в KMP shared:
+  - Контракт `proto/nutritionist/profile/v1/profile.proto`;
+  - Domain слой в `commonMain`: `Profile`, `Gender`, `ActivityLevel`, `GoalType`, `NutritionGoal`, `AuthTokenProvider`, `TraceContextHolder`, `ProfileRemoteDataSource`;
+  - Interceptors в `androidMain`: `AuthClientInterceptor` (OAuth 2.1 токен), `TraceparentClientInterceptor` (W3C traceparent);
+  - Фабрика канала и клиент: `GrpcClientFactory`, `ProfileGrpcRemoteDataSource`, `ProfileGrpcServiceClient`;
+  - Mapper DTO -> Domain: `ProfileDtoMapper` (без `!!` и с исчерпывающим `when`);
+  - Koin DI модуль: `androidRemoteDataModule`;
+  - Добавлены зависимости gRPC в `libs.versions.toml` и `mobile/shared/build.gradle.kts`, сборка и тесты зелёные.
 
 ---
 
@@ -68,9 +76,10 @@
 - 📌 2026-10-19: **Checkpointing** — `STATE.md` является единственным механизмом памяти между сессиями; агент обязан читать и обновлять его при каждой сессии.
 - 📌 2026-10-19: **Инфраструктура и контракты (Шаг 3)** — создана корневая папка `proto/` с `buf.yaml`, `buf.gen.yaml` и пакетами сервисов; настроен `infrastructure/docker-compose.local.yml` (PostgreSQL 17, Redis 7, Kafka 3.9 KRaft, Schema Registry 7.7, Keycloak 26.0), заготовки Dockerfile, Helmfile и CI workflows.
 - 📌 2026-10-20: **Верификация сборки** — локальная инфраструктура Docker запущена без предупреждений; в `mobile/androidApp` добавлены прямые зависимости Compose Multiplatform (`runtime`, `foundation`, `material3`, `ui`), сборка и unit-тесты KMP shared и AndroidApp успешно верифицированы.
+- 📌 2026-10-22: **Project Boundary & Онлайн-исследование Git** — в `AGENTS.md`, `implementer.md`, `test-reviewer.md` зафиксирован строгий запрет на выход за пределы директории проекта без явного согласия пользователя. В `legacy-migration/SKILL.md` закреплено правило: исследование репозиториев (VKEducation, FitAssistentAndroid, ai-calorie-tracker-backend) производится **только онлайн** через GitHub без клонирования, скачивания и сохранения файлов на диск.
 
 ---
 
 ### Активный Skill текущей сессии
 
-`diagnose-build-failure` / `testing-and-verification` (верификация сборки и инфраструктуры).
+`legacy-migration` (обновление правил миграции и протокола безопасности).

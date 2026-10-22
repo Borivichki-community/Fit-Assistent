@@ -25,6 +25,8 @@ material3 = "1.12.0-alpha03"
 room = "2.8.5"
 sqlite-bundled = "2.7.1"
 turbine = "1.2.1"
+grpc = "1.69.0"
+grpc-kotlin = "1.4.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -63,6 +65,10 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
+grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "grpc" }
+grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
+grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "grpc" }
+grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
