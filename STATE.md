@@ -48,6 +48,7 @@
   - Mapper DTO -> Domain: `ProfileDtoMapper` (без `!!` и с исчерпывающим `when`);
   - Koin DI модуль: `androidRemoteDataModule`;
   - Добавлены зависимости gRPC в `libs.versions.toml` и `mobile/shared/build.gradle.kts`;
+  - Buf lint верификация контрактов `proto/`: исправлены doc-комментарии, удален `option kotlin_package`, обновлен `proto/buf.yaml` (STANDARD, исключения настроены под структуру `proto/nutritionist`), `buf lint proto` проходит чисто (exit code 0).
   - Покрыто 15 Unit-тестами без моков (`commonTest` + `androidHostTest`: Fakes, coroutines `runTest`, DTO mapper, interceptors);
   - Сборка и тесты: `:mobile:shared:allTests` (15/15 GREEN), `:mobile:androidApp:testDebugUnitTest` (3/3 GREEN).
 
