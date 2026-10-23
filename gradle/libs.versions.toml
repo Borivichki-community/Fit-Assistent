@@ -26,6 +26,22 @@ room = "2.8.5"
 sqlite-bundled = "2.7.1"
 turbine = "1.2.1"
 
+spring-boot = "4.1.2"
+
+grpc-java = "1.84.1"
+grpc-kotlin = "1.5.0"
+protobuf = "4.36.2"
+protobuf-plugin = "0.10.0"
+
+confluent = "7.7.0"
+avro = "1.11.3"
+
+ktlint-plugin = "14.2.0"
+ktlint = "1.8.0"
+
+#detekt = "1.23.8"
+#detekt = "2.0.0-alpha.6"
+
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -64,6 +80,46 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
 
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
+spring-starter-core = { module = "org.springframework.boot:spring-boot-starter" }
+spring-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
+spring-starter-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
+postgresql-jdbc = { module = "org.postgresql:postgresql" }
+
+spring-starter-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+
+spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
+avro-runtime = { module = "org.apache.avro:avro", version.ref = "avro" }
+avro-compiler = { module = "org.apache.avro:avro-compiler", version.ref = "avro" }
+confluent-avro-serializer = { module = "io.confluent:kafka-avro-serializer", version.ref = "confluent" }
+
+spring-starter-grpc = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
+grpc-stub = { module = "io.grpc:grpc-stub" }
+grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub" }
+protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin" }
+
+codegen-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
+codegen-grpc-java = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-java" }
+codegen-grpc-kotlin = { module = "io.grpc:protoc-gen-grpc-kotlin", version.ref = "grpc-kotlin" }
+
+spring-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+spring-kafka-test = { module = "org.springframework.kafka:spring-kafka-test" }
+grpc-inprocess = { module = "io.grpc:grpc-inprocess" }
+
+
+testcontainers-core = { module = "org.testcontainers:testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+testcontainers-kafka = { module = "org.testcontainers:testcontainers-kafka" }
+
+
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
@@ -73,3 +129,16 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 room = { id = "androidx.room", version.ref = "room" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+springBoot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+kotlinSpring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlinJpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+
+protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
+
+# Вариант 1 — stable 1.23.8:
+# detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+
+# Вариант 2 — alpha 2.0.0-alpha.6:
+# detekt = { id = "dev.detekt", version.ref = "detekt" }
