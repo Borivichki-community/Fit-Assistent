@@ -1,0 +1,108 @@
+{
+  "id": "FitAssistant",
+  "realm": "FitAssistant",
+  "displayName": "FitAssistant",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_USER",
+        "description": "Standard user role"
+      },
+      {
+        "name": "ROLE_PREMIUM",
+        "description": "Premium subscriber role"
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-fitassistant",
+    "description": "${role_default-roles}",
+    "composite": true,
+    "clientRole": false,
+    "containerId": "FitAssistant",
+    "composites": {
+      "realm": [
+        "ROLE_USER"
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "fitassistant-mobile",
+      "name": "FitAssistant Mobile Application",
+      "description": "Android and iOS mobile client with PKCE",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "com.budgetntr.fitassistant://oauth2redirect/*",
+        "http://localhost:*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "com.budgetntr.fitassistant://oauth2redirect/*"
+      }
+    },
+    {
+      "clientId": "profile-app",
+      "name": "Profile Microservice Client",
+      "description": "Confidential backend client for service communication",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "fitassistant-secret-local-dev-123",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:*"
+      ],
+      "webOrigins": [
+        "*"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "testuser",
+      "enabled": true,
+      "email": "test@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ROLE_USER",
+        "ROLE_PREMIUM"
+      ]
+    }
+  ]
+}
