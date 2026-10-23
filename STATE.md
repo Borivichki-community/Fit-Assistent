@@ -74,3 +74,15 @@
 ### Активный Skill текущей сессии
 
 `diagnose-build-failure` / `testing-and-verification` (верификация сборки и инфраструктуры).
+
+
+## Checkpoint 2026-10-23 — T-005 / KAN-24, обновление Kafka-зависимостей
+Текущая ветка feature/KAN-24-gradle-backend. Этот checkpoint уточняет старый статус выше; не подтверждает готовность всех интеграций.
+- Активный Skill: diagnose-build-failure; цель — согласовать Kafka client/Confluent/Avro без Docker и без изменения пользовательских мобильных настроек.
+- Confluent serializer 7.7.0 → 8.2.4; Avro 1.11.3 → 1.12.1 в Version Catalog.
+- В Profile/Catalog/Diary исключён kafka-clients только из транзитивного дерева Confluent serializer. Spring Kafka получает Apache client 4.2.2 из Boot BOM; dependencyInsight и содержимое всех трёх Boot JAR это подтвердили.
+- Добавлен AvroCompatibilityTest в Profile: реальная сериализация/десериализация с MockSchemaRegistryClient без сети; 1 test PASS, failures/errors/skips=0.
+- PASS: ./gradlew build :backend:profile-service:detektMain :backend:profile-service:detektTest --stacktrace (189 tasks:14 executed,175 up-to-date). iOS targets ранее отключены пользователем; iOS не проверена.
+- PASS: git diff --check. Docker/Compose, Kafka broker и Registry не менялись; commit/push не выполнялись.
+- Ограничения: live Kafka/Registry/DB/Redis не проверены; четыре специальных правила detekt не настроены и не доказаны; detekt сейчас применяется к Profile, не ко всем backend-модулям; удалённый CI не запускался. Полную T-005 не объявлять завершённой только по успешному build.
+- По запросу пользователя добавлены поясняющие комментарии у версий Confluent/Avro, трёх исключений Kafka client и offline-теста; поведение не изменялось. Пользователь повторил build + detektMain/detektTest, отдельно AvroCompatibilityTest и dependencyInsight — предоставленный лог содержит BUILD SUCCESSFUL для этих команд.
