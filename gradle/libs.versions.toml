@@ -33,13 +33,14 @@ grpc-kotlin = "1.5.0"
 protobuf = "4.36.2"
 protobuf-plugin = "0.10.0"
 
-confluent = "7.7.0"
-avro = "1.11.3"
+
+confluent = "8.2.4"
+avro = "1.12.1"
 
 ktlint-plugin = "14.2.0"
 ktlint = "1.8.0"
 
-#detekt = "1.23.8"
+detekt = "1.23.8"
 #detekt = "2.0.0-alpha.6"
 
 [libraries]
@@ -82,7 +83,6 @@ androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-p
 
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
-spring-starter-core = { module = "org.springframework.boot:spring-boot-starter" }
 spring-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 
@@ -138,7 +138,7 @@ protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-plugin" }
 
 # Вариант 1 — stable 1.23.8:
-# detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 # Вариант 2 — alpha 2.0.0-alpha.6:
 # detekt = { id = "dev.detekt", version.ref = "detekt" }
