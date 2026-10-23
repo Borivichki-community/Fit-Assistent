@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: recipe-ai-service
+
+  grpc:
+    server:
+      address: 127.0.0.1
+      port: ${RECIPE_GRPC_PORT:9094}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 2s
+      timeout: 2s
