@@ -24,8 +24,20 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven {
+            name = "Confluent"
+            url = uri("https://packages.confluent.io/maven/")
+        }
     }
 }
 
 include(":mobile:androidApp")
 include(":mobile:shared")
+
+include(":backend:profile-service")
+include(":backend:catalog-price-service")
+include(":backend:diary-service")
+include(":backend:recipe-ai-service")
+
+//не подключенный в разработку модуль food cv
+// include(":backend:food-cv-service")
