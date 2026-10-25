@@ -1,24 +1,40 @@
 # infrastructure/docker/Dockerfile.service
-# Stage 1 — Build
-FROM gradle:8-jdk21 AS builder
-ARG SERVICE_NAME
-WORKDIR /app
-COPY gradle/ gradle/
-COPY gradlew gradlew.bat settings.gradle.kts build.gradle.kts ./
-# Download dependencies layer (cached)
-RUN ./gradlew dependencies --no-daemon --quiet || true
-COPY backend/ backend/
-RUN ./gradlew bootJar --no-daemon -x test || true
+FROM azul/zulu-openjdk:21@sha256:f233350f4d4f0e7cbd3631694a4239fd237e6633487a566ddaeb3fbcccafaa3b AS builder
 
-# Stage 2 — Runtime
-FROM eclipse-temurin:21-jre-alpine AS runtime
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+WORKDIR /workspace
+
+COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
+COPY gradle/ gradle/
+COPY backend/ backend/
+
+RUN chmod +x gradlew
+
+ARG SERVICE_NAME
+
+RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
+    ./gradlew \
+    --no-daemon \
+    --max-workers=2 \
+    -PbackendOnly=true \
+    -Pkotlin.compiler.execution.strategy=in-process \
+    "-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8" \
+    ":backend:${SERVICE_NAME}:bootJar" \
+    && mkdir -p /out \
+    && cp "backend/${SERVICE_NAME}/build/libs/"*.jar /out/app.jar
+
+FROM azul/zulu-openjdk:21-jre@sha256:c7cc727a2b13c7018f238c2e113f72fa7744fed8143321ecbb5b6c0d1193ff53 AS runtime
+
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app
+
 WORKDIR /app
-COPY --from=builder /app/build/libs/*.jar app.jar
-USER appuser
-EXPOSE 8080 9090
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75", \
-  "-Dfile.encoding=UTF-8", \
-  "-jar", "app.jar"]
+
+COPY --from=builder --chown=app:app /out/app.jar app.jar
+
+USER app
+
+EXPOSE 9090
+
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-Dfile.encoding=UTF-8", "-jar", "/app/app.jar"]
+
+# SERVICE_NAME=food-cv-service
