@@ -89,6 +89,22 @@ class ProfileGrpcRemoteDataSourceTest {
     }
 
     @Test
+    fun `getProfile rethrows CancellationException`() = runTest {
+        val cancellationException = kotlinx.coroutines.CancellationException("Test cancellation")
+        fakeClient.shouldThrow = cancellationException
+
+        var thrownException: Throwable? = null
+        try {
+            dataSource.getProfile(UserId("user-1"))
+        } catch (e: Throwable) {
+            thrownException = e
+        }
+
+        assertIs<kotlinx.coroutines.CancellationException>(thrownException)
+        assertEquals("Test cancellation", thrownException.message)
+    }
+
+    @Test
     fun `updateProfile sends mapped request and returns success domain model`() = runTest {
         val inputProfile = Profile(
             id = ProfileId("p-99"),
@@ -171,5 +187,32 @@ class ProfileGrpcRemoteDataSourceTest {
         assertTrue(result.isFailure)
         assertIs<RuntimeException>(result.exceptionOrNull())
         assertEquals("gRPC DEADLINE_EXCEEDED", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun `updateProfile rethrows CancellationException`() = runTest {
+        val inputProfile = Profile(
+            id = ProfileId("p-1"),
+            userId = UserId("u-1"),
+            heightCm = 170,
+            weightKg = 65.0,
+            gender = Gender.FEMALE,
+            activityLevel = ActivityLevel.LIGHT,
+            goalType = GoalType.MAINTAIN,
+            nutritionGoal = NutritionGoal(1800, 100.0, 50.0, 237.5, 65.0),
+            updatedAt = Instant.fromEpochMilliseconds(0L),
+        )
+        val cancellationException = kotlinx.coroutines.CancellationException("Test cancellation")
+        fakeClient.shouldThrow = cancellationException
+
+        var thrownException: Throwable? = null
+        try {
+            dataSource.updateProfile(inputProfile)
+        } catch (e: Throwable) {
+            thrownException = e
+        }
+
+        assertIs<kotlinx.coroutines.CancellationException>(thrownException)
+        assertEquals("Test cancellation", thrownException.message)
     }
 }
