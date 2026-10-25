@@ -6,6 +6,8 @@ spring:
     server:
       address: 127.0.0.1
       port: ${PROFILE_GRPC_PORT:9091}
+      health:
+        enabled: true
 
   datasource:
     url: ${PROFILE_DB_URL:jdbc:postgresql://localhost:5432/profile_db}

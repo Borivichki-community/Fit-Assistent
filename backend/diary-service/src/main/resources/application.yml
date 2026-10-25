@@ -6,6 +6,8 @@ spring:
     server:
       address: 127.0.0.1
       port: ${DIARY_GRPC_PORT:9093}
+      health:
+        enabled: true
 
   datasource:
     url: ${DIARY_DB_URL:jdbc:postgresql://localhost:5432/diary_db}

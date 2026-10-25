@@ -6,6 +6,8 @@ spring:
     server:
       address: 127.0.0.1
       port: ${RECIPE_GRPC_PORT:9094}
+      health:
+        enabled: true
 
   data:
     redis:

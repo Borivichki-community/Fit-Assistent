@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration name="Catalog Price" type="Application" factoryName="Application">
+    <option name="envFilePaths">
+      <option value="$PROJECT_DIR$/.env" />
+    </option>
+    <option name="MAIN_CLASS_NAME" value="dev.andre.nutritionist.catalog.CatalogPriceApplicationKt" />
+    <module name="FitAssistent.backend.catalog-price-service.main" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+  </configuration>
+</component>

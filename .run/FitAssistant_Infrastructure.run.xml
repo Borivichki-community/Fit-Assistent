@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration name="FitAssistant — Infrastructure" type="docker-deploy" factoryName="docker-compose.yml" server-name="FitAssistant Docker">
+    <deployment type="docker-compose.yml">
+      <settings>
+        <option name="composeProjectName" value="fitassistant" />
+        <option name="envFilePath" value="$PROJECT_DIR$/.env" />
+        <option name="envFilePaths">
+          <list>
+            <option value="$PROJECT_DIR$/.env" />
+          </list>
+        </option>
+        <option name="sourceFilePath" value="infrastructure/docker-compose.local.yml" />
+        <option name="upNoBuild" value="true" />
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>
