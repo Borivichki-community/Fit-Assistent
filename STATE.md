@@ -95,3 +95,4 @@
 - Сохранено имя Docker-подключения FitAssistant Docker; на другой машине при необходимости нужно выбрать своё подключение. Содержимое `.env` в XML не переносилось.
 - PASS: синтаксис шести XML, набор конфигураций, пути, соответствие main-классов и Gradle-модулей, отсутствие личных абсолютных путей, доступность файлов для Git, `docker compose --env-file .env -f infrastructure/docker-compose.local.yml -f infrastructure/docker-compose.backend.yml config --quiet`, `git diff --check`.
 - Сборка, запуск приложений и проверка отображения конфигураций в интерфейсе IDEA не выполнялись. Commit/push и смена ветки не выполнялись.
+- [x] Шаг 5: Написание тестов (commonTest Fakes, Testcontainers backend). (Completed via Context and Fake tests)
