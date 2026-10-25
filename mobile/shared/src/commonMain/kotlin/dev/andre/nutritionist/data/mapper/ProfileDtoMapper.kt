@@ -41,6 +41,7 @@ object ProfileDtoMapper {
             activityLevel = activityLevel.toDomain(),
             goalType = goalType.toDomain(),
             nutritionGoal = goalDomain,
+            weeklyBudget = weeklyBudget,
             updatedAt = instant,
         )
     }
@@ -62,6 +63,7 @@ object ProfileDtoMapper {
             activityLevel = activityLevel.toProto(),
             goalType = goalType.toProto(),
             nutritionGoal = goalProto,
+            weeklyBudget = weeklyBudget,
         )
     }
 

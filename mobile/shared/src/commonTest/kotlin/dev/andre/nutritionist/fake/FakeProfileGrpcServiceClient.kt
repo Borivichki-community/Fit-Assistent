@@ -32,6 +32,7 @@ class FakeProfileGrpcServiceClient : ProfileGrpcServiceClient {
             activityLevel = request.activityLevel,
             goalType = request.goalType,
             nutritionGoal = request.nutritionGoal,
+            weeklyBudget = request.weeklyBudget,
         )
     }
 

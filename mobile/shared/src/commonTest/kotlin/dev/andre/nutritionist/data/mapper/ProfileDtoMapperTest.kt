@@ -40,6 +40,7 @@ class ProfileDtoMapperTest {
                 targetWeightKg = 70.0,
             ),
             updatedAt = TimestampProto(seconds = 1_700_000_000L, nanos = 500_000),
+            weeklyBudget = 5000.0,
         )
 
         val domain = proto.toDomain()
@@ -56,6 +57,7 @@ class ProfileDtoMapperTest {
         assertEquals(60.0, domain.nutritionGoal.targetFatsGrams)
         assertEquals(240.0, domain.nutritionGoal.targetCarbsGrams)
         assertEquals(70.0, domain.nutritionGoal.targetWeightKg)
+        assertEquals(5000.0, domain.weeklyBudget)
         assertEquals(Instant.fromEpochSeconds(1_700_000_000L, 500_000), domain.updatedAt)
     }
 
@@ -65,11 +67,13 @@ class ProfileDtoMapperTest {
             id = "p-1",
             userId = "u-1",
             updatedAt = TimestampProto(seconds = 0L, nanos = 0),
+            weeklyBudget = 3500.0,
         )
 
         val domain = proto.toDomain()
 
         assertEquals(Instant.fromEpochMilliseconds(0L), domain.updatedAt)
+        assertEquals(3500.0, domain.weeklyBudget)
     }
 
     @Test
@@ -89,6 +93,7 @@ class ProfileDtoMapperTest {
                 targetCarbsGrams = 320.0,
                 targetWeightKg = 82.0,
             ),
+            weeklyBudget = 6000.0,
             updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
         )
 
@@ -105,6 +110,7 @@ class ProfileDtoMapperTest {
         assertEquals(70.0, request.nutritionGoal.targetFatsGrams)
         assertEquals(320.0, request.nutritionGoal.targetCarbsGrams)
         assertEquals(82.0, request.nutritionGoal.targetWeightKg)
+        assertEquals(6000.0, request.weeklyBudget)
     }
 
     @Test

@@ -11,5 +11,6 @@ data class Profile(
     val activityLevel: ActivityLevel,
     val goalType: GoalType,
     val nutritionGoal: NutritionGoal,
+    val weeklyBudget: Double,
     val updatedAt: Instant,
 )

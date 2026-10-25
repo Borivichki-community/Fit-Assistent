@@ -52,6 +52,7 @@ class ProfileGrpcRemoteDataSourceTest {
                 targetWeightKg = 70.0,
             ),
             updatedAt = TimestampProto(seconds = 1_700_000_000L, nanos = 0),
+            weeklyBudget = 4500.0,
         )
         fakeClient.responseToReturn = testProto
 
@@ -63,6 +64,7 @@ class ProfileGrpcRemoteDataSourceTest {
         assertEquals(UserId("user-1"), profile.userId)
         assertEquals(175, profile.heightCm)
         assertEquals(70.0, profile.weightKg)
+        assertEquals(4500.0, profile.weeklyBudget)
         assertEquals(Gender.FEMALE, profile.gender)
         assertEquals(ActivityLevel.MODERATE, profile.activityLevel)
         assertEquals(GoalType.MAINTAIN, profile.goalType)
@@ -121,6 +123,7 @@ class ProfileGrpcRemoteDataSourceTest {
                 targetCarbsGrams = 245.0,
                 targetWeightKg = 85.0,
             ),
+            weeklyBudget = 7500.0,
             updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
         )
 
@@ -140,6 +143,7 @@ class ProfileGrpcRemoteDataSourceTest {
                 targetWeightKg = 85.0,
             ),
             updatedAt = TimestampProto(seconds = 1_700_000_005L, nanos = 0),
+            weeklyBudget = 7500.0,
         )
         fakeClient.responseToReturn = updatedResponseProto
 
@@ -155,6 +159,7 @@ class ProfileGrpcRemoteDataSourceTest {
         assertEquals(ActivityLevel.VERY_ACTIVE, saved.activityLevel)
         assertEquals(GoalType.LOSE_WEIGHT, saved.goalType)
         assertEquals(2500, saved.nutritionGoal.targetCalories)
+        assertEquals(7500.0, saved.weeklyBudget)
 
         // Проверяем, что запрос ушёл с правильными полями
         val sentRequest = fakeClient.lastUpdateRequest
@@ -165,6 +170,7 @@ class ProfileGrpcRemoteDataSourceTest {
         assertEquals(ActivityLevelProto.ACTIVITY_LEVEL_VERY_ACTIVE, sentRequest?.activityLevel)
         assertEquals(GoalTypeProto.GOAL_TYPE_LOSE_WEIGHT, sentRequest?.goalType)
         assertEquals(2500, sentRequest?.nutritionGoal?.targetCalories)
+        assertEquals(7500.0, sentRequest?.weeklyBudget)
     }
 
     @Test
@@ -178,13 +184,14 @@ class ProfileGrpcRemoteDataSourceTest {
             activityLevel = ActivityLevel.LIGHT,
             goalType = GoalType.MAINTAIN,
             nutritionGoal = NutritionGoal(1800, 100.0, 50.0, 237.5, 65.0),
+            weeklyBudget = 3000.0,
             updatedAt = Instant.fromEpochMilliseconds(0L),
         )
         fakeClient.shouldThrow = RuntimeException("gRPC DEADLINE_EXCEEDED")
 
         val result = dataSource.updateProfile(inputProfile)
 
-        assertTrue(result.isFailure)
+        assertTrue(result.isSuccess.not())
         assertIs<RuntimeException>(result.exceptionOrNull())
         assertEquals("gRPC DEADLINE_EXCEEDED", result.exceptionOrNull()?.message)
     }
@@ -200,6 +207,7 @@ class ProfileGrpcRemoteDataSourceTest {
             activityLevel = ActivityLevel.LIGHT,
             goalType = GoalType.MAINTAIN,
             nutritionGoal = NutritionGoal(1800, 100.0, 50.0, 237.5, 65.0),
+            weeklyBudget = 3000.0,
             updatedAt = Instant.fromEpochMilliseconds(0L),
         )
         val cancellationException = kotlinx.coroutines.CancellationException("Test cancellation")

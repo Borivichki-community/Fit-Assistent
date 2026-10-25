@@ -59,6 +59,7 @@ data class ProfileProto(
     val goalType: GoalTypeProto = GoalTypeProto.GOAL_TYPE_UNSPECIFIED,
     val nutritionGoal: NutritionGoalProto = NutritionGoalProto(),
     val updatedAt: TimestampProto = TimestampProto(),
+    val weeklyBudget: Double = 0.0,
 )
 
 data class GetProfileRequest(
@@ -73,4 +74,5 @@ data class UpdateProfileRequest(
     val activityLevel: ActivityLevelProto = ActivityLevelProto.ACTIVITY_LEVEL_UNSPECIFIED,
     val goalType: GoalTypeProto = GoalTypeProto.GOAL_TYPE_UNSPECIFIED,
     val nutritionGoal: NutritionGoalProto = NutritionGoalProto(),
+    val weeklyBudget: Double = 0.0,
 )

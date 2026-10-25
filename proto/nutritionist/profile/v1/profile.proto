@@ -51,6 +51,7 @@ message ProfileProto {
   GoalTypeProto goal_type = 7;
   NutritionGoalProto nutrition_goal = 8;
   google.protobuf.Timestamp updated_at = 9;
+  double weekly_budget = 10;
 }
 
 message GetProfileRequest {
@@ -65,4 +66,5 @@ message UpdateProfileRequest {
   ActivityLevelProto activity_level = 5;
   GoalTypeProto goal_type = 6;
   NutritionGoalProto nutrition_goal = 7;
+  double weekly_budget = 8;
 }
