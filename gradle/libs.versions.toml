@@ -26,12 +26,11 @@ room = "2.8.5"
 sqlite-bundled = "2.7.1"
 turbine = "1.2.1"
 grpc = "1.69.0"
-grpc-kotlin = "1.4.1"
+grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
 
 grpc-java = "1.84.1"
-grpc-kotlin = "1.5.0"
 protobuf = "4.36.2"
 protobuf-plugin = "0.10.0"
 
@@ -105,8 +104,6 @@ confluent-avro-serializer = { module = "io.confluent:kafka-avro-serializer", ver
 
 spring-starter-grpc = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
-grpc-stub = { module = "io.grpc:grpc-stub" }
-grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub" }
 protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin" }
 
 codegen-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
