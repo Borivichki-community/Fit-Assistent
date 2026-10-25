@@ -6,6 +6,8 @@ spring:
     server:
       address: 127.0.0.1
       port: ${CATALOG_GRPC_PORT:9192}
+      health:
+        enabled: true
 
   datasource:
     url: ${CATALOG_DB_URL:jdbc:postgresql://localhost:5432/catalog_db}
