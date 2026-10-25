@@ -31,8 +31,13 @@ dependencyResolutionManagement {
     }
 }
 
-include(":mobile:androidApp")
-include(":mobile:shared")
+val backendOnly = providers.gradleProperty("backendOnly").orNull == "true"
+
+if (!backendOnly) {
+    include(":mobile:androidApp")
+    include(":mobile:shared")
+}
+
 
 include(":backend:profile-service")
 include(":backend:catalog-price-service")
