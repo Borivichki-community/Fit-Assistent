@@ -50,6 +50,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
+            implementation(libs.grpc.okhttp)
+            implementation(libs.grpc.stub)
+            implementation(libs.grpc.protobuf.lite)
+            implementation(libs.grpc.kotlin.stub)
         }
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)

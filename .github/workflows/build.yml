@@ -27,7 +27,14 @@ jobs:
       - name: Run buf breaking
         if: github.event_name == 'pull_request'
         run: |
-          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then buf breaking proto --against ".git#branch=${{ github.base_ref }},subdir=proto"; fi
+          if [ -n "$(find proto -name '*.proto' 2>/dev/null)" ]; then
+            git branch -f "${{ github.base_ref }}" "origin/${{ github.base_ref }}" 2>/dev/null || git fetch origin "${{ github.base_ref }}:${{ github.base_ref }}" || true
+            if git ls-tree -r "${{ github.base_ref }}" proto 2>/dev/null | grep -q '\.proto$'; then
+              buf breaking proto --against ".git#branch=${{ github.base_ref }},subdir=proto"
+            else
+              echo "В базовой ветке ${{ github.base_ref }} пока нет .proto файлов. Пропуск buf breaking."
+            fi
+          fi
 
   mobile-verify:
     name: Mobile & KMP (Tests & APK)

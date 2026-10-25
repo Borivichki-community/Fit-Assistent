@@ -25,11 +25,12 @@ material3 = "1.12.0-alpha03"
 room = "2.8.5"
 sqlite-bundled = "2.7.1"
 turbine = "1.2.1"
+grpc = "1.69.0"
+grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
 
 grpc-java = "1.84.1"
-grpc-kotlin = "1.5.0"
 protobuf = "4.36.2"
 protobuf-plugin = "0.10.0"
 
@@ -80,6 +81,10 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
+grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "grpc" }
+grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
+grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "grpc" }
+grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
 
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
@@ -99,8 +104,6 @@ confluent-avro-serializer = { module = "io.confluent:kafka-avro-serializer", ver
 
 spring-starter-grpc = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
 grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
-grpc-stub = { module = "io.grpc:grpc-stub" }
-grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub" }
 protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin" }
 
 codegen-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
