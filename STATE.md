@@ -86,3 +86,12 @@
 - PASS: git diff --check. Docker/Compose, Kafka broker и Registry не менялись; commit/push не выполнялись.
 - Ограничения: live Kafka/Registry/DB/Redis не проверены; четыре специальных правила detekt не настроены и не доказаны; detekt сейчас применяется к Profile, не ко всем backend-модулям; удалённый CI не запускался. Полную T-005 не объявлять завершённой только по успешному build.
 - По запросу пользователя добавлены поясняющие комментарии у версий Confluent/Avro, трёх исключений Kafka client и offline-теста; поведение не изменялось. Пользователь повторил build + detektMain/detektTest, отдельно AvroCompatibilityTest и dependencyInsight — предоставленный лог содержит BUILD SUCCESSFUL для этих команд.
+
+## Checkpoint 2026-10-25 — Общие конфигурации запуска IDEA
+- Активный Skill: testing-and-verification; роль implementer.
+- В `.run/` перенесены шесть конфигураций из локального RunManager IDEA: Catalog Price, Diary Local, Profile Local, RecipeAI Local, FitAssistant — Full Docker, FitAssistant — Infrastructure.
+- Android, iOS, Gradle check и шаблоны не перенесены. Исходный workspace.xml родительского проекта не изменён.
+- Общие конфигурации рассчитаны на открытие в IDEA корня репозитория Fit-Assistent: `.env` задаётся через `$PROJECT_DIR$/.env`, Compose-файлы — через `infrastructure/`, рабочая папка Application — `$PROJECT_DIR$`.
+- Сохранено имя Docker-подключения FitAssistant Docker; на другой машине при необходимости нужно выбрать своё подключение. Содержимое `.env` в XML не переносилось.
+- PASS: синтаксис шести XML, набор конфигураций, пути, соответствие main-классов и Gradle-модулей, отсутствие личных абсолютных путей, доступность файлов для Git, `docker compose --env-file .env -f infrastructure/docker-compose.local.yml -f infrastructure/docker-compose.backend.yml config --quiet`, `git diff --check`.
+- Сборка, запуск приложений и проверка отображения конфигураций в интерфейсе IDEA не выполнялись. Commit/push и смена ветки не выполнялись.

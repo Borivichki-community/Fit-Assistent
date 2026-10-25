@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration name="FitAssistant — Full Docker" type="docker-deploy" factoryName="docker-compose.yml" server-name="FitAssistant Docker">
+    <deployment type="docker-compose.yml">
+      <settings>
+        <option name="composeProjectName" value="fitassistant" />
+        <option name="envFilePath" value="$PROJECT_DIR$/.env" />
+        <option name="envFilePaths">
+          <list>
+            <option value="$PROJECT_DIR$/.env" />
+          </list>
+        </option>
+        <option name="commandLineOptions" value="--build" />
+        <option name="secondarySourceFiles">
+          <list>
+            <option value="infrastructure/docker-compose.backend.yml" />
+          </list>
+        </option>
+        <option name="sourceFilePath" value="infrastructure/docker-compose.local.yml" />
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>
