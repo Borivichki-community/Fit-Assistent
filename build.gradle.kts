@@ -9,4 +9,16 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.room) apply false
     alias(libs.plugins.ksp) apply false
+
+    alias(libs.plugins.springBoot) apply false
+    alias(libs.plugins.kotlinSpring) apply false
+    alias(libs.plugins.kotlinJpa) apply false
+
+    alias(libs.plugins.protobuf) apply false
+
+    alias(libs.plugins.ktlint) apply false
+
+    // Включим после выбора одного варианта detekt в TOML:
+     alias(libs.plugins.detekt) apply false
+
 }
