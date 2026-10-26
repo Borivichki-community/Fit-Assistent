@@ -129,22 +129,31 @@
   - Правильный поток: `gRPC Response (DTO)` → `mapper` → `domain.model.*` → `domain.repository`.
   - Правильный поток: `domain.model.*` → `mapper` → `Room Entity` → `DAO`.
 
-### 2.3 UseCase — контракт
+### 2.3 UseCase — контракт и целесообразность (Anti-Boilerplate Rule)
 ```kotlin
-// :shared/domain/usecase/recipe/GetRecipeUseCase.kt
-class GetRecipeUseCase(
-    private val repository: RecipeRepository,
+// :shared/domain/usecase/recipe/CalculateDietPlanUseCase.kt
+class CalculateDietPlanUseCase(
+    private val recipeRepository: RecipeRepository,
+    private val profileRepository: ProfileRepository,
     private val dispatchers: CoroutineDispatchers,
 ) {
-    suspend operator fun invoke(id: RecipeId): Result<Recipe> =
+    suspend operator fun invoke(userId: UserId): Result<DietPlan> =
         withContext(dispatchers.io) {
-            runCatching { repository.getById(id) }
+            runCatching {
+                // Реальная доменная логика: оркестрация нескольких источников и расчёт
+                val profile = profileRepository.getProfile(userId)
+                val recipes = recipeRepository.getRecommended(profile.nutritionGoal)
+                DietPlan(profile = profile, recipes = recipes)
+            }
         }
 }
 ```
 - Возвращаемый тип всегда `Result<T>`.
 - Принцип Fail Fast: `runCatching` оборачивает весь блок.
 - **ЗАПРЕЩЕНО** возвращать `null` или использовать кастомные sealed-результаты вместо `Result<T>` без явного обоснования.
+- **Критерий необходимости UseCase (Anti-Boilerplate):**
+  - UseCase создаётся **ТОЛЬКО** тогда, когда он содержит реальную доменную логику: координацию нескольких репозиториев, валидацию доменных правил, вычисления или применение доменных политик.
+  - **ЗАПРЕЩЕНО** создавать однострочные сквозные UseCase-прокси (anemic / pass-through), которые просто перенаправляют вызов в один метод репозитория без дополнительной логики. В таких случаях вызывающий слой (например, `CommandsFlowHandler` в KoTEA) обязан вызывать интерфейс `Repository` напрямую, не плодя бесполезный бойлерплейт.
 
 ### 2.4 commonMain — запрещённые импорты
 В любом файле в `commonMain` **ЗАПРЕЩЕНЫ**:
@@ -171,67 +180,65 @@ class GetRecipeUseCase(
 
 ---
 
-## 3. Mobile UI (`androidApp`) — MVI & Compose
+## 3. Mobile UI (`androidApp`) & Presentation (`:shared`) — KoTEA (The Elm Architecture) & Compose
 
-### 3.1 Тонкий UI — обязательное правило
+### 3.1 Архитектура KoTEA в `:mobile:shared`
+Взаимодействие UI и бизнес-логики строится по паттерну The Elm Architecture с использованием ядра KoTEA (`dev.andre.nutritionist.core.kotea.*`):
+- **`Store<State, UiEvent, News>`**: единая точка входа. Предоставляет `state: StateFlow<State>`, `news: Flow<News>` и метод `dispatch(event: UiEvent)`.
+- **`State`**: неделимый снимок состояния фичи. Обязателен паттерн со вложенным `sealed interface Content` (`Loading`, `Success`, `Error`). Запрещены флаги `isLoading: Boolean` и `error: String?` на верхнем уровне.
+- **`Event`**: все события фичи.
+  - `sealed interface Ui : Event` — намерения пользователя (`LoadProfile`, `Retry`, `EditClicked`).
+  - `sealed interface Internal : Event` — результаты выполнения асинхронных команд (`ProfileLoaded`, `ProfileLoadFailed`).
+- **`Command`**: асинхронные сайд-эффекты (загрузка данных, запись в БД).
+- **`News`**: разовые уведомления для UI (навигация, snackbar).
+- **`DslUpdate`**: чистый синхронный редьюсер. Внутри `update(event)` **СТРОГО ЗАПРЕЩЕНЫ** корутины, сетевые вызовы и любые сайд-эффекты. Допустимы только функции `state { ... }`, `commands(...)`, `news(...)`. `when(event)` обязан быть исчерпывающим без ветки `else`.
+- **`CommandsFlowHandler`**: асинхронный обработчик команд. Слушает поток `commands: Flow<Command>` и возвращает `Flow<Event>`. При отсутствии сложной доменной логики обращается к `Repository` напрямую (без проходных UseCase).
+- **`UiStateMapper`**: чистый маппер `fun map(state: State): UiState`. Формирует готовые для отображения строки (`heightLabel = "$heightCm см"`, `priceLabel = "$price ₽"`).
+
+### 3.2 Тонкий Compose UI — обязательное правило
 - В `@Composable` функциях **ЗАПРЕЩЕНЫ**:
-  - Вызовы UseCase напрямую.
-  - Бизнес-логика, расчёты, форматирование.
+  - Вызовы UseCase, DAO, репозиториев или сети.
+  - Бизнес-логика, расчёты, преобразования типов.
   - Любое форматирование цен, дат, единиц (`"350 ₽"`, `"1 200 ккал"`).
-- Все строки для отображения **формируются в `:shared`** (например, `FormattedRecipe.priceLabel: String`).
-
-### 3.2 ViewState — запрет флагов
-- **ЗАПРЕЩЕНО** использовать `isLoading: Boolean`, `error: String?` как поля верхнего уровня `ViewState`.
-- Обязательный паттерн с вложенным `sealed interface Content`:
-
-  ```kotlin
-  data class RecipeViewState(
-      val content: Content = Content.Loading,
-      val query: String = "",
-  ) {
-      sealed interface Content {
-          data object Loading : Content
-          data class Success(val recipes: List<RecipeUiModel>) : Content
-          data class Error(val message: String) : Content
-      }
-  }
-  ```
+- Все строки для отображения формируются через `UiStateMapper` в `:shared`.
 
 ### 3.3 Разделение Route / Screen
-- **`*Route`** (stateful): подключается к Koin ViewModel, собирает эффекты, управляет навигацией.
-- **`*Screen`** (stateless): принимает только `state: ViewState` и `onIntent: (Intent) -> Unit`. Тестируется изолированно.
+- **`*Route`** (stateful): подключается к Koin ViewModel / Store, собирает состояние через `collectAsStateWithLifecycle()`, слушает `news` и управляет навигацией.
+- **`*Screen`** (stateless): принимает только `state: UiState` и лямбду `onEvent: (UiEvent) -> Unit`. Тестируется изолированно.
 
   ```kotlin
   @Composable
-  fun RecipeRoute(navController: NavController) {
-      val viewModel: RecipeViewModel = koinViewModel()
+  fun RecipeRoute(
+      navController: NavController,
+      viewModel: RecipeViewModel = koinViewModel(),
+  ) {
       val state by viewModel.state.collectAsStateWithLifecycle()
 
       LaunchedEffect(Unit) {
-          viewModel.effects.collect { effect ->
-              when (effect) {
-                  is RecipeEffect.NavigateToDetail ->
-                      navController.navigate(RecipeDetailRoute(effect.recipeId))
+          viewModel.news.collect { news ->
+              when (news) {
+                  is RecipeNews.NavigateToDetail ->
+                      navController.navigate(RecipeDetailRoute(news.recipeId))
               }
           }
       }
 
-      RecipeScreen(state = state, onIntent = viewModel::onIntent)
+      RecipeScreen(state = state, onEvent = viewModel::dispatch)
   }
 
   @Composable
   fun RecipeScreen(
-      state: RecipeViewState,
-      onIntent: (RecipeIntent) -> Unit,
+      state: RecipeUiState,
+      onEvent: (RecipeEvent.Ui) -> Unit,
   ) {
-      // Чистый декларативный UI
+      // Чистый декларативный UI без логики
   }
   ```
 
-### 3.4 State & Effects
-- Состояние: `StateFlow<ViewState>` → `collectAsStateWithLifecycle()`.
-- Разовые эффекты (навигация, snackbar): `Channel<Effect>(Channel.BUFFERED)` + `receiveAsFlow()`.
-- **ЗАПРЕЩЕНО** использовать `SharedFlow` для эффектов (риск пропуска события при отсутствии подписчика).
+### 3.4 State & News в Store
+- Состояние: `StateFlow<State>` → `collectAsStateWithLifecycle()`.
+- Разовые эффекты: `Channel<News>(Channel.BUFFERED)` + `receiveAsFlow()`.
+- **ЗАПРЕЩЕНО** использовать `SharedFlow` для news (риск пропуска события при отсутствии подписчика).
 
 ### 3.5 Offline-first дневник — IdempotencyKey
 1. При создании записи дневника (до любого сетевого вызова) сгенерировать `idempotencyKey = IdempotencyKey(Uuid.random().toString())`.
@@ -346,12 +353,13 @@ class GetRecipeUseCase(
 - [ ] Нет сырых типов как ID (`String`, `Int`, `Long`).
 - [ ] `domain` не импортирует ничего кроме stdlib и coroutines.
 - [ ] DTO/Entity не в `domain`.
-- [ ] UseCase возвращает `Result<T>` через `operator fun invoke`.
+- [ ] UseCase возвращает `Result<T>` через `operator fun invoke` (при наличии реальной логики; нет сквозных anemic UseCase).
 - [ ] Нет `GlobalScope`.
 - [ ] Диспетчеры инжектируются.
 - [ ] Нет версий в `build.gradle.kts` (только `libs.*`).
-- [ ] `ViewState` использует вложенный `sealed interface Content`.
-- [ ] Нет логики/форматирования в `@Composable`.
+- [ ] `State` / `UiState` использует вложенный `sealed interface Content` (нет флагов isLoading/error).
+- [ ] Редьюсер `DslUpdate` чистый и синхронный (сайд-эффекты только в `CommandsFlowHandler`).
+- [ ] Строки форматируются через `UiStateMapper` в `:shared`, нет логики/форматирования в `@Composable`.
 - [ ] `idempotencyKey` генерируется один раз и сохраняется в Room.
 - [ ] Нет сетевых вызовов внутри `@Transactional`.
 - [ ] Kafka-публикация через Outbox, не напрямую.
