@@ -34,7 +34,7 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 - Server tests: `./gradlew :server:test`
 - iOS tests: `./gradlew :app:shared:iosSimulatorArm64Test`
 
----
+---ст
 
 ### Running docker
 
