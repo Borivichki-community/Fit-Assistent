@@ -82,6 +82,32 @@ class ProfileUpdateTest {
     }
 
     @Test
+    fun `ProfileLoadFailed internal event with empty message transitions state to Error with default message`() {
+        val loadingState = ProfileState(content = ProfileState.Content.Loading, currentUserId = testUserId)
+        val error = RuntimeException()
+
+        val next = update.update(loadingState, ProfileEvent.Internal.ProfileLoadFailed(error))
+
+        assertIs<ProfileState.Content.Error>(next.state?.content)
+        assertEquals("Не удалось загрузить профиль", (next.state?.content as ProfileState.Content.Error).message)
+        assertEquals(listOf(ProfileNews.ShowSnackbar("Не удалось загрузить профиль")), next.news)
+    }
+
+    @Test
+    fun `Retry event when currentUserId is null does nothing`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Error("Ошибка"),
+            currentUserId = null,
+        )
+
+        val next = update.update(state, ProfileEvent.Ui.Retry)
+
+        assertEquals(null, next.state)
+        assertEquals(emptyList(), next.commands)
+        assertEquals(emptyList(), next.news)
+    }
+
+    @Test
     fun `EditClicked event produces NavigateToEdit news`() {
         val successState = ProfileState(
             content = ProfileState.Content.Success(testProfile),
@@ -91,5 +117,19 @@ class ProfileUpdateTest {
         val next = update.update(successState, ProfileEvent.Ui.EditClicked)
 
         assertEquals(listOf(ProfileNews.NavigateToEdit(testUserId)), next.news)
+    }
+
+    @Test
+    fun `EditClicked event when currentUserId is null does nothing`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Success(testProfile),
+            currentUserId = null,
+        )
+
+        val next = update.update(state, ProfileEvent.Ui.EditClicked)
+
+        assertEquals(null, next.state)
+        assertEquals(emptyList(), next.commands)
+        assertEquals(emptyList(), next.news)
     }
 }
