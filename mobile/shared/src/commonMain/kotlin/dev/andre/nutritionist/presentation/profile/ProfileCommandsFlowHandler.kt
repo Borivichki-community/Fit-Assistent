@@ -18,6 +18,7 @@ class ProfileCommandsFlowHandler(
                 is ProfileCommand.LoadProfile -> {
                     val event = withContext(dispatchers.io) {
                         runCatching { profileRepository.getProfile(command.userId) }
+                            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
                             .fold(
                                 onSuccess = { ProfileEvent.Internal.ProfileLoaded(it) },
                                 onFailure = { ProfileEvent.Internal.ProfileLoadFailed(it) },

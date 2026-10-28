@@ -84,6 +84,16 @@ class ProfileCommandsFlowHandlerTest {
         }
     }
 
+    @Test
+    fun `LoadProfile command rethrows CancellationException`() = runTest(testDispatcher) {
+        fakeRepository.errorToThrow = kotlinx.coroutines.CancellationException("Test cancellation")
+
+        handler.handle(flowOf(ProfileCommand.LoadProfile(testUserId))).test {
+            val error = awaitError()
+            assertIs<kotlinx.coroutines.CancellationException>(error)
+        }
+    }
+
     private class FakeProfileRepository : ProfileRepository {
         var profileToReturn: Profile? = null
         var errorToThrow: Throwable? = null
