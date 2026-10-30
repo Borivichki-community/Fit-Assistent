@@ -98,26 +98,116 @@ class ProfileViewModelTest {
     fun `LoadProfile event failure updates state to Error and emits news`() = runTest(testDispatcher) {
         fakeRepository.errorToThrow = RuntimeException("Test Error Message")
 
+        app.cash.turbine.turbineScope {
+            val stateTurbine = viewModel.state.testIn(backgroundScope)
+            val newsTurbine = viewModel.news.testIn(backgroundScope)
+
+            // Initial state
+            assertIs<ProfileUiState.Content.Loading>(stateTurbine.awaitItem().content)
+
+            // Dispatch load
+            viewModel.dispatch(ProfileEvent.Ui.LoadProfile(testUserId))
+
+            // Verify news emitted
+            val newsItem = newsTurbine.awaitItem()
+            assertIs<ProfileNews.ShowSnackbar>(newsItem)
+            assertEquals("Test Error Message", newsItem.message)
+
+            // Verify state transition to error
+            val errorState = stateTurbine.awaitItem()
+            assertIs<ProfileUiState.Content.Error>(errorState.content)
+            assertEquals("Test Error Message", (errorState.content as ProfileUiState.Content.Error).message)
+        }
+    }
+
+    @Test
+    fun `Retry event successfully updates state to Success after Error`() = runTest(testDispatcher) {
+        fakeRepository.errorToThrow = RuntimeException("Test Error Message")
+        fakeRepository.profileToReturn = testProfile
+
+        app.cash.turbine.turbineScope {
+            val stateTurbine = viewModel.state.testIn(backgroundScope)
+            val newsTurbine = viewModel.news.testIn(backgroundScope)
+
+            // Initial state
+            assertIs<ProfileUiState.Content.Loading>(stateTurbine.awaitItem().content)
+
+            // Dispatch load (fails)
+            viewModel.dispatch(ProfileEvent.Ui.LoadProfile(testUserId))
+
+            // Skip news
+            val newsItem = newsTurbine.awaitItem()
+            assertIs<ProfileNews.ShowSnackbar>(newsItem)
+
+            // Verify state transition to error
+            val errorState = stateTurbine.awaitItem()
+            assertIs<ProfileUiState.Content.Error>(errorState.content)
+
+            // Clear error to simulate recovery
+            fakeRepository.errorToThrow = null
+
+            // Dispatch retry
+            viewModel.dispatch(ProfileEvent.Ui.Retry)
+
+            // Loading state again
+            assertIs<ProfileUiState.Content.Loading>(stateTurbine.awaitItem().content)
+
+            // Success state
+            val successState = stateTurbine.awaitItem()
+            assertIs<ProfileUiState.Content.Success>(successState.content)
+        }
+    }
+
+    @Test
+    fun `EditClicked event emits NavigateToEdit news`() = runTest(testDispatcher) {
+        fakeRepository.profileToReturn = testProfile
+
+        app.cash.turbine.turbineScope {
+            val stateTurbine = viewModel.state.testIn(backgroundScope)
+            val newsTurbine = viewModel.news.testIn(backgroundScope)
+
+            // Initial state
+            stateTurbine.awaitItem() // Loading
+
+            viewModel.dispatch(ProfileEvent.Ui.LoadProfile(testUserId))
+
+            // Transition to success
+            stateTurbine.awaitItem() // Success
+
+            viewModel.dispatch(ProfileEvent.Ui.EditClicked)
+
+            val newsItem = newsTurbine.awaitItem()
+            assertIs<ProfileNews.NavigateToEdit>(newsItem)
+            assertEquals(testUserId, newsItem.userId)
+        }
+    }
+
+    @Test
+    fun `Multiple LoadProfile events process correctly`() = runTest(testDispatcher) {
+        fakeRepository.profileToReturn = testProfile
+
         viewModel.state.test {
             // Initial state
             assertIs<ProfileUiState.Content.Loading>(awaitItem().content)
 
-            viewModel.news.test {
-                // Dispatch load
-                viewModel.dispatch(ProfileEvent.Ui.LoadProfile(testUserId))
+            // First load
+            viewModel.dispatch(ProfileEvent.Ui.LoadProfile(testUserId))
+            assertIs<ProfileUiState.Content.Success>(awaitItem().content)
 
-                // Verify news emitted
-                val newsItem = awaitItem()
-                assertIs<ProfileNews.ShowSnackbar>(newsItem)
-                assertEquals("Test Error Message", newsItem.message)
+            // Second load with different user
+            val secondUser = UserId("user-test-2")
+            val secondProfile = testProfile.copy(userId = secondUser)
+            fakeRepository.profileToReturn = secondProfile
 
-                cancelAndIgnoreRemainingEvents()
-            }
+            viewModel.dispatch(ProfileEvent.Ui.LoadProfile(secondUser))
 
-            // Verify state transition to error
-            val errorState = awaitItem()
-            assertIs<ProfileUiState.Content.Error>(errorState.content)
-            assertEquals("Test Error Message", (errorState.content as ProfileUiState.Content.Error).message)
+            // Back to loading
+            assertIs<ProfileUiState.Content.Loading>(awaitItem().content)
+
+            // New success
+            val successState = awaitItem()
+            assertIs<ProfileUiState.Content.Success>(successState.content)
+            assertEquals(secondUser, (successState.content as ProfileUiState.Content.Success).profile.userId)
 
             cancelAndIgnoreRemainingEvents()
         }

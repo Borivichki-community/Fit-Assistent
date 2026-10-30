@@ -88,4 +88,32 @@ class ProfileUiStateMapperTest {
         assertEquals("Не указано", uiModel.activityLabel)
         assertEquals("Не указано", uiModel.goalLabel)
     }
+
+    @Test
+    fun `map Success state formats labels correctly for fractional weights and zero values`() {
+        val zeroProfile = testProfile.copy(
+            weightKg = 75.5,
+            weeklyBudget = 0.0,
+            nutritionGoal = testProfile.nutritionGoal.copy(
+                targetCalories = 0,
+                targetProteinsGrams = 0.0,
+                targetFatsGrams = 0.0,
+                targetCarbsGrams = 0.0,
+                targetWeightKg = 0.0,
+            )
+        )
+        val state = ProfileState(content = ProfileState.Content.Success(zeroProfile))
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = (uiState.content as ProfileUiState.Content.Success).profile
+
+        assertEquals("75.5 кг", uiModel.weightLabel)
+        assertEquals("0 ккал", uiModel.caloriesGoalLabel)
+        assertEquals("0 г", uiModel.proteinsGoalLabel)
+        assertEquals("0 г", uiModel.fatsGoalLabel)
+        assertEquals("0 г", uiModel.carbsGoalLabel)
+        assertEquals("0 кг", uiModel.weightGoalLabel)
+        assertEquals("0 ₽ / нед.", uiModel.weeklyBudgetLabel)
+    }
 }
