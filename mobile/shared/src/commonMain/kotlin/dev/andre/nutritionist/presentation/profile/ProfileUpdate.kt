@@ -27,7 +27,7 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                 state { copy(content = ProfileState.Content.Success(event.profile)) }
             }
             is ProfileEvent.Internal.ProfileLoadFailed -> {
-                val errorMessage = event.error.message ?: "Не удалось загрузить профиль"
+                val errorMessage = event.error.message?.takeIf { it.isNotBlank() } ?: "Не удалось загрузить профиль"
                 state { copy(content = ProfileState.Content.Error(errorMessage)) }
                 news(ProfileNews.ShowSnackbar(errorMessage))
             }

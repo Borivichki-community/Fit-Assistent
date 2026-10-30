@@ -82,9 +82,21 @@ class ProfileUpdateTest {
     }
 
     @Test
-    fun `ProfileLoadFailed internal event with empty message transitions state to Error with default message`() {
+    fun `ProfileLoadFailed internal event with null message transitions state to Error with default message`() {
         val loadingState = ProfileState(content = ProfileState.Content.Loading, currentUserId = testUserId)
         val error = RuntimeException()
+
+        val next = update.update(loadingState, ProfileEvent.Internal.ProfileLoadFailed(error))
+
+        assertIs<ProfileState.Content.Error>(next.state?.content)
+        assertEquals("Не удалось загрузить профиль", (next.state?.content as ProfileState.Content.Error).message)
+        assertEquals(listOf(ProfileNews.ShowSnackbar("Не удалось загрузить профиль")), next.news)
+    }
+
+    @Test
+    fun `ProfileLoadFailed internal event with blank message transitions state to Error with default message`() {
+        val loadingState = ProfileState(content = ProfileState.Content.Loading, currentUserId = testUserId)
+        val error = RuntimeException("   ")
 
         val next = update.update(loadingState, ProfileEvent.Internal.ProfileLoadFailed(error))
 

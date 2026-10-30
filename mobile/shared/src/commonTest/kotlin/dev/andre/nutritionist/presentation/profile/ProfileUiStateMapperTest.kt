@@ -70,4 +70,22 @@ class ProfileUiStateMapperTest {
         assertEquals("70 кг", uiModel.weightGoalLabel)
         assertEquals("5000 ₽ / нед.", uiModel.weeklyBudgetLabel)
     }
+
+    @Test
+    fun `map Success state formats labels correctly for UNKNOWN enum values`() {
+        val unknownProfile = testProfile.copy(
+            gender = Gender.UNKNOWN,
+            activityLevel = ActivityLevel.UNKNOWN,
+            goalType = GoalType.UNKNOWN,
+        )
+        val state = ProfileState(content = ProfileState.Content.Success(unknownProfile))
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = (uiState.content as ProfileUiState.Content.Success).profile
+
+        assertEquals("Не указан", uiModel.genderLabel)
+        assertEquals("Не указано", uiModel.activityLabel)
+        assertEquals("Не указано", uiModel.goalLabel)
+    }
 }
