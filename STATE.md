@@ -52,11 +52,28 @@
   - Покрыто 15 Unit-тестами без моков (`commonTest` + `androidHostTest`: Fakes, coroutines `runTest`, DTO mapper, interceptors);
   - Сборка и тесты: `:mobile:shared:allTests` (15/15 GREEN), `:mobile:androidApp:testDebugUnitTest` (3/3 GREEN).
 
+- [x] **Шаг 4 (KoTEA Integration & Mobile Architecture Update):** Интеграция The Elm Architecture (KoTEA) в KMP `:mobile:shared`:
+  - Создана чистая KMP-реализация ядра KoTEA в `dev.andre.nutritionist.core.kotea.*` (`Store`, `Next`, `Update`, `DslUpdate`, `CommandsFlowHandler`, `UiStateMapper`, `StoreImpl`, `KoteaStoreFactory`) на чистом Kotlin + `kotlinx.coroutines` под лицензией Apache 2.0;
+  - Покрыта unit-тестами `StoreTest.kt` (State update, Commands dispatching to internal events, News emission via Turbine);
+  - Обновлён `AGENTS.md` (§2.3 Anti-Boilerplate UseCase rule, §3 Mobile UI / KoTEA architecture, §6 Code review checklist);
+  - Обновлён `.agents/skills/android-compose-feature/SKILL.md` и шаблон `MviRouteScreenTemplate.kt`;
+  - Все тесты `:mobile:shared:allTests` (20/20 GREEN) и `:mobile:androidApp:testDebugUnitTest` (3/3 GREEN) пройдены успешно.
+
+- [x] **Шаг 4 (Profile Feature on KoTEA):** Полная реализация фичи Profile на базе KoTEA:
+  - Domain & Data: `ProfileRepository` и `ProfileRepositoryImpl` (делегирование в `ProfileRemoteDataSource`, `getProfile` и `updateProfile`);
+  - Presentation (KoTEA): `ProfileState`, `ProfileEvent` (`Ui`, `Internal`), `ProfileCommand`, `ProfileNews`, `ProfileUpdate` (`DslUpdate`), `ProfileCommandsFlowHandler`, `ProfileUiStateMapper` (`ProfileUiState`, `ProfileUiModel`), `ProfileViewModel`;
+  - Koin DI: регистрация компонентов в `Koin.kt` (`dataModule`, `presentationModule`);
+  - Unit-тесты: `ProfileRepositoryImplTest`, `ProfileUpdateTest`, `ProfileCommandsFlowHandlerTest` (Turbine), `ProfileUiStateMapperTest`;
+  - Верификация сборки: `:mobile:shared:allTests` (34/34 GREEN), `:mobile:androidApp:testDebugUnitTest` (3/3 GREEN), `:mobile:shared:assemble`, `:mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL).
+- [x] **Шаг 4 (Docker Images Update):** Обновлены и подтянуты все актуальные Docker-образы инфраструктуры и сборщика:
+  - `postgres:17-alpine`, `redis:7-alpine`, `apache/kafka:4.2.2`, `confluentinc/cp-schema-registry:8.2.4`, `quay.io/keycloak/keycloak:26.0` (все с sha256);
+  - Базовые образы JDK: `azul/zulu-openjdk:21`, `azul/zulu-openjdk:21-jre`.
+
 ---
 
 ### В работе
 
-- [-] **Шаг 4:** Реализация первой фичи (diary: AddDiaryEntry UseCase + Room Entity + SyncWorker).
+- [-] **Шаг 4:** Реализация Compose UI экрана профиля (`ProfileRoute`, `ProfileScreen`) и фичи дневника (diary: AddDiaryEntry + Room KMP + SyncWorker).
 
 ---
 

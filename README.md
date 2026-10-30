@@ -34,6 +34,19 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 - Server tests: `./gradlew :server:test`
 - iOS tests: `./gradlew :app:shared:iosSimulatorArm64Test`
 
----
+---ст
+
+### Running docker
+
+# Запуск только инфраструктуры (БД, Redis, Kafka, Keycloak):
+docker compose --env-file .env -f infrastructure/docker-compose.local.yml up -d
+
+# Полный запуск (инфраструктура + микросервисы бэкенда):
+docker compose --env-file .env -f infrastructure/docker-compose.local.yml -f infrastructure/docker-compose.backend.yml up -d --build
+
+./gradlew :backend:profile-service:bootRun
+./gradlew :backend:catalog-price-service:bootRun
+./gradlew :backend:diary-service:bootRun
+./gradlew :backend:recipe-ai-service:bootRun
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…

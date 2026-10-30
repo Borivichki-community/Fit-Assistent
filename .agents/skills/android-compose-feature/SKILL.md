@@ -1,20 +1,21 @@
 ---
 name: android-compose-feature
 description: >
-  Разработка ViewModel и тонкого UI в androidApp. Используй этот Skill при создании или
-  изменении: ViewModel в :shared/presentation или androidApp (MVI: StateFlow + Channel + sealed
-  interface Content, разделение *Route/*Screen), Jetpack Compose + Material 3 экранов,
-  SyncDiaryWorker (WorkManager + idempotency-key + BackoffPolicy.EXPONENTIAL), авторизации
-  OAuth 2.1 PKCE (AppAuth + Android Keystore/Tink). Запрещает бизнес-логику и форматирование
-  в @Composable, флаги isLoading/error в ViewState.
+  Разработка Presentation (KoTEA: Store, State, UiEvent/InternalEvent, Command, News, DslUpdate,
+  CommandsFlowHandler, UiStateMapper) и тонкого UI в androidApp (Compose Material 3: разделение
+  *Route/*Screen), SyncDiaryWorker (WorkManager + idempotency-key + BackoffPolicy.EXPONENTIAL),
+  авторизации OAuth 2.1 PKCE (AppAuth + Android Keystore/Tink). Запрещает бизнес-логику и
+  форматирование в @Composable, флаги isLoading/error в State/UiState, побочные эффекты в DslUpdate.
 ---
 
-# Skill: Android Compose Feature (MVI)
+# Skill: Android Compose Feature (KoTEA & Compose)
 
 ## Назначение
 
-Этот Skill регулирует разработку всего, что живёт в `androidApp` и связанных Compose-слоях:
-ViewModel, State/Intent/Effect, Route/Screen-разделение, WorkManager и авторизацию.
+Этот Skill регулирует разработку презентационного слоя и UI:
+архитектура The Elm Architecture на базе ядра KoTEA (`dev.andre.nutritionist.core.kotea.*`),
+чистые редьюсеры `DslUpdate`, обработчики команд `CommandsFlowHandler`, мапперы `UiStateMapper`,
+разбиение `*Route` / `*Screen` в Jetpack Compose, WorkManager и авторизацию OAuth 2.1.
 
 ---
 
@@ -24,109 +25,183 @@ ViewModel, State/Intent/Effect, Route/Screen-разделение, WorkManager �
 
 ```
 1. Прочитать STATE.md — понять текущий статус.
-2. Прочитать docs/architecture/03-mobile-stack.md — MVI-эталоны, WorkManager, AppAuth.
-3. Убедиться, что UseCase и Repository уже реализованы в :shared (если нет — сначала kmp-shared-feature).
+2. Прочитать docs/architecture/03-mobile-stack.md и AGENTS.md §3.
+3. Убедиться, что Repository уже реализован в :shared (при отсутствии сложной доменной логики UseCase не создаётся).
 ```
 
-### Шаг 2. MVI — создать Intent, ViewState, Effect
+### Шаг 2. KoTEA Контракты — State, Event, Command, News
 
-#### 2.1 Intent
+#### 2.1 State (с вложенным `sealed interface Content`)
 ```kotlin
-// androidApp/feature/<name>/<Name>Intent.kt
-sealed interface <Name>Intent {
-    data class <Action>(val param: ParamType) : <Name>Intent
-    data object Retry : <Name>Intent
-    // НЕТ else при обработке в ViewModel
-}
-```
-
-#### 2.2 ViewState — вложенный sealed interface Content (ОБЯЗАТЕЛЬНО)
-```kotlin
-// androidApp/feature/<name>/<Name>ViewState.kt
-data class <Name>ViewState(
+data class <Name>State(
     val content: Content = Content.Loading,
-    // дополнительные поля (НЕ isLoading, НЕ error: String?)
+    val currentId: <Name>Id? = null,
 ) {
     sealed interface Content {
         data object Loading : Content
-        data class Success(val items: List<<Name>UiModel>) : Content
+        data class Success(val item: <Name>) : Content
         data class Error(val message: String) : Content
-        // добавлять новые варианты здесь — компилятор защитит when-выражения
+    }
+}
+```
+
+#### 2.2 Event — разделение на Ui и Internal
+```kotlin
+sealed interface <Name>Event {
+    sealed interface Ui : <Name>Event {
+        data class Load(val id: <Name>Id) : Ui
+        data object Retry : Ui
+        data object ActionClicked : Ui
+    }
+    sealed interface Internal : <Name>Event {
+        data class Loaded(val data: <Name>) : Internal
+        data class Failed(val error: Throwable) : Internal
+    }
+}
+```
+
+#### 2.3 Command — асинхронные команды
+```kotlin
+sealed interface <Name>Command {
+    data class Load(val id: <Name>Id) : <Name>Command
+}
+```
+
+#### 2.4 News — разовые UI-эффекты (навигация, snackbar)
+```kotlin
+sealed interface <Name>News {
+    data class NavigateToDetails(val id: <Name>Id) : <Name>News
+    data class ShowSnackbar(val message: String) : <Name>News
+}
+```
+
+### Шаг 3. Чистый редьюсер DslUpdate
+
+```kotlin
+class <Name>Update : DslUpdate<<Name>State, <Name>Event, <Name>Command, <Name>News>() {
+    override fun NextBuilder<<Name>State, <Name>Command, <Name>News>.update(event: <Name>Event) {
+        // НЕТ else в when!
+        when (event) {
+            is <Name>Event.Ui.Load -> {
+                state { copy(content = <Name>State.Content.Loading, currentId = event.id) }
+                commands(<Name>Command.Load(event.id))
+            }
+            <Name>Event.Ui.Retry -> {
+                val id = state.currentId
+                if (id != null) {
+                    state { copy(content = <Name>State.Content.Loading) }
+                    commands(<Name>Command.Load(id))
+                }
+            }
+            <Name>Event.Ui.ActionClicked -> {
+                val id = state.currentId
+                if (id != null) {
+                    news(<Name>News.NavigateToDetails(id))
+                }
+            }
+            is <Name>Event.Internal.Loaded -> {
+                state { copy(content = <Name>State.Content.Success(event.data)) }
+            }
+            is <Name>Event.Internal.Failed -> {
+                state { copy(content = <Name>State.Content.Error(event.error.message ?: "Ошибка")) }
+            }
+        }
+    }
+}
+```
+
+**Строгие правила для DslUpdate:**
+- Полная синхронность и детерминированность.
+- **СТРОГО ЗАПРЕЩЕНЫ**: корутины (`launch`), сетевые запросы, обращение к БД, `Dispatchers`, `System.currentTimeMillis()`.
+
+### Шаг 4. Асинхронный обработчик команд CommandsFlowHandler
+
+```kotlin
+class <Name>CommandsFlowHandler(
+    private val repository: <Name>Repository, // при отсутствии доменной логики вызываем репозиторий напрямую
+    private val dispatchers: CoroutineDispatchers,
+) : CommandsFlowHandler<<Name>Command, <Name>Event> {
+
+    override fun handle(commands: Flow<<Name>Command>): Flow<<Name>Event> = flow {
+        commands.collect { command ->
+            when (command) {
+                is <Name>Command.Load -> {
+                    val event = withContext(dispatchers.io) {
+                        runCatching { repository.getById(command.id) }
+                            .fold(
+                                onSuccess = { <Name>Event.Internal.Loaded(it) },
+                                onFailure = { <Name>Event.Internal.Failed(it) },
+                            )
+                    }
+                    emit(event)
+                }
+            }
+        }
+    }
+}
+```
+
+### Шаг 5. UiState и UiStateMapper
+
+```kotlin
+data class <Name>UiState(
+    val content: Content = Content.Loading,
+) {
+    sealed interface Content {
+        data object Loading : Content
+        data class Success(val model: <Name>UiModel) : Content
+        data class Error(val message: String) : Content
     }
 }
 
-// UiModel — ВСЕ строки уже отформатированы в :shared
-data class <Name>UiModel(
-    val id: <Name>Id,           // value class
-    val title: String,
-    val priceLabel: String,     // "350 ₽" — из :shared, НЕ форматировать здесь
-    val caloriesLabel: String,  // "320 ккал" — из :shared
-)
-```
-
-#### 2.3 Effect — разовые события
-```kotlin
-sealed interface <Name>Effect {
-    data class NavigateTo(val id: <Name>Id) : <Name>Effect
-    data class ShowSnackbar(val message: String) : <Name>Effect
+class <Name>UiStateMapper : UiStateMapper<<Name>State, <Name>UiState> {
+    override fun map(state: <Name>State): <Name>UiState {
+        val content = when (val c = state.content) {
+            <Name>State.Content.Loading -> <Name>UiState.Content.Loading
+            is <Name>State.Content.Success -> <Name>UiState.Content.Success(c.item.toUiModel())
+            is <Name>State.Content.Error -> <Name>UiState.Content.Error(c.message)
+        }
+        return <Name>UiState(content = content)
+    }
 }
 ```
 
-### Шаг 3. ViewModel
+### Шаг 6. ViewModel и интеграция с Store
 
 ```kotlin
 class <Name>ViewModel(
-    private val useCase: Get<Name>UseCase,     // UseCase из :shared/domain
-    private val dispatchers: CoroutineDispatchers,
+    update: <Name>Update,
+    commandsFlowHandler: <Name>CommandsFlowHandler,
+    private val uiStateMapper: <Name>UiStateMapper,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(<Name>ViewState())
-    val state: StateFlow<<Name>ViewState> = _state.asStateFlow()
+    private val store: Store<<Name>State, <Name>Event.Ui, <Name>News> =
+        KoteaStoreFactory.create(
+            initialState = <Name>State(),
+            update = update,
+            commandsFlowHandler = commandsFlowHandler,
+            scope = viewModelScope,
+        )
 
-    // Channel.BUFFERED — события не теряются при временном отсутствии подписчика
-    private val _effects = Channel<<Name>Effect>(Channel.BUFFERED)
-    val effects: Flow<<Name>Effect> = _effects.receiveAsFlow()
+    val state: StateFlow<<Name>UiState> =
+        store.state
+            .map(uiStateMapper::map)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000L),
+                initialValue = uiStateMapper.map(store.state.value),
+            )
 
-    fun onIntent(intent: <Name>Intent) {
-        // НЕТ else в when!
-        when (intent) {
-            is <Name>Intent.<Action> -> handle<Action>(intent.param)
-            <Name>Intent.Retry       -> retry()
-        }
-    }
+    val news: Flow<<Name>News> = store.news
 
-    private fun handle<Action>(param: ParamType) {
-        _state.update { it.copy(content = <Name>ViewState.Content.Loading) }
-        viewModelScope.launch(dispatchers.default) {
-            useCase(param)
-                .onSuccess { data ->
-                    _state.update {
-                        it.copy(content = <Name>ViewState.Content.Success(data.toUiModels()))
-                    }
-                }
-                .onFailure { error ->
-                    _state.update {
-                        it.copy(
-                            content = <Name>ViewState.Content.Error(
-                                error.message ?: "Неизвестная ошибка"
-                            )
-                        )
-                    }
-                }
-        }
+    fun dispatch(event: <Name>Event.Ui) {
+        store.dispatch(event)
     }
 }
 ```
 
-**Запрещено в ViewModel:**
-- `GlobalScope`
-- Хардкод диспетчеров (`Dispatchers.IO` напрямую)
-- Форматирование строк (`"$price ₽"`)
-- Прямые вызовы DAO или DataSource
+### Шаг 7. Compose UI: Route и Screen
 
-### Шаг 4. Route (stateful) и Screen (stateless)
-
-#### 4.1 Route — единственный stateful Composable
 ```kotlin
 @Composable
 fun <Name>Route(
@@ -136,180 +211,57 @@ fun <Name>Route(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.effects.collect { effect ->
-            // НЕТ else в when!
-            when (effect) {
-                is <Name>Effect.NavigateTo ->
-                    navController.navigate(/* destination */)
-                is <Name>Effect.ShowSnackbar ->
-                    /* snackbarHostState.showSnackbar(effect.message) */
+        viewModel.news.collect { news ->
+            when (news) {
+                is <Name>News.NavigateToDetails ->
+                    navController.navigate(/* details */)
+                is <Name>News.ShowSnackbar ->
+                    /* show snackbar */
             }
         }
     }
 
     <Name>Screen(
         state = state,
-        onIntent = viewModel::onIntent,
+        onEvent = viewModel::dispatch,
     )
 }
-```
 
-#### 4.2 Screen — чистый stateless Composable
-```kotlin
 @Composable
 fun <Name>Screen(
-    state: <Name>ViewState,
-    onIntent: (<Name>Intent) -> Unit,
+    state: <Name>UiState,
+    onEvent: (<Name>Event.Ui) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // НЕТ вызовов UseCase
-    // НЕТ форматирования строк
-    // НЕТ расчётов
     Scaffold(modifier = modifier) { padding ->
         Box(Modifier.padding(padding)) {
-            // НЕТ else в when!
             when (val content = state.content) {
-                <Name>ViewState.Content.Loading  -> LoadingContent()
-                is <Name>ViewState.Content.Success -> SuccessContent(content.items, onIntent)
-                is <Name>ViewState.Content.Error   -> ErrorContent(content.message, onIntent)
+                <Name>UiState.Content.Loading -> LoadingView()
+                is <Name>UiState.Content.Success -> SuccessView(content.model, onEvent)
+                is <Name>UiState.Content.Error -> ErrorView(content.message, onEvent)
             }
         }
     }
 }
 ```
 
-**Запрещено в Screen:**
-- Любая логика (условия кроме `when (state.content)`)
-- `viewModel()` или `koinViewModel()` — только в Route
-- Форматирование (`"$x ₽"`, `DateTimeFormatter`, `String.format`)
-
-### Шаг 5. Koin — регистрация ViewModel
-
-```kotlin
-// androidApp/di/AppModule.kt
-val appModule = module {
-    viewModel { <Name>ViewModel(get(), get()) }
-    // ... другие ViewModels
-}
-```
-
-### Шаг 6. SyncDiaryWorker (WorkManager) — только если задача касается дневника
-
-```kotlin
-// androidApp/sync/SyncDiaryWorker.kt
-class SyncDiaryWorker(
-    context: Context,
-    params: WorkerParameters,
-    private val diaryRepository: DiaryRepository,
-    private val diaryGrpcDataSource: DiaryGrpcDataSource,
-) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
-        val pending = diaryRepository.getPendingEntries()
-        if (pending.isEmpty()) return Result.success()
-
-        pending.forEach { entry ->
-            runCatching {
-                val metadata = Metadata().apply {
-                    // idempotencyKey — ВСЕГДА из Room, НИКОГДА не генерировать заново
-                    put(IDEMPOTENCY_KEY_HEADER, entry.idempotencyKey.raw)
-                }
-                diaryGrpcDataSource.addEntry(entry, metadata)
-                diaryRepository.updateSyncStatus(entry.id, SyncStatus.SYNCED)
-            }.onFailure {
-                diaryRepository.updateSyncStatus(entry.id, SyncStatus.FAILED)
-                if (runAttemptCount < MAX_RETRY_ATTEMPTS) return Result.retry()
-            }
-        }
-        return Result.success()
-    }
-
-    companion object {
-        val IDEMPOTENCY_KEY_HEADER: Metadata.Key<String> =
-            Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER)
-        const val MAX_RETRY_ATTEMPTS = 5
-        const val WORK_NAME = "sync_diary_worker"
-
-        // BackoffPolicy.EXPONENTIAL — обязательно
-        fun buildPeriodicRequest(): PeriodicWorkRequest =
-            PeriodicWorkRequestBuilder<SyncDiaryWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build()
-    }
-}
-```
-
-### Шаг 7. Авторизация OAuth 2.1 — только если задача касается auth
-
-- Использовать `AppAuth` (net.openid:appauth).
-- Токены хранить через `AuthStateManager` с Tink (`AeadKeysetHandle` + Android Keystore).
-- **ЗАПРЕЩЕНО**: `SharedPreferences`, `DataStore<Preferences>`, `EncryptedSharedPreferences`.
-- `AuthTokenProvider` — интерфейс из `:shared/domain`, реализация `AppAuthTokenProvider` в `androidMain`.
-
-### Шаг 8. @Preview для Screen
-
-```kotlin
-@Preview(showBackground = true, name = "Loading")
-@Composable
-private fun <Name>ScreenLoadingPreview() {
-    BudgetNutritionistTheme {
-        <Name>Screen(
-            state = <Name>ViewState(content = <Name>ViewState.Content.Loading),
-            onIntent = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Success")
-@Composable
-private fun <Name>ScreenSuccessPreview() {
-    BudgetNutritionistTheme {
-        <Name>Screen(
-            state = <Name>ViewState(
-                content = <Name>ViewState.Content.Success(
-                    items = listOf(/* preview data */),
-                ),
-            ),
-            onIntent = {},
-        )
-    }
-}
-```
-
-### Шаг 9. Проверка и тесты
-
-```bash
-./gradlew :app:androidApp:assembleDebug   # Компиляция
-./gradlew ktlintCheck                      # Форматирование
-./gradlew detekt                           # Статический анализ
-```
-
-Написать тест ViewModel с Turbine — см. `.agents/skills/testing-and-verification/SKILL.md §2.3`.
-
-### Шаг 10. Обновить STATE.md
+### Шаг 8. SyncDiaryWorker и Auth (при необходимости)
+- `SyncDiaryWorker`: WorkManager с `BackoffPolicy.EXPONENTIAL`, `idempotencyKey` строго из Room.
+- `Auth`: AppAuth + Android Keystore/Tink. Запрет на SharedPreferences/DataStore для токенов.
 
 ---
 
 ## Чеклист перед коммитом
 
 ```
-[ ] ViewState: вложенный sealed interface Content (нет isLoading/error флагов)
-[ ] ViewModel: StateFlow для state, Channel(BUFFERED) для effects
-[ ] ViewModel: диспетчеры через конструктор, нет GlobalScope
-[ ] ViewModel: when(intent) без else
-[ ] Route: только подключение к ViewModel + обработка effects
-[ ] Screen: только state + onIntent, нет логики, нет форматирования
-[ ] Screen: when(state.content) без else
-[ ] UiModel: все строки (цены, калории) уже отформатированы в :shared
-[ ] SyncDiaryWorker: idempotencyKey берётся из Room, НЕ генерируется заново
-[ ] SyncDiaryWorker: BackoffPolicy.EXPONENTIAL
-[ ] Koin: viewModel { } зарегистрирован
-[ ] @Preview добавлен для каждого состояния Content
-[ ] Тест ViewModel написан (Turbine)
-[ ] ./gradlew :app:androidApp:assembleDebug — GREEN
+[ ] State / UiState: вложенный sealed interface Content (нет isLoading/error флагов)
+[ ] DslUpdate: полностью синхронный, без корутин, без сайд-эффектов
+[ ] DslUpdate: when(event) без else
+[ ] CommandsFlowHandler: все сайд-эффекты инкапсулированы здесь, диспетчеры инжектируются
+[ ] UiStateMapper: все строки для UI формируются в :shared
+[ ] Route: только stateful подключение к Store/ViewModel + collect news
+[ ] Screen: чистый stateless UI (state + onEvent), нет вызовов репозиториев/форматирования
+[ ] Anti-Boilerplate: нет проходных UseCase без доменной логики
+[ ] Unit-тесты: Update протестирован синхронно, CommandsFlowHandler протестирован с Turbine
+[ ] ./gradlew :mobile:shared:allTests — GREEN
 ```
