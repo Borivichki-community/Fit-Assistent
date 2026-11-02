@@ -76,6 +76,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+        getByName("androidHostTest") {
+            dependencies {
+                implementation(libs.androidx.testExt.junit)
+                implementation(libs.robolectric)
+            }
+        }
     }
 }
 
