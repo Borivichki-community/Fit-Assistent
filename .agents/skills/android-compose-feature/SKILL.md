@@ -249,11 +249,43 @@ fun <Name>Screen(
 - `SyncDiaryWorker`: WorkManager с `BackoffPolicy.EXPONENTIAL`, `idempotencyKey` строго из Room.
 - `Auth`: AppAuth + Android Keystore/Tink. Запрет на SharedPreferences/DataStore для токенов.
 
+### Шаг 9. Material 3 Theme & Design Tokens
+- Палитра определяется через `darkColorScheme` и `lightColorScheme` в `Theme.kt` с использованием констант из `Color.kt`.
+- Цвета в UI-компонентах берутся строго из `MaterialTheme.colorScheme.*` (`primary`, `surfaceVariant`, `errorContainer`, `tertiaryContainer` и т.д.). Запрещён хардкод `Color(0xFF...)` внутри экранов.
+- Отступы и размеры структурируются через токены (например, `Spacing.extraSmall`, `Spacing.small`, `Spacing.medium`, `Spacing.large`, `Spacing.extraLarge`) для устранения «магических чисел».
+
+### Шаг 10. Общие UI-компоненты (CommonComponents)
+- `LoadingContent(modifier)`: центрированный `CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)`.
+- `ErrorContent(message, onRetry, modifier)`: M3 `Card` с `errorContainer`, сообщением об ошибке и кнопкой повтора действия.
+- `OfflineBanner(modifier, message, subtitle)`: закрепленная плашка M3 `Surface` с цветом `tertiaryContainer` или `errorContainer`, информирующая пользователя об использовании локального кэша Room при недоступности сети.
+
+### Шаг 11. Каркас навигации (AppNavHost)
+- Дестинации объявляются как `sealed class AppDestination(val route: String)` с типизированными аргументами.
+- `AppNavHost` принимает `startDestination: Any` и изолирует переходы между экранами.
+- Экраны `*Route` инкапсулируют обработку навигационных коллбэков (`onNavigateBack`, `onNavigateToDetails`), передавая Typed ID (`UserId`, `RecipeId`) без раскрытия логики графа навигации внутри `*Screen`.
+
+### Шаг 12. Двуязычная локализация (RU / EN)
+- Все статические строки выносятся в XML-ресурсы:
+  - `mobile/androidApp/src/main/res/values/strings.xml` — базовый язык (English).
+  - `mobile/androidApp/src/main/res/values-ru/strings.xml` — русская локализация (Russian).
+- Приложение автоматически переключает язык в зависимости от системных настроек пользователя. В Compose используется `stringResource(R.string.<id>)`.
+
+### Шаг 13. Правило «Один файл — одна функция / класс» и переиспользование
+- **Строгое правило структуры:** на один Kotlin-файл приходится ровно один класс/объект или одна корневая Composable-функция.
+- **Вынос переиспользуемой логики:**
+  - `FitTopBar.kt` — единая шапка (FitApp + меню) для всех экранов;
+  - `MetricCard.kt` — переиспользуемая карточка метрик (профиль, статистика, калории);
+  - `FitBottomNavigationBar.kt` и `BottomNavItem.kt` — нижняя навигационная панель;
+  - `Spacing.kt` — константы отступов и скруглений.
+- Разделение экранов: `*Route.kt` (stateful), `*Screen.kt` (stateless), подкомпоненты контента (`*SuccessContent.kt`, `CalendarCard.kt`, `PlanChip.kt`) выносятся в отдельные файлы.
+
 ---
 
 ## Чеклист перед коммитом
 
 ```
+[ ] На один файл — строго одна функция или один класс (Single Responsibility File Rule)
+[ ] Переиспользуемые компоненты (FitTopBar, MetricCard, BottomBar) вынесены в ui/components/
 [ ] State / UiState: вложенный sealed interface Content (нет isLoading/error флагов)
 [ ] DslUpdate: полностью синхронный, без корутин, без сайд-эффектов
 [ ] DslUpdate: when(event) без else
@@ -262,6 +294,11 @@ fun <Name>Screen(
 [ ] Route: только stateful подключение к Store/ViewModel + collect news
 [ ] Screen: чистый stateless UI (state + onEvent), нет вызовов репозиториев/форматирования
 [ ] Anti-Boilerplate: нет проходных UseCase без доменной логики
+[ ] Material 3 Tokens: цвета только из MaterialTheme.colorScheme, отступы через Spacing
+[ ] CommonComponents: LoadingContent, ErrorContent, OfflineBanner переиспользуются
+[ ] Localization: строки вынесены в strings.xml (values и values-ru)
 [ ] Unit-тесты: Update протестирован синхронно, CommandsFlowHandler протестирован с Turbine
 [ ] ./gradlew :mobile:shared:allTests — GREEN
+[ ] ./gradlew :mobile:androidApp:testDebugUnitTest — GREEN
+[ ] ./gradlew :mobile:androidApp:assembleDebug — GREEN
 ```

@@ -1,0 +1,86 @@
+package dev.andre.nutritionist.android.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import dev.andre.nutritionist.android.ui.screens.MainScreen
+import dev.andre.nutritionist.android.ui.screens.ProfileRoute
+import dev.andre.nutritionist.domain.model.UserId
+
+
+@Composable
+fun AppNavHost(
+    navController: NavHostController,
+    startDestination: Any = AppDestination.Dashboard.route,
+    modifier: Modifier = Modifier,
+) {
+    val destinationRoute = when (startDestination) {
+        is AppDestination -> startDestination.route
+        is String -> startDestination
+        else -> startDestination.toString()
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = destinationRoute,
+        modifier = modifier,
+    ) {
+        composable(AppDestination.Dashboard.route) {
+            MainScreen(
+                onNavigateToProfile = {
+                    navController.navigate(AppDestination.Profile.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onDestinationSelected = { dest ->
+                    navController.navigate(dest.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(AppDestination.Profile.route) {
+            ProfileRoute(
+                userId = UserId("default-user"),
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onDestinationSelected = { dest ->
+                    navController.navigate(dest.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(AppDestination.Recipes.route) {
+            MainScreen(
+                onNavigateToProfile = {
+                    navController.navigate(AppDestination.Profile.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onDestinationSelected = { dest ->
+                    navController.navigate(dest.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(AppDestination.Statistics.route) {
+            MainScreen(
+                onNavigateToProfile = {
+                    navController.navigate(AppDestination.Profile.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onDestinationSelected = { dest ->
+                    navController.navigate(dest.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+    }
+}

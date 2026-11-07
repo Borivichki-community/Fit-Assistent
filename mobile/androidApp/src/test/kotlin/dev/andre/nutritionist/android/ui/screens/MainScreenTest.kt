@@ -1,12 +1,16 @@
 package dev.andre.nutritionist.android.ui.screens
 
+import android.content.Context
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.assertWidthIsAtLeast
-import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
+import dev.andre.nutritionist.android.R
+import dev.andre.nutritionist.domain.repository.DiaryRepository
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -14,9 +18,6 @@ import org.junit.runner.RunWith
 import org.koin.core.context.stopKoin
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import dev.andre.nutritionist.domain.model.RecipeId
-import dev.andre.nutritionist.domain.repository.DiaryRepository
-import dev.andre.nutritionist.domain.model.DiaryEntryId
 
 class FakeDiaryRepository : DiaryRepository {
     // Fake implementation for KMP requirement
@@ -29,6 +30,9 @@ class MainScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private val context: Context
+        get() = ApplicationProvider.getApplicationContext()
+
     @After
     fun teardown() {
         stopKoin()
@@ -40,7 +44,8 @@ class MainScreenTest {
             MainScreen()
         }
 
-        val button = composeTestRule.onNodeWithText("Добавить приём пищи (маленькая кнопка)", useUnmergedTree = true)
+        val buttonText = context.getString(R.string.btn_add_meal_test)
+        val button = composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true)
 
         button.assertIsDisplayed()
         button.assertHeightIsAtLeast(1.dp)
@@ -53,7 +58,8 @@ class MainScreenTest {
             MainScreen()
         }
 
-        composeTestRule.onNodeWithText("Добавить приём пищи (маленькая кнопка)", useUnmergedTree = true).assertIsDisplayed()
+        val buttonText = context.getString(R.string.btn_add_meal_test)
+        composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -62,10 +68,13 @@ class MainScreenTest {
             MainScreen()
         }
 
+        val buttonText = context.getString(R.string.btn_add_meal_test)
+        val expectedCountText = context.getString(R.string.meals_added_count, 1)
+
         // click to show the text
-        composeTestRule.onNodeWithText("Добавить приём пищи (маленькая кнопка)", useUnmergedTree = true).performClick()
+        composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true).performClick()
 
         // verify text is displayed
-        composeTestRule.onNodeWithText("Добавлено приёмов пищи: 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText(expectedCountText).assertIsDisplayed()
     }
 }
