@@ -68,6 +68,20 @@
 - [x] **Шаг 4 (Docker Images Update):** Обновлены и подтянуты все актуальные Docker-образы инфраструктуры и сборщика:
   - `postgres:17-alpine`, `redis:7-alpine`, `apache/kafka:4.2.2`, `confluentinc/cp-schema-registry:8.2.4`, `quay.io/keycloak/keycloak:26.0` (все с sha256);
   - Базовые образы JDK: `azul/zulu-openjdk:21`, `azul/zulu-openjdk:21-jre`.
+- [x] **Шаг 4 (T-038 / KAN-56): Android UI M3-тема (Antigravity Dark), декомпозиция файлов 1-файл-1-функция/класс, полная локализация RU/EN без хардкода:**
+  - Проведен полный аудит и устранение любого хардкода строк в Kotlin-коде: все кнопки, заголовки, секции, лейблы, fallback-значения и contentDescription вынесены в `res/values/strings.xml` (английский язык) и `res/values-ru/strings.xml` (русский язык);
+  - Проведена строгая декомпозиция: каждый Kotlin-файл содержит строго **одну функцию или один класс/объект**;
+  - Вся переиспользуемая логика вынесена в `ui/components/`:
+    - `FitTopBar.kt`: переиспользуемая верхняя плашка «FitApp» + бургер-меню (локализовано);
+    - `MetricCard.kt`: переиспользуемая карточка метрик параметров (вес, активность, цель, бюджет);
+    - `FitBottomNavigationBar.kt` и `BottomNavItem.kt`: переиспользуемая плавающая нижняя панель с 4 вкладками (все подписи и contentDescription локализованы);
+    - `Spacing.kt`: объект токенов отступов и скруглений (24.dp, 32.dp);
+    - `FitIcons.kt`: независимый набор векторной графики;
+  - Декомпозированы компоненты состояния: `LoadingContent.kt`, `ErrorContent.kt`, `OfflineBanner.kt`, `FullScreenLoading.kt`;
+  - Декомпозированы экраны: `ProfileRoute.kt`, `ProfileScreen.kt`, `ProfileSuccessContent.kt`, `SettingsActionRow.kt`, `MainScreen.kt`, `CalendarCard.kt`, `CircleArrowButton.kt`, `DateCircleItem.kt`, `PlanChip.kt`, `AddPlanButton.kt`;
+  - Тесты (`CommonComponentsTest`, `MainScreenTest`) переведены на получение строк из ресурсов через `ApplicationProvider`, что гарантирует прохождение в любой системной локали;
+  - Обновлён `.agents/skills/android-compose-feature/SKILL.md` (Шаги 12 и 13, чеклист);
+  - Верификация сборки и тестов: `./gradlew :mobile:androidApp:assembleDebug :mobile:androidApp:testDebugUnitTest :mobile:shared:allTests` (59/59 GREEN, BUILD SUCCESSFUL).
 - [x] **Шаг 4 (T-036 / KAN-54): ProfileRepositoryImpl — Room Single Source of Truth (SSOT), KoTEA Flow, Apache 2.0:**
   - Реализован паттерн SSOT в `ProfileRepository` (`observeProfile`, `getProfile`, `refreshProfile`, `updateProfile`);
   - `ProfileRepositoryImpl` (`dao`, `remoteDataSource`, `dispatchers`): подписка UI только на локальную БД Room через `observeProfile`, неблокирующий фоновый `refreshProfile`, синхронизация кэша при мутации `updateProfile`;

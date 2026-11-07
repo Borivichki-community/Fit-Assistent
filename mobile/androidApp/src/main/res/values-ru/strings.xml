@@ -1,0 +1,58 @@
+<resources>
+    <string name="app_name">Бюджетный нутрициолог</string>
+    <string name="offline_banner_title">Нет подключения к сети</string>
+    <string name="offline_banner_subtitle">Отображаются сохранённые данные</string>
+    <string name="loading_content_description">Загрузка данных…</string>
+    <string name="retry_button">Повторить</string>
+    <string name="error_default_message">Произошла ошибка при загрузке данных</string>
+
+    <!-- Навигация -->
+    <string name="nav_dashboard">Главная</string>
+    <string name="nav_profile">Профиль</string>
+    <string name="nav_diary">Дневник</string>
+    <string name="nav_recipes">Блюда</string>
+    <string name="nav_statistics">Статистика</string>
+    <string name="action_menu">Меню</string>
+
+    <!-- Главный экран / Дашборд -->
+    <string name="dashboard_month_november_2026">Ноябрь 2026</string>
+    <string name="calendar_prev">Предыдущий</string>
+    <string name="calendar_next">Следующий</string>
+    <string name="day_mon">Пн</string>
+    <string name="day_tue">Вт</string>
+    <string name="day_wed">Ср</string>
+    <string name="day_thu">Чт</string>
+    <string name="day_fri">Пт</string>
+    <string name="day_sat">Сб</string>
+    <string name="day_sun">Вс</string>
+    <string name="section_my_plans">Мои планы</string>
+    <string name="plan_chip_format">ПЛАН %1$d ✕</string>
+    <string name="action_add_plan">Добавить план</string>
+    <string name="section_breakfast">Завтрак</string>
+    <string name="empty_plan_title">Ничего не запланировано</string>
+    <string name="empty_plan_subtitle">Вы можете сгенерировать план-питания с помощью ИИ или создать самостоятельно</string>
+    <string name="btn_ai_generate">✦ Сгенерировать</string>
+    <string name="btn_create_plan">Создать план</string>
+    <string name="btn_add_meal_test">Добавить приём пищи (маленькая кнопка)</string>
+    <string name="meals_added_count">Добавлено приёмов пищи: %1$d</string>
+
+    <!-- Экран профиля -->
+    <string name="profile_title">Профиль</string>
+    <string name="profile_edit_button">Редактировать профиль</string>
+    <string name="profile_personal_info">Персональные данные</string>
+    <string name="profile_nutrition_goals">Цели питания на день</string>
+    <string name="profile_back">Назад</string>
+    <string name="content_avatar">Аватар пользователя</string>
+    <string name="profile_default_user_name">John</string>
+    <string name="profile_label_weight">Вес</string>
+    <string name="profile_label_activity">Активность</string>
+    <string name="profile_label_goal">Цель</string>
+    <string name="profile_label_budget">Бюджет</string>
+    <string name="profile_default_weight">70 кг</string>
+    <string name="profile_default_activity">Лёгкая активность</string>
+    <string name="profile_default_goal">Похудение</string>
+    <string name="profile_default_budget">500 р</string>
+    <string name="profile_menu_settings">Настройки</string>
+    <string name="profile_menu_notifications">Уведомления</string>
+    <string name="profile_menu_help">Помощь</string>
+</resources>

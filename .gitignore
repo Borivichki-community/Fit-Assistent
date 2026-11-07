@@ -131,6 +131,7 @@ Pods/
 *.iws
 *.ipr
 out/
+screenshots/
 
 # VS Code
 .vscode/
