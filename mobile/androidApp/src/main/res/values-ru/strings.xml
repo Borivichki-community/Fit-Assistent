@@ -55,4 +55,57 @@
     <string name="profile_menu_settings">Настройки</string>
     <string name="profile_menu_notifications">Уведомления</string>
     <string name="profile_menu_help">Помощь</string>
+
+    <!-- Экран профиля: форма и валидация -->
+    <string name="profile_save_button">Сохранить</string>
+    <string name="profile_form_title">Редактирование профиля</string>
+    <string name="profile_name_label">Имя</string>
+    <string name="profile_name_placeholder">Введите имя</string>
+    <string name="profile_age_label">Возраст</string>
+    <string name="profile_age_placeholder">Введите возраст</string>
+    <string name="profile_target_weight_label">Целевой вес (кг)</string>
+    <string name="profile_target_weight_placeholder">Введите целевой вес</string>
+    <string name="profile_daily_calories_label">Дневной калораж (ккал)</string>
+    <string name="profile_daily_calories_placeholder">Введите калораж</string>
+
+    <string name="validation_error_empty">Поле не может быть пустым</string>
+    <string name="validation_error_name_empty">Имя не может быть пустым</string>
+    <string name="validation_error_not_a_number">Значение должно быть числом</string>
+    <string name="validation_error_negative_or_zero">Значение должно быть больше нуля</string>
+    <string name="validation_error_out_of_range">Значение вне допустимого диапазона</string>
+    <string name="validation_error_too_short">Значение слишком короткое</string>
+
+    <!-- Онбординг / Мастер регистрации -->
+    <string name="onboarding_title_welcome">Давай знакомиться!</string>
+    <string name="onboarding_subtitle_name">Как тебя зовут?</string>
+    <string name="onboarding_first_name_hint">Имя</string>
+    <string name="onboarding_last_name_hint">Фамилия</string>
+    <string name="onboarding_title_about_format">%1$s, расскажи о себе</string>
+    <string name="onboarding_label_height">Ваш рост</string>
+    <string name="onboarding_hint_height">Рост(см)</string>
+    <string name="onboarding_label_weight">Ваш вес</string>
+    <string name="onboarding_hint_weight">Вес(кг)</string>
+    <string name="onboarding_label_age">Ваш возраст</string>
+    <string name="onboarding_hint_age">Возраст (лет)</string>
+    <string name="onboarding_gender_male">Мужской</string>
+    <string name="onboarding_gender_female">Женский</string>
+    <string name="onboarding_title_activity_format">%1$s, какой у тебя уровень активности?</string>
+    <string name="onboarding_subtitle_activity">Выбери вариант, который лучше всего описывает твой день.</string>
+    <string name="onboarding_activity_sedentary">Сидячий</string>
+    <string name="onboarding_activity_light">Лёгкая активность</string>
+    <string name="onboarding_activity_moderate">Умеренный</string>
+    <string name="onboarding_activity_very_active">Высокая активность</string>
+    <string name="onboarding_btn_less">Меньше</string>
+    <string name="onboarding_btn_more">Больше</string>
+    <string name="onboarding_label_budget">Ваш бюджет</string>
+    <string name="onboarding_budget_hint">5000</string>
+    <string name="onboarding_recommendation_title">Рекомендация</string>
+    <string name="onboarding_recommendation_text">Минимальный бюджет для сбалансированного питания: 2000 - 2500 руб/неделя</string>
+    <string name="onboarding_title_goal">Какова ваша цель?</string>
+    <string name="onboarding_goal_gain">Набор массы</string>
+    <string name="onboarding_goal_lose">Похудение</string>
+    <string name="onboarding_goal_maintain">Вес</string>
+    <string name="onboarding_nav_back">Назад</string>
+    <string name="onboarding_nav_next">Далее</string>
+    <string name="onboarding_nav_finish">Завершить</string>
 </resources>

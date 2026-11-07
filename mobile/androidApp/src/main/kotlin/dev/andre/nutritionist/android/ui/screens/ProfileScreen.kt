@@ -79,6 +79,14 @@ fun ProfileScreen(
                             onEditClick = { onEvent(ProfileEvent.Ui.EditClicked) },
                         )
                     }
+                    is ProfileUiState.Content.Form -> {
+                        // Режим редактирования/формы
+                        LoadingContent()
+                    }
+                    is ProfileUiState.Content.ValidationError -> {
+                        // Режим отображения ошибок валидации
+                        LoadingContent()
+                    }
                 }
             }
         }

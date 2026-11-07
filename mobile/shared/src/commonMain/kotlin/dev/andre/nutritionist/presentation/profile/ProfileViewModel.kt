@@ -24,6 +24,8 @@ class ProfileViewModel(
             scope = viewModelScope,
         )
 
+    val profileState: StateFlow<ProfileState> = store.state
+
     val state: StateFlow<ProfileUiState> =
         store.state
             .map(uiStateMapper::map)

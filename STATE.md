@@ -246,6 +246,67 @@
 - **Верификация сборки и тестов:**
   - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 59/59 shared tests GREEN, 18/18 androidApp tests GREEN).
 
+## Checkpoint 2026-11-08 — [T-041 / KAN-59] ProfileRoute и ProfileScreen (MVI-связка, форма профиля/регистрации, валидация полей, Previews, UI-тесты)
+- Активные Skills: `legacy-migration`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-59-profile-screen-migration`.
+- **Реализация:**
+  1. **Миграция UI/UX с Flutter (`FitAssistentAndroid` & `@screenshots`):**
+     - На основе экранов регистрации (`экран регистрации 1..6.jpg`) и профиля перенесены ключевые поля: имя пользователя, возраст, целевой вес, дневной калораж.
+     - Виджеты `Form` / `TextFormField` / `Column` транслированы в M3 `OutlinedTextField`, `Column` со скроллом `verticalScroll`, токены `Spacing` и палитру `MaterialTheme.colorScheme`.
+  2. **Чистая валидация полей (`ProfileFieldsValidation.kt`):**
+     - Пакет: `dev.andre.nutritionist.android.presentation.profile.validation`.
+     - Sealed-интерфейс ошибок `ProfileValidationError` (`Empty`, `NotANumber`, `NegativeOrZero`, `OutOfRange`, `TooShort`).
+     - Чистые функции `validateName`, `validateAge`, `validateTargetWeight`, `validateDailyCalories` без побочных эффектов.
+     - Маппер в строковые ресурсы `toErrorMessageResId` с исчерпывающим `when` без `else`.
+  3. **Презентация и MVI-связка (KoTEA в `:mobile:shared` и `:mobile:androidApp`):**
+     - В `ProfileState.Content` и `ProfileUiState.Content` добавлены состояния `Form` и `ValidationError`.
+     - В `ProfileEvent.Ui` добавлены события `SaveProfile`, `NameChanged`, `AgeChanged`, `TargetWeightChanged`, `DailyCaloriesChanged`.
+     - Редьюсер `ProfileUpdate` и маппер `ProfileUiStateMapper` обновлены с исчерпывающим `when` без `else`.
+     - `ProfileViewModel` предоставляет `profileState: StateFlow<ProfileState>` для прямой подписки UI.
+  4. **Compose UI (`ProfileRoute.kt`, `ProfileScreen.kt`):**
+     - `ProfileRoute` (stateful): сбор `profileState` через `collectAsStateWithLifecycle()`, прослушивание `news` (Snackbar, навигация), отправка `LoadProfile`.
+     - `ProfileScreen` (stateless): поддержка состояний `Loading`, `Form`, `ValidationError`, `Success`, `Error`, баннера `OfflineBanner()`, отображение `isError` и `supportingText` для каждого поля ввода.
+     - Полный набор `@Preview` функций для тем Light и Dark для состояний Loading, Content/Form, ValidationError, Error.
+  5. **Локализация:**
+     - Все строки вынесены в `res/values/strings.xml` и `res/values-ru/strings.xml`. Полное отсутствие хардкода строк в Composable-функциях.
+  6. **UI-тестирование (NO MockK):**
+     - `ProfileScreenTest.kt` в `androidTest` и `ProfileScreenUnitTest.kt` в `test` (Robolectric):
+       - Тест-кейс 1: проверка отображения текста ошибки валидации на фиксированном `ProfileState` через `assertIsDisplayed()`.
+       - Тест-кейс 2: клик по кнопке сохранения со скроллом `performScrollTo().performClick()` и верификация диспатча события `ProfileEvent.Ui.SaveProfile`.
+       - Тест чистых функций валидации по всем граничным условиям.
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests` — 53/53 GREEN.
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN (включая RegistrationWizardScreenTest).
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+## Checkpoint 2026-11-08 — [T-041 / KAN-59] 5-шаговый визард онбординга регистрации (HorizontalPager + DotsIndicator + WizardNavButton)
+- Активные Skills: `legacy-migration`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. **Очистка структуры исходников:**
+     - Все созданные файлы перенесены из `src/main/java/` и `src/androidTest/java/` в канонические каталоги `src/main/kotlin/` и `src/androidTest/kotlin/`. Папки `java` полностью удалены.
+  2. **Реализация компонентов визарда онбординга (по скриншотам 1-6):**
+     - `DotsIndicator.kt`: анимированный 5-точечный индикатор шагов с плавной сменой размеров (8dp -> 10dp) и акцентным цветом `#00D09E`.
+     - `WizardNavButton.kt`: минималистичная круглая кнопка (56dp) с рипплом, поддержкой направлений `BACK` («←»), `FORWARD` («→») и `FINISH` («✓»).
+     - `OnboardingData.kt`: модель данных сессии регистрации (`firstName`, `lastName`, `heightCm`, `weightKg`, `age`, `gender`, `activityLevel`, `weeklyBudget`, `goalType`).
+     - `OnboardingNameStep.kt` (Шаг 1): «Давай знакомиться! Как тебя зовут?» (Имя, Фамилия).
+     - `OnboardingBodyStep.kt` (Шаг 2): «{Имя}, расскажи о себе» (Рост см, Вес кг, Возраст, Пол М/Ж в виде анимированных плашек `GenderPill`).
+     - `OnboardingActivityStep.kt` (Шаг 3): «{Имя}, какой у тебя уровень активности?» (слайдер с 4 уровнями, бейджем статуса и кнопками «Меньше» / «Больше»).
+     - `OnboardingBudgetStep.kt` (Шаг 4): «{Имя}, расскажи о себе — Ваш бюджет» (поле ввода + карточка рекомендации 2000-2500 руб/нед).
+     - `OnboardingGoalStep.kt` (Шаг 5): «Какова ваша цель?» (интерактивные карточки: Набор массы, Похудение, Поддержание веса с изумрудной рамкой активного элемента).
+     - `RegistrationWizardScreen.kt`: хост-экран на базе `HorizontalPager(userScrollEnabled = false)` с плавной анимацией перехода `animateScrollToPage()`, валидацией перед переходом между шагами и нижней панелью.
+     - `RegistrationWizardRoute.kt`: интеграция в граф навигации `AppDestination.Registration` (`AppNavHost.kt`).
+  3. **Локализация:**
+     - Добавлено 28 новых ключей в `res/values/strings.xml` и `res/values-ru/strings.xml`.
+  4. **Тестирование:**
+     - `RegistrationWizardScreenTest.kt`: 3 теста (проверка первого шага и ошибки валидации, переход на шаг 1 при валидном имени, сквозное прохождение всех 5 шагов до финиша с получением `OnboardingData`).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN.
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+
+
 
 
 

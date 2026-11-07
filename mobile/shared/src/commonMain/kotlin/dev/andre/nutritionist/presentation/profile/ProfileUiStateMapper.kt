@@ -29,8 +29,24 @@ data class ProfileUiState(
 ) {
     sealed interface Content {
         data object Loading : Content
+        data class Form(
+            val name: String = "",
+            val age: String = "",
+            val targetWeight: String = "",
+            val dailyCalories: String = "",
+        ) : Content
         data class Success(val profile: ProfileUiModel) : Content
         data class Error(val message: String) : Content
+        data class ValidationError(
+            val name: String = "",
+            val age: String = "",
+            val targetWeight: String = "",
+            val dailyCalories: String = "",
+            val nameError: String? = null,
+            val ageError: String? = null,
+            val targetWeightError: String? = null,
+            val dailyCaloriesError: String? = null,
+        ) : Content
     }
 }
 
@@ -39,8 +55,24 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
     override fun map(state: ProfileState): ProfileUiState {
         val uiContent = when (val content = state.content) {
             ProfileState.Content.Loading -> ProfileUiState.Content.Loading
+            is ProfileState.Content.Form -> ProfileUiState.Content.Form(
+                name = content.name,
+                age = content.age,
+                targetWeight = content.targetWeight,
+                dailyCalories = content.dailyCalories,
+            )
             is ProfileState.Content.Success -> ProfileUiState.Content.Success(content.profile.toUiModel())
             is ProfileState.Content.Error -> ProfileUiState.Content.Error(content.message)
+            is ProfileState.Content.ValidationError -> ProfileUiState.Content.ValidationError(
+                name = content.name,
+                age = content.age,
+                targetWeight = content.targetWeight,
+                dailyCalories = content.dailyCalories,
+                nameError = content.nameError,
+                ageError = content.ageError,
+                targetWeightError = content.targetWeightError,
+                dailyCaloriesError = content.dailyCaloriesError,
+            )
         }
         return ProfileUiState(content = uiContent)
     }

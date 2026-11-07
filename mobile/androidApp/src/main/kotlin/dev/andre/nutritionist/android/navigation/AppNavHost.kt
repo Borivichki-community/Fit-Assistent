@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.andre.nutritionist.android.ui.screens.MainScreen
 import dev.andre.nutritionist.android.ui.screens.ProfileRoute
+import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.domain.model.UserId
 
 
@@ -38,6 +39,18 @@ fun AppNavHost(
                     navController.navigate(dest.route) {
                         launchSingleTop = true
                     }
+                },
+            )
+        }
+        composable(AppDestination.Registration.route) {
+            RegistrationWizardRoute(
+                onFinish = {
+                    navController.navigate(AppDestination.Dashboard.route) {
+                        popUpTo(AppDestination.Registration.route) { inclusive = true }
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 },
             )
         }
