@@ -189,4 +189,27 @@
   - `./gradlew :mobile:shared:allTests` — 53 теста выполнены, 0 сбоев, 0 ошибок (BUILD SUCCESSFUL).
   - Проверено соблюдение всех правил `AGENTS.md`: запрет оператора `!!`, исчерпывающий `when` без `else` для sealed интерфейсов, строгая изоляция domain-слоя, отсутствие `MockK` в `commonTest` (только чистые Fakes и Turbine).
 
+## Checkpoint 2026-11-07 — [T-039 / KAN-57] Android: OAuth 2.0 PKCE через AppAuth & Keycloak
+- Активные Skills: `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-57-android-appauth-keycloak`.
+- **Реализация:**
+  1. Добавлены зависимости `appauth:0.11.1` и `androidx-security-crypto:1.1.0-alpha06` в `gradle/libs.versions.toml` и `mobile/androidApp/build.gradle.kts` с `manifestPlaceholders["appAuthRedirectScheme"]`.
+  2. Добавлены строго типизированные value classes `@JvmInline value class AccessToken`, `RefreshToken`, `IdToken` в `ids.kt`.
+  3. `AuthConfig.kt`: конфигурация параметров Keycloak (discovery endpoint, clientId `fitassistant-mobile`, redirect URI `com.budgetntr.fitassistant://oauth2redirect`).
+  4. `AuthStorage.kt` и `EncryptedPrefsAuthStorage.kt`: безопасное хранилище `AuthState` на базе `EncryptedSharedPreferences` (AES256_SIV + AES256_GCM) и Android Keystore `MasterKey`, операции строго на `dispatchers.io`.
+  5. `TokenExchanger.kt` и `AuthIntentProvider.kt`: абстракции обмена кодов и подготовки интента для Custom Tabs (PKCE Code Verifier + S256 Challenge).
+  6. `AuthRepository.kt` и `AuthRepositoryImpl.kt`: реактивный статус `observeAuthState()`, безопасный парсинг `processAuthResponse(intent)` с валидацией `AuthorizationException` и `AuthorizationResponse`, `logout()`, реализация контракта `AuthTokenProvider` для `AuthClientInterceptor`.
+  7. KoTEA Presentation (`AuthContract.kt`, `AuthUpdate.kt`, `AuthCommandsFlowHandler.kt`, `AuthViewModel.kt`): исчерпывающий `when` без `else`, чистый стейт с вложенным `sealed interface Content`, асинхронный поток команд.
+  8. `AndroidManifest.xml`: конфигурация `RedirectUriReceiverActivity` со схемой `com.budgetntr.fitassistant` и хостом `oauth2redirect`, разрешение `INTERNET`.
+  9. Koin DI: модуль `authModule` в `AndroidModule.kt` с регистрацией всех компонентов и привязкой к `AuthTokenProvider`.
+  10. Тесты (без MockK, чистые Fakes `FakeAuthStorage`, `FakeTokenExchanger`, `FakeAuthRepository`, `FakeAuthIntentProvider` + `Turbine` + Robolectric):
+      - `AuthRepositoryImplTest`: успешная авторизация с сохранением токенов, обработка отмены пользователем / ошибки, logout.
+      - `AuthUpdateTest`: исчерпывающее тестирование переходов состояний редьюсера.
+      - `AuthCommandsFlowHandlerTest`: тестирование подготовки интента, обмена токенов, обработки ошибок и выхода.
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 16/16 тестов GREEN).
+  - `./gradlew :mobile:shared:allTests` — 53/53 GREEN.
+
+
 
