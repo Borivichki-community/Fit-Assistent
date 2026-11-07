@@ -1,5 +1,8 @@
 package dev.andre.nutritionist.di
 
+import dev.andre.nutritionist.data.local.AppDatabase
+import dev.andre.nutritionist.data.local.DatabaseBuilder
+import dev.andre.nutritionist.data.local.dao.ProfileDao
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
@@ -17,6 +20,11 @@ val domainModule: Module = module {
     // Регистрация UseCases
 }
 
+val localDataModule: Module = module {
+    single<AppDatabase> { get<DatabaseBuilder<AppDatabase>>().build() }
+    single<ProfileDao> { get<AppDatabase>().profileDao() }
+}
+
 val dataModule: Module = module {
     single<ProfileRepository> { ProfileRepositoryImpl(remoteDataSource = get()) }
 }
@@ -30,7 +38,7 @@ val presentationModule: Module = module {
 
 val sharedModule: Module = module {
     single<CoroutineDispatchers> { DefaultCoroutineDispatchers() }
-    includes(domainModule, dataModule, presentationModule)
+    includes(domainModule, localDataModule, dataModule, presentationModule)
 }
 
 /**

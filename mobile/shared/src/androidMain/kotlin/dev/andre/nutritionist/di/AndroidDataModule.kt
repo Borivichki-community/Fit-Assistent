@@ -21,3 +21,10 @@ val androidRemoteDataModule = module {
     }
     single { ProfileGrpcRemoteDataSource(client = get(), dispatchers = get()) } bind ProfileRemoteDataSource::class
 }
+
+val androidLocalDataModule = module {
+    single<dev.andre.nutritionist.data.local.DatabaseBuilder<dev.andre.nutritionist.data.local.AppDatabase>> {
+        dev.andre.nutritionist.data.local.AndroidDatabaseBuilder(context = get())
+    }
+}
+

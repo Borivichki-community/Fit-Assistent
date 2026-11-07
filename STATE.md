@@ -125,3 +125,20 @@
 - Сохранено имя Docker-подключения FitAssistant Docker; на другой машине при необходимости нужно выбрать своё подключение. Содержимое `.env` в XML не переносилось.
 - PASS: синтаксис шести XML, набор конфигураций, пути, соответствие main-классов и Gradle-модулей, отсутствие личных абсолютных путей, доступность файлов для Git, `docker compose --env-file .env -f infrastructure/docker-compose.local.yml -f infrastructure/docker-compose.backend.yml config --quiet`, `git diff --check`.
 - Сборка, запуск приложений и проверка отображения конфигураций в интерфейсе IDEA не выполнялись. Commit/push и смена ветки не выполнялись.
+
+## Checkpoint 2026-11-02 — [T-035] data/local: Room KMP (Entity, DAO, DatabaseBuilder, Mapper, DI, Tests)
+- Активные Skills: `kmp-shared-feature`, `legacy-migration`, `testing-and-verification`.
+- Реализованы компоненты локальной БД для профиля пользователя (`Profile`):
+  - `ProfileEntity` (`dev.andre.nutritionist.data.local.entity.ProfileEntity`): таблица `profiles`, primary key `userId`, расплющенный `NutritionGoal`, строковые enum'ы;
+  - `ProfileDao` (`dev.andre.nutritionist.data.local.dao.ProfileDao`): `getProfile`, реактивный `observeProfile` (`Flow`), `insertOrReplace` (`OnConflictStrategy.REPLACE`), `clear`;
+  - `AppDatabase` (`dev.andre.nutritionist.data.local.AppDatabase`): `@Database(version = 1, exportSchema = true)` и `@ConstructedBy(AppDatabaseConstructor::class)`;
+  - Schema export: KSP успешно сгенерировал схему `mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/1.json`;
+  - `DatabaseBuilder<T>` (`dev.andre.nutritionist.data.local.DatabaseBuilder`): общий интерфейс в `commonMain`;
+  - `AndroidDatabaseBuilder` (`dev.andre.nutritionist.data.local.AndroidDatabaseBuilder`): фабрика для Android в `androidMain` через `Room.databaseBuilder` с `BundledSQLiteDriver` и `Dispatchers.IO`;
+  - `ProfileEntityMapper` (`dev.andre.nutritionist.data.mapper.ProfileEntityMapper`): маппер Domain $\leftrightarrow$ Entity без `else` в `when` для enum-ов, поддержка `Instant` и value classes;
+  - Koin DI: модуль `localDataModule` зарегистрирован в `sharedModule` в `di/Koin.kt`, `androidLocalDataModule` добавлен в `androidMain` и включён в `androidAppModule`;
+  - Тесты: 
+    - `ProfileEntityMapperTest` в `commonTest`: 3 unit-теста на маппинг в обе стороны и fallback для некорректных значений;
+    - `ProfileDaoTest` в `androidHostTest` с Robolectric: 4 теста in-memory Room SQLite (`insertAndGetProfile`, `getProfile_returnsNull_whenNotFound`, `insertOrReplace_updatesExistingProfile`, `observeProfile_emitsUpdatesTurbine` с библиотекой Turbine).
+- PASS: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest` (53/53 GREEN).
+
