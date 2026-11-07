@@ -90,11 +90,23 @@
   - Юридическое оформление лицензии Apache License 2.0: созданы `LICENSE` и `NOTICE` в корне проекта с атрибуцией Tinkoff Bank (KoTEA: Kotlin The Elm Architecture);
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests` (53/53 GREEN).
 
+- [x] **Шаг 4 (T-041 / KAN-59): Миграция Profile/Registration Wizard & Koin DI Resolution:**
+  - Реализован полный 5-шаговый визард регистрации онбординга на Compose (`RegistrationWizardScreen`, `RegistrationWizardRoute`, `DotsIndicator`, `WizardNavButton`, `OnboardingNameStep`, `OnboardingBodyStep`, `OnboardingActivityStep`, `OnboardingBudgetStep`, `OnboardingGoalStep`) в минималистичном дизайне Antigravity.
+  - Миграция логики и валидации полей из Flutter (`FitAssistentAndroid`): `ProfileFieldsValidation` (чистые функции валидации имени, возраста, веса, калоража, бюджета с sealed ошибками `ProfileValidationError`, отображением в `supportingText` и `isError = true`).
+  - `ProfileScreen.kt` и `ProfileRoute.kt`: stateless M3 экран профиля с Dark/Light `@Preview`.
+  - Устранение сбоя Koin (`NoDefinitionFoundException: ProfileGrpcServiceClient`):
+    - Создан `AndroidProfileGrpcServiceClient` в `:mobile:shared` (`src/androidMain`).
+    - Реализован `DefaultTraceContextHolder` в `domain/trace`.
+    - Зарегистрированы `ProfileGrpcServiceClient` и `TraceContextHolder` в `androidRemoteDataModule` (`AndroidDataModule.kt`).
+  - Перенаправление стартового экрана: приложение запускается с онбординг-визарда регистрации (`startDestination = AppDestination.Registration.route`), а по завершении визарда переходит на `Dashboard` с очисткой back stack (`popUpTo(inclusive = true)`).
+  - Написаны UI unit-тесты: `ProfileScreenUnitTest` и `RegistrationWizardScreenTest`.
+  - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN, BUILD SUCCESSFUL).
+
 ---
 
 ### В работе
 
-- [-] **Шаг 4:** Реализация Compose UI экрана профиля (`ProfileRoute`, `ProfileScreen`) и фичи дневника (diary: AddDiaryEntry + Room KMP + SyncWorker).
+- [-] **Шаг 4:** Реализация фичи дневника (diary: AddDiaryEntry + Room KMP + SyncWorker).
 
 ---
 

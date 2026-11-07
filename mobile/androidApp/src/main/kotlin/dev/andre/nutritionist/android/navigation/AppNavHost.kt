@@ -14,7 +14,7 @@ import dev.andre.nutritionist.domain.model.UserId
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    startDestination: Any = AppDestination.Dashboard.route,
+    startDestination: Any = AppDestination.Registration.route,
     modifier: Modifier = Modifier,
 ) {
     val destinationRoute = when (startDestination) {
