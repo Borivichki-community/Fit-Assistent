@@ -30,3 +30,12 @@ value class IdempotencyKey(val raw: String) {
         fun generate(): IdempotencyKey = IdempotencyKey(Uuid.random().toString())
     }
 }
+
+@JvmInline
+value class AccessToken(val raw: String)
+
+@JvmInline
+value class RefreshToken(val raw: String)
+
+@JvmInline
+value class IdToken(val raw: String)

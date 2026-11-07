@@ -189,4 +189,64 @@
   - `./gradlew :mobile:shared:allTests` — 53 теста выполнены, 0 сбоев, 0 ошибок (BUILD SUCCESSFUL).
   - Проверено соблюдение всех правил `AGENTS.md`: запрет оператора `!!`, исчерпывающий `when` без `else` для sealed интерфейсов, строгая изоляция domain-слоя, отсутствие `MockK` в `commonTest` (только чистые Fakes и Turbine).
 
+## Checkpoint 2026-11-07 — [T-039 / KAN-57] Android: OAuth 2.0 PKCE через AppAuth & Keycloak
+- Активные Skills: `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-57-android-appauth-keycloak`.
+- **Реализация:**
+  1. Добавлены зависимости `appauth:0.11.1` и `androidx-security-crypto:1.1.0-alpha06` в `gradle/libs.versions.toml` и `mobile/androidApp/build.gradle.kts` с `manifestPlaceholders["appAuthRedirectScheme"]`.
+  2. Добавлены строго типизированные value classes `@JvmInline value class AccessToken`, `RefreshToken`, `IdToken` в `ids.kt`.
+  3. `AuthConfig.kt`: конфигурация параметров Keycloak (discovery endpoint, clientId `fitassistant-mobile`, redirect URI `com.budgetntr.fitassistant://oauth2redirect`).
+  4. `AuthStorage.kt` и `EncryptedPrefsAuthStorage.kt`: безопасное хранилище `AuthState` на базе `EncryptedSharedPreferences` (AES256_SIV + AES256_GCM) и Android Keystore `MasterKey`, операции строго на `dispatchers.io`.
+  5. `TokenExchanger.kt` и `AuthIntentProvider.kt`: абстракции обмена кодов и подготовки интента для Custom Tabs (PKCE Code Verifier + S256 Challenge).
+  6. `AuthRepository.kt` и `AuthRepositoryImpl.kt`: реактивный статус `observeAuthState()`, безопасный парсинг `processAuthResponse(intent)` с валидацией `AuthorizationException` и `AuthorizationResponse`, `logout()`, реализация контракта `AuthTokenProvider` для `AuthClientInterceptor`.
+  7. KoTEA Presentation (`AuthContract.kt`, `AuthUpdate.kt`, `AuthCommandsFlowHandler.kt`, `AuthViewModel.kt`): исчерпывающий `when` без `else`, чистый стейт с вложенным `sealed interface Content`, асинхронный поток команд.
+  8. `AndroidManifest.xml`: конфигурация `RedirectUriReceiverActivity` со схемой `com.budgetntr.fitassistant` и хостом `oauth2redirect`, разрешение `INTERNET`.
+  9. Koin DI: модуль `authModule` в `AndroidModule.kt` с регистрацией всех компонентов и привязкой к `AuthTokenProvider`.
+  10. Тесты (без MockK, чистые Fakes `FakeAuthStorage`, `FakeTokenExchanger`, `FakeAuthRepository`, `FakeAuthIntentProvider` + `Turbine` + Robolectric):
+      - `AuthRepositoryImplTest`: успешная авторизация с сохранением токенов, обработка отмены пользователем / ошибки, logout.
+      - `AuthUpdateTest`: исчерпывающее тестирование переходов состояний редьюсера.
+      - `AuthCommandsFlowHandlerTest`: тестирование подготовки интента, обмена токенов, обработки ошибок и выхода.
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 16/16 тестов GREEN).
+  - `./gradlew :mobile:shared:allTests` — 53/53 GREEN.
+
+## Checkpoint 2026-11-07 — [T-040] Токены: безопасное хранение (Keystore), refreshIfNeeded, AuthInterceptor
+- Активные Skills: `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. `AuthClientInterceptor.kt`: автоматический вызов `tokenProvider.refreshIfNeeded()` перед выполнением gRPC-вызова для гарантии свежести токена с fallback на `getAccessToken()`.
+  2. `AuthRepositoryImpl.kt`: полнофункциональный `refreshIfNeeded()` с вызовом `currentAuthState.performActionWithFreshTokens(authService)` и перезаписью зашифрованного хранилища `EncryptedPrefsAuthStorage` (Android Keystore `MasterKey`).
+  3. Koin DI: `AuthRepositoryImpl` зарегистрирован в `androidAppModule` с привязкой к `AuthTokenProvider::class` и автоматически внедряется в `AuthClientInterceptor`.
+  4. Тесты:
+     - `AuthClientInterceptorTest`: добавлен тест `interceptCall invokes refreshIfNeeded and attaches refreshed token` (4/4 GREEN);
+     - `AuthRepositoryImplTest`: добавлены тесты `refreshIfNeeded returns failure when user is not authorized` и `refreshIfNeeded returns current access token when token is fresh` (5/5 GREEN).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 54/54 shared tests GREEN, 18/18 androidApp tests GREEN).
+
+## Checkpoint 2026-11-07 — [T-040 / Option A] gRPC Non-blocking CallCredentials (AuthCallCredentials) & Ликвидация runBlocking
+- Активные Skills: `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация "Способа А" (gRPC CallCredentials):**
+  1. **Ликвидация `runBlocking`:** Из gRPC клиента полностью удалён `runBlocking`, устранив риск блокировки Main/UI потока или потоков диспетчера корутин при выполнении gRPC-запросов.
+  2. **Создан `AuthCallCredentials`** (`dev.andre.nutritionist.data.remote.grpc.auth.AuthCallCredentials`):
+     - Наследует официальный абстрактный класс gRPC `io.grpc.CallCredentials`.
+     - Реализует `applyRequestMetadata(requestInfo, appExecutor, applier)`: запускает корутину на `dispatchers.io`, асинхронно обновляет токен через `tokenProvider.refreshIfNeeded()`, прикрепляет метаданные `authorization: Bearer <token>` и вызывает `appExecutor.execute { applier.apply(headers) }` (в точном согласии с контрактом gRPC).
+     - При критических ошибках передаёт статус `Status.UNAUTHENTICATED` через `applier.fail(status)`.
+  3. **Рефакторинг `AuthClientInterceptor`** (`dev.andre.nutritionist.data.remote.grpc.interceptor.AuthClientInterceptor`):
+     - Преобразован в неблокирующий интерцептор, прикрепляющий `CallCredentials` к `callOptions` через `callOptions.withCallCredentials(credentials)`.
+     - Предоставлен вторичный конструктор `AuthClientInterceptor(tokenProvider, dispatchers)`.
+  4. **Koin DI (`AndroidDataModule.kt`):**
+     - Модуль `androidRemoteDataModule` регистрирует `AuthCallCredentials(tokenProvider = get(), dispatchers = get())`.
+     - `AuthClientInterceptor` регистрируется с внедрением `credentials = get<AuthCallCredentials>()`.
+     - Все gRPC вызовы канала `ManagedChannel` автоматически получают неблокирующую авторизацию.
+  5. **Тестирование (без MockK, чистые Fakes в `androidHostTest`):**
+     - `AuthCallCredentialsTest`: 6 тестов (прикрепление токена, автоматический refresh, обработка null/blank токенов, обработка ошибок через `applier.fail(Status.UNAUTHENTICATED)`, верификация неблокирующего выполнения с `StandardTestDispatcher`);
+     - `AuthClientInterceptorTest`: 3 теста (делегирование `CallCredentials` в `callOptions`, проверка secondary constructor, проверка неблокирующего поведения).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 59/59 shared tests GREEN, 18/18 androidApp tests GREEN).
+
+
+
+
 

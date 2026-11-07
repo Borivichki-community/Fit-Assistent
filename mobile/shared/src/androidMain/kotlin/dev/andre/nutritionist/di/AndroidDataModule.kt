@@ -3,13 +3,15 @@ package dev.andre.nutritionist.di
 import dev.andre.nutritionist.data.remote.ProfileRemoteDataSource
 import dev.andre.nutritionist.data.remote.grpc.GrpcClientFactory
 import dev.andre.nutritionist.data.remote.grpc.ProfileGrpcRemoteDataSource
+import dev.andre.nutritionist.data.remote.grpc.auth.AuthCallCredentials
 import dev.andre.nutritionist.data.remote.grpc.interceptor.AuthClientInterceptor
 import dev.andre.nutritionist.data.remote.grpc.interceptor.TraceparentClientInterceptor
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val androidRemoteDataModule = module {
-    single { AuthClientInterceptor(tokenProvider = get()) }
+    single { AuthCallCredentials(tokenProvider = get(), dispatchers = get()) }
+    single { AuthClientInterceptor(credentials = get<AuthCallCredentials>()) }
     single { TraceparentClientInterceptor(traceContextHolder = get()) }
     single {
         GrpcClientFactory.createManagedChannel(
