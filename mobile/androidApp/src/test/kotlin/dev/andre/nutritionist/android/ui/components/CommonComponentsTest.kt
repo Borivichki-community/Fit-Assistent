@@ -64,6 +64,29 @@ class CommonComponentsTest {
     }
 
     @Test
+    fun `ErrorContent multiple retry clicks increments callback`() {
+        var retryCount = 0
+        val errorMessage = context.getString(R.string.error_default_message)
+        val retryText = context.getString(R.string.retry_button)
+
+        composeTestRule.setContent {
+            FitAssistantTheme {
+                ErrorContent(
+                    message = errorMessage,
+                    onRetry = { retryCount++ },
+                )
+            }
+        }
+
+        val retryButton = composeTestRule.onNodeWithText(retryText)
+        retryButton.performClick()
+        retryButton.performClick()
+        retryButton.performClick()
+
+        org.junit.Assert.assertEquals(3, retryCount)
+    }
+
+    @Test
     fun `OfflineBanner displays message and subtitle`() {
         val title = context.getString(R.string.offline_banner_title)
         val subtitle = context.getString(R.string.offline_banner_subtitle)

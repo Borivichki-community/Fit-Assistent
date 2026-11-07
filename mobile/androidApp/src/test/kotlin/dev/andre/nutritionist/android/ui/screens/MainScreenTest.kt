@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -76,5 +77,42 @@ class MainScreenTest {
 
         // verify text is displayed
         composeTestRule.onNodeWithText(expectedCountText).assertIsDisplayed()
+    }
+
+    @Test
+    fun `multiple clicks on add meal button updates count correctly`() {
+        composeTestRule.setContent {
+            MainScreen()
+        }
+
+        val buttonText = context.getString(R.string.btn_add_meal_test)
+        val expectedCountText = context.getString(R.string.meals_added_count, 3)
+
+        val button = composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true)
+
+        button.performClick()
+        button.performClick()
+        button.performClick()
+
+        composeTestRule.onNodeWithText(expectedCountText).assertIsDisplayed()
+    }
+
+    @Test
+    fun `bottom navigation item click invokes onDestinationSelected callback`() {
+        var selectedDestination: dev.andre.nutritionist.android.navigation.AppDestination? = null
+
+        composeTestRule.setContent {
+            MainScreen(
+                onDestinationSelected = { selectedDestination = it }
+            )
+        }
+
+        // Navigate to Statistics
+        val statisticsLabel = context.getString(R.string.nav_statistics)
+        // Since BottomNavItem may not use text directly (uses contentDescription for icon or text based on implementation)
+        // Let's rely on content description or generic click
+        composeTestRule.onNodeWithContentDescription(statisticsLabel, useUnmergedTree = true).performClick()
+
+        org.junit.Assert.assertEquals(dev.andre.nutritionist.android.navigation.AppDestination.Statistics, selectedDestination)
     }
 }
