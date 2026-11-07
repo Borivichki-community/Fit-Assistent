@@ -10,7 +10,10 @@ import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.repository.ProfileRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -85,12 +88,31 @@ class ProfileCommandsFlowHandlerTest {
     }
 
     @Test
-    fun `LoadProfile command rethrows CancellationException`() = runTest(testDispatcher) {
-        fakeRepository.errorToThrow = kotlinx.coroutines.CancellationException("Test cancellation")
+    fun `LoadProfile command does not emit failure on CancellationException`() = runTest(testDispatcher) {
+        fakeRepository.errorToThrow = CancellationException("Test cancellation")
 
         handler.handle(flowOf(ProfileCommand.LoadProfile(testUserId))).test {
-            val error = awaitError()
-            assertIs<kotlinx.coroutines.CancellationException>(error)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `RefreshProfile command emits ProfileLoadFailed event on failure`() = runTest(testDispatcher) {
+        val error = RuntimeException("Ошибка сети")
+        fakeRepository.errorToThrow = error
+
+        handler.handle(flowOf(ProfileCommand.RefreshProfile(testUserId))).test {
+            val event = awaitItem()
+            assertIs<ProfileEvent.Internal.ProfileLoadFailed>(event)
+            assertEquals("Ошибка сети", event.error.message)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `RefreshProfile command completes without events on success`() = runTest(testDispatcher) {
+        handler.handle(flowOf(ProfileCommand.RefreshProfile(testUserId))).test {
+            awaitComplete()
         }
     }
 
@@ -98,15 +120,35 @@ class ProfileCommandsFlowHandlerTest {
         var profileToReturn: Profile? = null
         var errorToThrow: Throwable? = null
 
-        override suspend fun getProfile(userId: UserId): Profile {
-            errorToThrow?.let { throw it }
-            return profileToReturn ?: error("Профиль не задан в FakeProfileRepository")
+        override fun observeProfile(userId: UserId): Flow<Profile?> = flow {
+            val error = errorToThrow
+            if (error is CancellationException) {
+                throw error
+            }
+            emit(profileToReturn)
         }
 
-        override suspend fun updateProfile(profile: Profile): Profile {
-            errorToThrow?.let { throw it }
+        override suspend fun getProfile(userId: UserId): Profile? {
+            return profileToReturn
+        }
+
+        override suspend fun refreshProfile(userId: UserId): Result<Unit> {
+            val error = errorToThrow
+            if (error != null) {
+                if (error is CancellationException) throw error
+                return Result.failure(error)
+            }
+            return Result.success(Unit)
+        }
+
+        override suspend fun updateProfile(profile: Profile): Result<Profile> {
+            val error = errorToThrow
+            if (error != null) {
+                if (error is CancellationException) throw error
+                return Result.failure(error)
+            }
             profileToReturn = profile
-            return profile
+            return Result.success(profile)
         }
     }
 }
