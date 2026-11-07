@@ -10,8 +10,8 @@ import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.repository.ProfileRepository
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
@@ -127,15 +127,29 @@ class ProfileViewModelTest {
         var profileToReturn: Profile? = null
         var errorToThrow: Throwable? = null
 
-        override suspend fun getProfile(userId: UserId): Profile {
-            errorToThrow?.let { throw it }
-            return profileToReturn ?: error("Профиль не задан в FakeProfileRepository")
+        override fun observeProfile(userId: UserId): Flow<Profile?> = flow {
+            emit(profileToReturn)
         }
 
-        override suspend fun updateProfile(profile: Profile): Profile {
-            errorToThrow?.let { throw it }
+        override suspend fun getProfile(userId: UserId): Profile? {
+            return profileToReturn
+        }
+
+        override suspend fun refreshProfile(userId: UserId): Result<Unit> {
+            val error = errorToThrow
+            if (error != null) {
+                return Result.failure(error)
+            }
+            return Result.success(Unit)
+        }
+
+        override suspend fun updateProfile(profile: Profile): Result<Profile> {
+            val error = errorToThrow
+            if (error != null) {
+                return Result.failure(error)
+            }
             profileToReturn = profile
-            return profile
+            return Result.success(profile)
         }
     }
 }

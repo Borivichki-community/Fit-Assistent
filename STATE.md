@@ -3,11 +3,11 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-10-20T21:23
+Обновлено: 2026-11-07T18:15
 
 ---
 
-## Статус проекта: Инфраструктура запущена и проверена, мобильные модули компилируются и протестированы, готовность к пушу и реализации Шага 4
+## Статус проекта: T-036 (SSOT ProfileRepositoryImpl) завершена, тесты починены (53/53 GREEN), лицензия Apache 2.0 для KoTEA оформлена
 
 ---
 
@@ -68,6 +68,13 @@
 - [x] **Шаг 4 (Docker Images Update):** Обновлены и подтянуты все актуальные Docker-образы инфраструктуры и сборщика:
   - `postgres:17-alpine`, `redis:7-alpine`, `apache/kafka:4.2.2`, `confluentinc/cp-schema-registry:8.2.4`, `quay.io/keycloak/keycloak:26.0` (все с sha256);
   - Базовые образы JDK: `azul/zulu-openjdk:21`, `azul/zulu-openjdk:21-jre`.
+- [x] **Шаг 4 (T-036 / KAN-54): ProfileRepositoryImpl — Room Single Source of Truth (SSOT), KoTEA Flow, Apache 2.0:**
+  - Реализован паттерн SSOT в `ProfileRepository` (`observeProfile`, `getProfile`, `refreshProfile`, `updateProfile`);
+  - `ProfileRepositoryImpl` (`dao`, `remoteDataSource`, `dispatchers`): подписка UI только на локальную БД Room через `observeProfile`, неблокирующий фоновый `refreshProfile`, синхронизация кэша при мутации `updateProfile`;
+  - Адаптация `ProfileCommandsFlowHandler`: реактивный `merge(observeFlow, refreshFlow)` на `dispatchers.io`, неблокирующий фоновый сетевой refresh без мерцания UI, безопасная обработка отмены `CancellationException` без ошибочной эмиссии `ProfileLoadFailed`;
+  - Исправление и актуализация тестов: `ProfileCommandsFlowHandlerTest`, `ProfileViewModelTest` (синхронизация с контрактом `ProfileRepository`, отсутствие падений на `CancellationException`), `ProfileRepositoryImplTest` (Fakes + Turbine + in-memory state);
+  - Юридическое оформление лицензии Apache License 2.0: созданы `LICENSE` и `NOTICE` в корне проекта с атрибуцией Tinkoff Bank (KoTEA: Kotlin The Elm Architecture);
+  - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests` (53/53 GREEN).
 
 ---
 
@@ -141,4 +148,31 @@
     - `ProfileEntityMapperTest` в `commonTest`: 3 unit-теста на маппинг в обе стороны и fallback для некорректных значений;
     - `ProfileDaoTest` в `androidHostTest` с Robolectric: 4 теста in-memory Room SQLite (`insertAndGetProfile`, `getProfile_returnsNull_whenNotFound`, `insertOrReplace_updatesExistingProfile`, `observeProfile_emitsUpdatesTurbine` с библиотекой Turbine).
 - PASS: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest` (53/53 GREEN).
+
+## Checkpoint 2026-11-07 — [T-036 / KAN-54] ProfileRepositoryImpl (SSOT, Room Flow, KoTEA Handler, Apache 2.0 License)
+- Активные Skills: `kmp-shared-feature`, `android-compose-feature`, `diagnose-build-failure`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-54` (коммит `b559947` и последующие исправления).
+- **Анализ сбоя тестов:**
+  - В коммите `b559947` был расширен контракт `ProfileRepository` для реализации Single Source of Truth (`observeProfile`, `refreshProfile`, `updateProfile: Result<Profile>`).
+  - При запуске `./gradlew :mobile:shared:allTests` возникли ошибки компиляции `compileAndroidHostTest`: `ProfileCommandsFlowHandlerTest.kt` и `ProfileViewModelTest.kt` содержали устаревшие классы `FakeProfileRepository`, не реализующие новые методы интерфейса.
+  - В `ProfileCommandsFlowHandler` реализация через `channelFlow` приводила к потере сигналов отмены и скрывала нормальное поведение корутин.
+- **Выполненные исправления и оптимизации:**
+  1. `ProfileCommandsFlowHandler.kt`: переведён на реактивный `merge(observeFlow, refreshFlow)`. 
+     - `observeFlow`: непрерывно передаёт в Store актуальное состояние из Room через `observeProfile(userId)`.
+     - `refreshFlow`: в фоне запускает `refreshProfile(userId)` на `dispatchers.io`. В случае сетевой ошибки и отсутствия кэша эмитит `ProfileLoadFailed`, а при наличии локального кэша не блокирует показ данных. При `CancellationException` поток безопасно отменяется без ложного отображения ошибки пользователю.
+  2. `ProfileCommandsFlowHandlerTest.kt`:
+     - Обновлён `FakeProfileRepository` с поддержкой всех методов `ProfileRepository`;
+     - Добавлены/актуализированы тесты на успешную загрузку, обработку сетевых ошибок, отмену (`CancellationException`) и принудительный refresh (`RefreshProfile`).
+  3. `ProfileViewModelTest.kt`:
+     - `FakeProfileRepository` актуализирован под контракт SSOT;
+     - Все сценарии обновления UI-состояний (`Loading` $\to$ `Success` / `Error` + `News`) успешно выполняются.
+  4. **Оформление лицензии Apache License 2.0 (KoTEA):**
+     - В корень проекта добавлен файл `LICENSE` с полным текстом Apache License 2.0;
+     - В корень проекта добавлен файл `NOTICE` с указанием авторских прав Tinkoff Bank (KoTEA);
+     - Проверено сохранение оригинальных заголовков во всех 8 файлах пакета `dev.andre.nutritionist.core.kotea.*`.
+- **Верификация и результаты:**
+  - `./gradlew :mobile:shared:allTests` — 53 теста выполнены, 0 сбоев, 0 ошибок (BUILD SUCCESSFUL).
+  - Проверено соблюдение всех правил `AGENTS.md`: запрет оператора `!!`, исчерпывающий `when` без `else` для sealed интерфейсов, строгая изоляция domain-слоя, отсутствие `MockK` в `commonTest` (только чистые Fakes и Turbine).
+
 

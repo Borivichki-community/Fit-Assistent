@@ -26,7 +26,13 @@ val localDataModule: Module = module {
 }
 
 val dataModule: Module = module {
-    single<ProfileRepository> { ProfileRepositoryImpl(remoteDataSource = get()) }
+    single<ProfileRepository> {
+        ProfileRepositoryImpl(
+            dao = get(),
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
 }
 
 val presentationModule: Module = module {
