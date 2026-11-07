@@ -211,5 +211,42 @@
   - `./gradlew :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 16/16 тестов GREEN).
   - `./gradlew :mobile:shared:allTests` — 53/53 GREEN.
 
+## Checkpoint 2026-11-07 — [T-040] Токены: безопасное хранение (Keystore), refreshIfNeeded, AuthInterceptor
+- Активные Skills: `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. `AuthClientInterceptor.kt`: автоматический вызов `tokenProvider.refreshIfNeeded()` перед выполнением gRPC-вызова для гарантии свежести токена с fallback на `getAccessToken()`.
+  2. `AuthRepositoryImpl.kt`: полнофункциональный `refreshIfNeeded()` с вызовом `currentAuthState.performActionWithFreshTokens(authService)` и перезаписью зашифрованного хранилища `EncryptedPrefsAuthStorage` (Android Keystore `MasterKey`).
+  3. Koin DI: `AuthRepositoryImpl` зарегистрирован в `androidAppModule` с привязкой к `AuthTokenProvider::class` и автоматически внедряется в `AuthClientInterceptor`.
+  4. Тесты:
+     - `AuthClientInterceptorTest`: добавлен тест `interceptCall invokes refreshIfNeeded and attaches refreshed token` (4/4 GREEN);
+     - `AuthRepositoryImplTest`: добавлены тесты `refreshIfNeeded returns failure when user is not authorized` и `refreshIfNeeded returns current access token when token is fresh` (5/5 GREEN).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 54/54 shared tests GREEN, 18/18 androidApp tests GREEN).
+
+## Checkpoint 2026-11-07 — [T-040 / Option A] gRPC Non-blocking CallCredentials (AuthCallCredentials) & Ликвидация runBlocking
+- Активные Skills: `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация "Способа А" (gRPC CallCredentials):**
+  1. **Ликвидация `runBlocking`:** Из gRPC клиента полностью удалён `runBlocking`, устранив риск блокировки Main/UI потока или потоков диспетчера корутин при выполнении gRPC-запросов.
+  2. **Создан `AuthCallCredentials`** (`dev.andre.nutritionist.data.remote.grpc.auth.AuthCallCredentials`):
+     - Наследует официальный абстрактный класс gRPC `io.grpc.CallCredentials`.
+     - Реализует `applyRequestMetadata(requestInfo, appExecutor, applier)`: запускает корутину на `dispatchers.io`, асинхронно обновляет токен через `tokenProvider.refreshIfNeeded()`, прикрепляет метаданные `authorization: Bearer <token>` и вызывает `appExecutor.execute { applier.apply(headers) }` (в точном согласии с контрактом gRPC).
+     - При критических ошибках передаёт статус `Status.UNAUTHENTICATED` через `applier.fail(status)`.
+  3. **Рефакторинг `AuthClientInterceptor`** (`dev.andre.nutritionist.data.remote.grpc.interceptor.AuthClientInterceptor`):
+     - Преобразован в неблокирующий интерцептор, прикрепляющий `CallCredentials` к `callOptions` через `callOptions.withCallCredentials(credentials)`.
+     - Предоставлен вторичный конструктор `AuthClientInterceptor(tokenProvider, dispatchers)`.
+  4. **Koin DI (`AndroidDataModule.kt`):**
+     - Модуль `androidRemoteDataModule` регистрирует `AuthCallCredentials(tokenProvider = get(), dispatchers = get())`.
+     - `AuthClientInterceptor` регистрируется с внедрением `credentials = get<AuthCallCredentials>()`.
+     - Все gRPC вызовы канала `ManagedChannel` автоматически получают неблокирующую авторизацию.
+  5. **Тестирование (без MockK, чистые Fakes в `androidHostTest`):**
+     - `AuthCallCredentialsTest`: 6 тестов (прикрепление токена, автоматический refresh, обработка null/blank токенов, обработка ошибок через `applier.fail(Status.UNAUTHENTICATED)`, верификация неблокирующего выполнения с `StandardTestDispatcher`);
+     - `AuthClientInterceptorTest`: 3 теста (делегирование `CallCredentials` в `callOptions`, проверка secondary constructor, проверка неблокирующего поведения).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 59/59 shared tests GREEN, 18/18 androidApp tests GREEN).
+
+
+
 
 

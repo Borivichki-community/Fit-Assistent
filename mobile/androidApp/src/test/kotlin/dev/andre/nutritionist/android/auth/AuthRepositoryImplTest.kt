@@ -171,4 +171,52 @@ class AuthRepositoryImplTest {
             assertNull(fakeStorage.savedJson)
         }
     }
+
+    @Test
+    fun `refreshIfNeeded returns failure when user is not authorized`() = runTest {
+        // Act: вызов без предварительной авторизации
+        val result = repository.refreshIfNeeded()
+
+        // Assert
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is IllegalStateException)
+        assertEquals("User is not authorized", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun `refreshIfNeeded returns current access token when token is fresh`() = runTest {
+        // Arrange: авторизуемся с токеном со сроком жизни +1 час
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+
+        val expectedToken = "fresh-access-token-123"
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken(expectedToken)
+            .setTokenType("Bearer")
+            .setAccessTokenExpirationTime(System.currentTimeMillis() + 3600_000L)
+            .build()
+
+        repository.processAuthResponse(validIntent)
+        assertTrue(repository.isAuthenticated())
+
+        // Act: запрашиваем рефреш
+        val result = repository.refreshIfNeeded()
+
+        // Assert
+        assertTrue(result.isSuccess)
+        assertEquals(expectedToken, result.getOrNull())
+    }
 }

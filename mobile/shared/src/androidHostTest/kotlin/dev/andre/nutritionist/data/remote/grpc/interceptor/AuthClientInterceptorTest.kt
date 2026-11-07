@@ -1,30 +1,35 @@
 package dev.andre.nutritionist.data.remote.grpc.interceptor
 
+import dev.andre.nutritionist.data.remote.grpc.auth.AuthCallCredentials
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
+import dev.andre.nutritionist.fake.TestCoroutineDispatchers
+import io.grpc.CallCredentials
 import io.grpc.CallOptions
 import io.grpc.Channel
 import io.grpc.ClientCall
 import io.grpc.Metadata
 import io.grpc.MethodDescriptor
+import java.io.InputStream
+import java.util.concurrent.Executor
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class AuthClientInterceptorTest {
 
-    private val authKey = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
-
     private class FakeChannel : Channel() {
-        var capturedHeaders: Metadata? = null
+        var capturedCallOptions: CallOptions? = null
+        var capturedMethod: MethodDescriptor<*, *>? = null
 
         override fun <RequestT, ResponseT> newCall(
             methodDescriptor: MethodDescriptor<RequestT, ResponseT>,
             callOptions: CallOptions,
         ): ClientCall<RequestT, ResponseT> {
+            capturedCallOptions = callOptions
+            capturedMethod = methodDescriptor
             return object : ClientCall<RequestT, ResponseT>() {
-                override fun start(responseListener: Listener<ResponseT>, headers: Metadata) {
-                    capturedHeaders = headers
-                }
+                override fun start(responseListener: Listener<ResponseT>, headers: Metadata) {}
                 override fun request(numMessages: Int) {}
                 override fun cancel(message: String?, cause: Throwable?) {}
                 override fun halfClose() {}
@@ -35,7 +40,19 @@ class AuthClientInterceptorTest {
         override fun authority(): String = "localhost"
     }
 
-    private class FakeAuthTokenProvider(private val token: String?) : AuthTokenProvider {
+    private class FakeCallCredentials : CallCredentials() {
+        override fun applyRequestMetadata(
+            requestInfo: RequestInfo,
+            appExecutor: Executor,
+            applier: MetadataApplier,
+        ) {}
+        @Deprecated("Required by gRPC CallCredentials abstract class", level = DeprecationLevel.WARNING)
+        override fun thisUsesUnstableApi() {}
+    }
+
+    private class FakeAuthTokenProvider(
+        private val token: String? = "test-token",
+    ) : AuthTokenProvider {
         override fun getAccessToken(): String? = token
         override fun isAuthenticated(): Boolean = token != null
         override suspend fun refreshIfNeeded(): Result<String> =
@@ -44,8 +61,8 @@ class AuthClientInterceptorTest {
 
     private fun dummyMethod(): MethodDescriptor<String, String> {
         val marshaller = object : MethodDescriptor.Marshaller<String> {
-            override fun stream(value: String) = value.byteInputStream()
-            override fun parse(stream: java.io.InputStream) = stream.bufferedReader().readText()
+            override fun stream(value: String): InputStream = value.byteInputStream()
+            override fun parse(stream: InputStream): String = stream.bufferedReader().readText()
         }
         return MethodDescriptor.newBuilder<String, String>()
             .setType(MethodDescriptor.MethodType.UNARY)
@@ -56,41 +73,45 @@ class AuthClientInterceptorTest {
     }
 
     @Test
-    fun `interceptCall attaches authorization header when token is present`() {
+    fun `interceptCall attaches CallCredentials to callOptions`() {
         val channel = FakeChannel()
-        val interceptor = AuthClientInterceptor(FakeAuthTokenProvider("jwt-token-123"))
-        val call = interceptor.interceptCall(dummyMethod(), CallOptions.DEFAULT, channel)
+        val fakeCredentials = FakeCallCredentials()
+        val interceptor = AuthClientInterceptor(fakeCredentials)
 
-        val headers = Metadata()
-        call.start(object : ClientCall.Listener<String>() {}, headers)
+        val method = dummyMethod()
+        interceptor.interceptCall(method, CallOptions.DEFAULT, channel)
 
-        val captured = channel.capturedHeaders?.get(authKey)
-        assertEquals("Bearer jwt-token-123", captured)
+        assertEquals(fakeCredentials, channel.capturedCallOptions?.credentials)
+        assertEquals(method, channel.capturedMethod)
     }
 
     @Test
-    fun `interceptCall does not attach authorization header when token is null`() {
+    fun `secondary constructor creates AuthCallCredentials`() {
         val channel = FakeChannel()
-        val interceptor = AuthClientInterceptor(FakeAuthTokenProvider(null))
-        val call = interceptor.interceptCall(dummyMethod(), CallOptions.DEFAULT, channel)
+        val interceptor = AuthClientInterceptor(
+            tokenProvider = FakeAuthTokenProvider(),
+            dispatchers = TestCoroutineDispatchers(),
+        )
 
-        val headers = Metadata()
-        call.start(object : ClientCall.Listener<String>() {}, headers)
+        assertTrue(interceptor.credentials is AuthCallCredentials)
 
-        val captured = channel.capturedHeaders?.get(authKey)
-        assertNull(captured)
+        val method = dummyMethod()
+        interceptor.interceptCall(method, CallOptions.DEFAULT, channel)
+
+        assertEquals(interceptor.credentials, channel.capturedCallOptions?.credentials)
     }
 
     @Test
-    fun `interceptCall does not attach authorization header when token is blank`() {
+    fun `interceptCall does not block or execute runBlocking on calling thread`() {
         val channel = FakeChannel()
-        val interceptor = AuthClientInterceptor(FakeAuthTokenProvider("   "))
+        val interceptor = AuthClientInterceptor(
+            tokenProvider = FakeAuthTokenProvider(),
+            dispatchers = TestCoroutineDispatchers(),
+        )
+
+        // interceptCall is purely synchronous and non-blocking
         val call = interceptor.interceptCall(dummyMethod(), CallOptions.DEFAULT, channel)
-
-        val headers = Metadata()
-        call.start(object : ClientCall.Listener<String>() {}, headers)
-
-        val captured = channel.capturedHeaders?.get(authKey)
-        assertNull(captured)
+        assertNotNull(call)
+        assertNotNull(channel.capturedCallOptions?.credentials)
     }
 }
