@@ -246,6 +246,14 @@
 - **Верификация сборки и тестов:**
   - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 59/59 shared tests GREEN, 18/18 androidApp tests GREEN).
 
+## Checkpoint 2026-11-07 — QA Review KAN-57 Android AppAuth Keycloak
+- Активные Skills: `android-compose-feature`, `testing-and-verification`.
+- Роли: `qa-reviewer`, `implementer`.
+- **Реализация:**
+  1. Выявлено отсутствие тестов для `AuthViewModel` из PR #26 (KAN-57).
+  2. Добавлен `AuthViewModelTest.kt` с использованием `turbineScope` и `.testIn(backgroundScope)` для покрытия логики ViewModel (события `StartLogin`, `AuthResponseReceived`, `LogoutClicked`).
+  3. В `AuthRepositoryImplTest.kt` добавлен тест на краевой случай: вызов `processAuthResponse` с `Intent`, в котором отсутствуют и `AuthorizationResponse`, и `AuthorizationException`, что приводит к `IllegalArgumentException`.
+
 
 
 

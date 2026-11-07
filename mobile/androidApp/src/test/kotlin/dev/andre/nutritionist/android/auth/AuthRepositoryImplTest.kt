@@ -219,4 +219,24 @@ class AuthRepositoryImplTest {
         assertTrue(result.isSuccess)
         assertEquals(expectedToken, result.getOrNull())
     }
+
+    @Test
+    fun `processAuthResponse with intent missing both response and exception throws IllegalArgumentException`() = runTest {
+        // Arrange
+        val emptyIntent = Intent()
+
+        repository.observeAuthState().test {
+            assertEquals(false, awaitItem())
+
+            // Act
+            val result = repository.processAuthResponse(emptyIntent)
+
+            // Assert
+            assertTrue(result.isFailure)
+            assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+            assertEquals("Intent does not contain a valid AuthorizationResponse", result.exceptionOrNull()?.message)
+            assertFalse(repository.isAuthenticated())
+            assertNull(repository.getAccessToken())
+        }
+    }
 }
