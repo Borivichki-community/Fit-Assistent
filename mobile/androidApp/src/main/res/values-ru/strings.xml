@@ -33,8 +33,6 @@
     <string name="empty_plan_subtitle">Вы можете сгенерировать план-питания с помощью ИИ или создать самостоятельно</string>
     <string name="btn_ai_generate">✦ Сгенерировать</string>
     <string name="btn_create_plan">Создать план</string>
-    <string name="btn_add_meal_test">Добавить приём пищи (маленькая кнопка)</string>
-    <string name="meals_added_count">Добавлено приёмов пищи: %1$d</string>
 
     <!-- Экран профиля -->
     <string name="profile_title">Профиль</string>
@@ -108,4 +106,29 @@
     <string name="onboarding_nav_back">Назад</string>
     <string name="onboarding_nav_next">Далее</string>
     <string name="onboarding_nav_finish">Завершить</string>
+
+    <!-- Авторизация (экран авторизации.jpg) -->
+    <string name="auth_title">Авторизация</string>
+    <string name="auth_email_hint">example@mail.com</string>
+    <string name="auth_password_hint">•••••••••••••</string>
+    <string name="auth_forgot_password">Забыл пароль</string>
+    <string name="auth_login_button">Авторизация</string>
+    <string name="auth_no_account">Нет аккаунта?</string>
+    <string name="auth_create_account">Создать аккаунт</string>
+    <string name="auth_via_telegram">Через Telegram</string>
+    <string name="auth_via_google">Через Google</string>
+
+    <!-- Регистрация (экран регистрации 1.jpg) -->
+    <string name="signup_title">Регистрация</string>
+    <string name="signup_register_button">Регистрация</string>
+    <string name="signup_back_button">Назад</string>
+    <string name="signup_via_google">Регистрация через Google</string>
+    <string name="signup_code_title">Подтверждение почты</string>
+    <string name="signup_code_subtitle">Введите код подтверждения, отправленный на %1$s</string>
+    <string name="signup_code_hint">Код из письма</string>
+    <string name="signup_confirm_code">Подтвердить код</string>
+    <string name="signup_resend_code">Отправить повторно</string>
+    <string name="validation_error_invalid_email">Введите корректный email</string>
+    <string name="validation_error_password_too_short">Пароль должен быть не менее 6 символов</string>
+    <string name="validation_error_code_invalid">Код должен содержать 4–6 цифр</string>
 </resources>

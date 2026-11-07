@@ -1,13 +1,10 @@
 package dev.andre.nutritionist.android.ui.screens
 
 import android.content.Context
-import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.domain.repository.DiaryRepository
@@ -39,42 +36,33 @@ class MainScreenTest {
     }
 
     @Test
-    fun `button minimum touch target size is respected despite custom text`() {
+    fun `fitApp top bar title is displayed`() {
         composeTestRule.setContent {
             MainScreen()
         }
 
-        val buttonText = context.getString(R.string.btn_add_meal_test)
-        val button = composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true)
-
-        button.assertIsDisplayed()
-        button.assertHeightIsAtLeast(1.dp)
-        button.assertWidthIsAtLeast(1.dp)
+        composeTestRule.onNodeWithText("FitApp").assertIsDisplayed()
     }
 
     @Test
-    fun `long text inside button does not overflow container unexpectedly`() {
+    fun `my plans section header is displayed`() {
         composeTestRule.setContent {
             MainScreen()
         }
 
-        val buttonText = context.getString(R.string.btn_add_meal_test)
-        composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true).assertIsDisplayed()
+        val sectionText = context.getString(R.string.section_my_plans)
+        composeTestRule.onNodeWithText(sectionText).assertIsDisplayed()
     }
 
     @Test
-    fun `small style body text is used for click counter`() {
+    fun `breakfast section and empty state are displayed`() {
         composeTestRule.setContent {
             MainScreen()
         }
 
-        val buttonText = context.getString(R.string.btn_add_meal_test)
-        val expectedCountText = context.getString(R.string.meals_added_count, 1)
-
-        // click to show the text
-        composeTestRule.onNodeWithText(buttonText, useUnmergedTree = true).performClick()
-
-        // verify text is displayed
-        composeTestRule.onNodeWithText(expectedCountText).assertIsDisplayed()
+        val sectionText = context.getString(R.string.section_breakfast)
+        val emptyTitle = context.getString(R.string.empty_plan_title)
+        composeTestRule.onNodeWithText(sectionText).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(emptyTitle).performScrollTo().assertIsDisplayed()
     }
 }

@@ -90,17 +90,27 @@
   - Юридическое оформление лицензии Apache License 2.0: созданы `LICENSE` и `NOTICE` в корне проекта с атрибуцией Tinkoff Bank (KoTEA: Kotlin The Elm Architecture);
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests` (53/53 GREEN).
 
-- [x] **Шаг 4 (T-041 / KAN-59): Миграция Profile/Registration Wizard & Koin DI Resolution:**
-  - Реализован полный 5-шаговый визард регистрации онбординга на Compose (`RegistrationWizardScreen`, `RegistrationWizardRoute`, `DotsIndicator`, `WizardNavButton`, `OnboardingNameStep`, `OnboardingBodyStep`, `OnboardingActivityStep`, `OnboardingBudgetStep`, `OnboardingGoalStep`) в минималистичном дизайне Antigravity.
-  - Миграция логики и валидации полей из Flutter (`FitAssistentAndroid`): `ProfileFieldsValidation` (чистые функции валидации имени, возраста, веса, калоража, бюджета с sealed ошибками `ProfileValidationError`, отображением в `supportingText` и `isError = true`).
-  - `ProfileScreen.kt` и `ProfileRoute.kt`: stateless M3 экран профиля с Dark/Light `@Preview`.
-  - Устранение сбоя Koin (`NoDefinitionFoundException: ProfileGrpcServiceClient`):
-    - Создан `AndroidProfileGrpcServiceClient` в `:mobile:shared` (`src/androidMain`).
-    - Реализован `DefaultTraceContextHolder` в `domain/trace`.
-    - Зарегистрированы `ProfileGrpcServiceClient` и `TraceContextHolder` в `androidRemoteDataModule` (`AndroidDataModule.kt`).
-  - Перенаправление стартового экрана: приложение запускается с онбординг-визарда регистрации (`startDestination = AppDestination.Registration.route`), а по завершении визарда переходит на `Dashboard` с очисткой back stack (`popUpTo(inclusive = true)`).
-  - Написаны UI unit-тесты: `ProfileScreenUnitTest` и `RegistrationWizardScreenTest`.
+- [x] **Шаг 4 (T-041 / KAN-59): Миграция экранов Авторизации, Регистрации (1.png), Онбординг-визарда (2–6.png) и удаление тестовой кнопки Add Meal:**
+  - Удалена тестовая кнопка «Add meal» (`btn_add_meal_test`) и сопутствующий счётчик из `MainScreen.kt`, а тесты `MainScreenTest.kt` переведены на проверку реальных блоков экрана (`FitApp` top bar, «Мои планы», «Завтрак»).
+  - Реализован экран авторизации [`LoginScreen.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginScreen.kt) и [`LoginRoute.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginRoute.kt) в точности по `screenshots/экран авторизации.jpg`:
+    - Белый круглый аватар пользователя [`AuthAvatarHeader.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthAvatarHeader.kt) с чёрным силуэтом;
+    - Поля ввода Email (с иконкой почты) и пароля (с иконкой ключа и скрытием символов) через [`AuthInputField.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthInputField.kt);
+    - Кнопка «Авторизация» (белая заливка, чёрный текст, 52dp) через [`AuthActionButton.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthActionButton.kt);
+    - Разделитель «— Нет аккаунта? —», кнопка «Создать аккаунт», кнопки входа «Через Telegram» и «Через Google».
+  - Реализован экран регистрации [`SignUpScreen.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/SignUpScreen.kt) и [`SignUpRoute.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/SignUpRoute.kt) в точности по `screenshots/экран регистрации 1.jpg`:
+    - Ввод email и пароля;
+    - Шаг подтверждения кода из письма («Код из письма» 4–6 цифр, повторная отправка);
+    - Быстрая регистрация «Через Google»;
+    - Кнопка «Назад» для возврата к экрану входа.
+  - Настроена сквозная навигация в [`AppNavHost.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/navigation/AppNavHost.kt) и [`MainActivity.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/MainActivity.kt):
+    - `startDestination = AppDestination.Auth.route` — приложение всегда начинается с экрана авторизации;
+    - Вход (email/пароль, Google, Telegram) -> переход на `Dashboard` с очисткой back stack;
+    - «Создать аккаунт» -> переход на `SignUpScreen` (1.png);
+    - Подтверждение кода / Google регистрация -> переход к 5-шаговому мастеру онбординга (`RegistrationWizardScreen`, 2–6.png: имя/фамилия, параметры тела, активность, бюджет, цель);
+    - Завершение онбординга -> переход на `Dashboard` с очисткой back stack.
+  - Написаны изолированные Robolectric Compose UI тесты: `LoginScreenTest.kt` и `SignUpScreenTest.kt`.
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN, BUILD SUCCESSFUL).
+
 
 ---
 

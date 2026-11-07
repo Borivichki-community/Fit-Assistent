@@ -19,14 +19,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,7 +44,6 @@ fun MainScreen(
     onDestinationSelected: (AppDestination) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var clickCount by remember { mutableIntStateOf(0) }
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -79,29 +73,6 @@ fun MainScreen(
                 title = "FitApp",
                 onMenuClick = { /* меню */ },
             )
-
-            // Быстрое действие / интерактивная кнопка
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.medium),
-            ) {
-                OutlinedButton(
-                    onClick = { clickCount++ },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(Spacing.buttonRadius),
-                ) {
-                    Text(text = stringResource(R.string.btn_add_meal_test))
-                }
-            }
-            if (clickCount > 0) {
-                Text(
-                    text = stringResource(R.string.meals_added_count, clickCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
-                )
-            }
 
             Spacer(modifier = Modifier.height(Spacing.small))
 

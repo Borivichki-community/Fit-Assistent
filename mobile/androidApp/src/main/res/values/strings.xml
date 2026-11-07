@@ -33,8 +33,6 @@
     <string name="empty_plan_subtitle">You can generate a meal plan with AI or create one yourself</string>
     <string name="btn_ai_generate">✦ Generate with AI</string>
     <string name="btn_create_plan">Create Plan</string>
-    <string name="btn_add_meal_test">Add meal (small button)</string>
-    <string name="meals_added_count">Added meals: %1$d</string>
 
     <!-- Profile Screen -->
     <string name="profile_title">Profile</string>
@@ -108,4 +106,29 @@
     <string name="onboarding_nav_back">Back</string>
     <string name="onboarding_nav_next">Next</string>
     <string name="onboarding_nav_finish">Finish</string>
+
+    <!-- Authentication -->
+    <string name="auth_title">Authorization</string>
+    <string name="auth_email_hint">example@mail.com</string>
+    <string name="auth_password_hint">•••••••••••••</string>
+    <string name="auth_forgot_password">Forgot password</string>
+    <string name="auth_login_button">Sign In</string>
+    <string name="auth_no_account">No account?</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_via_telegram">Via Telegram</string>
+    <string name="auth_via_google">Via Google</string>
+
+    <!-- Registration -->
+    <string name="signup_title">Registration</string>
+    <string name="signup_register_button">Register</string>
+    <string name="signup_back_button">Back</string>
+    <string name="signup_via_google">Register with Google</string>
+    <string name="signup_code_title">Confirm Email</string>
+    <string name="signup_code_subtitle">Enter the verification code sent to %1$s</string>
+    <string name="signup_code_hint">Code from email</string>
+    <string name="signup_confirm_code">Confirm Code</string>
+    <string name="signup_resend_code">Resend code</string>
+    <string name="validation_error_invalid_email">Please enter a valid email</string>
+    <string name="validation_error_password_too_short">Password must be at least 6 characters</string>
+    <string name="validation_error_code_invalid">Code must be 4–6 digits</string>
 </resources>
