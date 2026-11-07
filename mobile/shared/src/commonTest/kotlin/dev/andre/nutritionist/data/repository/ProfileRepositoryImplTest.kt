@@ -1,6 +1,11 @@
 package dev.andre.nutritionist.data.repository
 
+import app.cash.turbine.test
+import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.local.entity.ProfileEntity
+import dev.andre.nutritionist.data.mapper.ProfileEntityMapper.toEntity
 import dev.andre.nutritionist.data.remote.ProfileRemoteDataSource
+import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.ActivityLevel
 import dev.andre.nutritionist.domain.model.Gender
 import dev.andre.nutritionist.domain.model.GoalType
@@ -8,13 +13,29 @@ import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ProfileRepositoryImplTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatchers = object : CoroutineDispatchers {
+        override val main: CoroutineDispatcher = testDispatcher
+        override val io: CoroutineDispatcher = testDispatcher
+        override val default: CoroutineDispatcher = testDispatcher
+        override val unconfined: CoroutineDispatcher = testDispatcher
+    }
 
     private val testUserId = UserId("user-123")
     private val testProfile = Profile(
@@ -36,45 +57,127 @@ class ProfileRepositoryImplTest {
         updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
 
-    private val fakeRemoteDataSource = FakeProfileRemoteDataSource()
-    private val repository = ProfileRepositoryImpl(remoteDataSource = fakeRemoteDataSource)
+    private lateinit var fakeDao: FakeProfileDao
+    private lateinit var fakeRemoteDataSource: FakeProfileRemoteDataSource
+    private lateinit var repository: ProfileRepositoryImpl
+
+    @BeforeTest
+    fun setUp() {
+        fakeDao = FakeProfileDao()
+        fakeRemoteDataSource = FakeProfileRemoteDataSource()
+        repository = ProfileRepositoryImpl(
+            dao = fakeDao,
+            remoteDataSource = fakeRemoteDataSource,
+            dispatchers = testDispatchers,
+        )
+    }
 
     @Test
-    fun `getProfile success returns domain profile`() = runTest {
+    fun `observeProfile emits data from DAO when refreshProfile succeeds`() = runTest(testDispatcher) {
+        fakeRemoteDataSource.profileToReturn = testProfile
+
+        repository.observeProfile(testUserId).test {
+            // Начальное состояние: в БД пусто
+            assertNull(awaitItem())
+
+            // Вызываем фоновое обновление из сети
+            val refreshResult = repository.refreshProfile(testUserId)
+            assertTrue(refreshResult.isSuccess)
+
+            // Turbine фиксирует новую эмиссию, вызванную записью в DAO
+            val updated = awaitItem()
+            assertEquals(testProfile, updated)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `refreshProfile failure preserves cached data in DAO`() = runTest(testDispatcher) {
+        // Предзаполняем базу кэшированными данными
+        fakeDao.insertOrReplace(testProfile.toEntity())
+        fakeRemoteDataSource.errorToThrow = RuntimeException("Сетевой сбой 503")
+
+        repository.observeProfile(testUserId).test {
+            // Должен мгновенно вернуть существующий кэш
+            assertEquals(testProfile, awaitItem())
+
+            // Сетевой refresh завершается ошибкой
+            val refreshResult = repository.refreshProfile(testUserId)
+            assertTrue(refreshResult.isFailure)
+            assertEquals("Сетевой сбой 503", refreshResult.exceptionOrNull()?.message)
+
+            // Данные в DAO не пострадали
+            assertEquals(testProfile, repository.getProfile(testUserId))
+
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `updateProfile updates both remote source and local DAO`() = runTest(testDispatcher) {
+        fakeDao.insertOrReplace(testProfile.toEntity())
+        val updatedProfile = testProfile.copy(heightCm = 180, weightKg = 74.0)
+        fakeRemoteDataSource.profileToReturn = updatedProfile
+
+        repository.observeProfile(testUserId).test {
+            assertEquals(testProfile, awaitItem())
+
+            val updateResult = repository.updateProfile(updatedProfile)
+            assertTrue(updateResult.isSuccess)
+            assertEquals(updatedProfile, updateResult.getOrNull())
+
+            // Проверяем, что удалённый источник принял профиль
+            assertEquals(updatedProfile, fakeRemoteDataSource.lastUpdatedProfile)
+
+            // Проверяем, что DAO автоматически оповестил Flow о новом состоянии
+            assertEquals(updatedProfile, awaitItem())
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `getProfile returns cached profile without network call`() = runTest(testDispatcher) {
+        fakeDao.insertOrReplace(testProfile.toEntity())
+
+        val result = repository.getProfile(testUserId)
+
+        assertEquals(testProfile, result)
+        assertNull(fakeRemoteDataSource.lastRequestedUserId)
+    }
+
+    @Test
+    fun `getProfile falls back to remote and saves to DAO when cache is empty`() = runTest(testDispatcher) {
         fakeRemoteDataSource.profileToReturn = testProfile
 
         val result = repository.getProfile(testUserId)
 
         assertEquals(testProfile, result)
         assertEquals(testUserId, fakeRemoteDataSource.lastRequestedUserId)
+        assertEquals(testProfile, repository.getProfile(testUserId))
     }
 
-    @Test
-    fun `getProfile failure throws exception`() = runTest {
-        fakeRemoteDataSource.errorToThrow = RuntimeException("Сетевой сбой")
+    private class FakeProfileDao : ProfileDao {
+        val entities = MutableStateFlow<Map<String, ProfileEntity>>(emptyMap())
 
-        assertFailsWith<RuntimeException> {
-            repository.getProfile(testUserId)
+        override suspend fun getProfile(userId: String): ProfileEntity? =
+            entities.value[userId]
+
+        override fun observeProfile(userId: String): Flow<ProfileEntity?> =
+            entities.map { it[userId] }
+
+        override suspend fun insertOrReplace(entity: ProfileEntity) {
+            entities.update { current ->
+                current + (entity.userId to entity)
+            }
         }
-    }
 
-    @Test
-    fun `updateProfile success returns updated domain profile`() = runTest {
-        val updatedProfile = testProfile.copy(heightCm = 176)
-        fakeRemoteDataSource.profileToReturn = updatedProfile
-
-        val result = repository.updateProfile(updatedProfile)
-
-        assertEquals(updatedProfile, result)
-        assertEquals(updatedProfile, fakeRemoteDataSource.lastUpdatedProfile)
-    }
-
-    @Test
-    fun `updateProfile failure throws exception`() = runTest {
-        fakeRemoteDataSource.errorToThrow = IllegalStateException("Ошибка обновления")
-
-        assertFailsWith<IllegalStateException> {
-            repository.updateProfile(testProfile)
+        override suspend fun clear(userId: String) {
+            entities.update { current ->
+                current - userId
+            }
         }
     }
 
