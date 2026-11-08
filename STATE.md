@@ -7,9 +7,9 @@
 
 ---
 
-## Статус проекта: [T-013 / KAN-13] Завершён Спайк по интеграции Resilience4j (ADR-002 оформлен и принят)
+## Статус проекта: [T-013 / T-014] Завершены Спайки по Resilience4j (ADR-002) и gRPC KMP Client (ADR-003)
 
-Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13)
+Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13, T-014)
 Роли: `implementer` + `test-reviewer`
 
 ---
@@ -387,7 +387,17 @@
     - [`Approach2_CoreKotlin.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach2_CoreKotlin.kt)
     - [`Approach3_SpringCloud.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach3_SpringCloud.kt)
   - Выбран **Вариант 2 (Чистое ядро + `resilience4j-kotlin`)**: нулевой риск блокировки пулов потоков (`Thread Starvation`), гарантированная защита от ложного срабатывания при отмене корутин (`CancellationException`), строгая изоляция Clean Architecture (домен не знает о resilience4j), минимальный оверхед в рантайме.
-  - Проведён аудит безопасности `test-reviewer` с проверкой отсутствия `runBlocking` и верификацией структурированной конкурентности.
+## Checkpoint 2026-11-08 — [T-014] gRPC-клиент для KMP: Unary + Server-Streaming на Android (grpc-kotlin) за интерфейсом RemoteDataSource, стратегия iOS (ADR-003)
+- Активные Skills: `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Проведён аудит реализации и сформирован архитектурный документ:**
+  - Оформлен и зафиксирован [`docs/architecture/adr/adr-003-grpc-kmp-client.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-003-grpc-kmp-client.md).
+  - **Архитектурный выбор:** Clean Architecture изоляция сетевого слоя интерфейсом `*RemoteDataSource` в `commonMain` без прямых зависимостей от `io.grpc.*` и `protobuf`.
+  - **Unary RPC:** `suspend fun invoke(): Result<DomainModel>`, реализация в `ProfileGrpcRemoteDataSource.kt` с защитой от подавления `CancellationException` и маппингом через `ProfileDtoMapper.kt` (без `!!`).
+  - **Server-Streaming RPC:** `fun stream(): Flow<DomainModel>`, сквозной `Flow` из `grpc-kotlin` с `map` в domain-модели и автоматической отменой HTTP/2 `RST_STREAM` при отмене сбора flow.
+  - **Безопасная неблокирующая авторизация:** `AuthCallCredentials` наследует `io.grpc.CallCredentials`, обновляет токен в `dispatchers.io` через `refreshIfNeeded()` без `runBlocking` (опция А из T-040).
+  - **Стратегия готовности к iOS:** `commonMain` полностью платформонезависим; при подключении `iosArm64`/`iosSimulatorArm64` реализация `IosProfileRemoteDataSource` биндится через Koin с использованием `grpc-swift` и iOS Keychain.
+  - Верифицировано тестами в `commonTest` и `androidHostTest` без использования MockK (чистые Fakes).
 
 
 
