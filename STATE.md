@@ -90,11 +90,39 @@
   - Юридическое оформление лицензии Apache License 2.0: созданы `LICENSE` и `NOTICE` в корне проекта с атрибуцией Tinkoff Bank (KoTEA: Kotlin The Elm Architecture);
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests` (53/53 GREEN).
 
+- [x] **Шаг 4 (T-041 / KAN-59): Миграция экранов Авторизации, Регистрации (1.png), Онбординг-визарда (2–6.png) и удаление тестовой кнопки Add Meal:**
+  - Удалена тестовая кнопка «Add meal» (`btn_add_meal_test`) и сопутствующий счётчик из `MainScreen.kt`, а тесты `MainScreenTest.kt` переведены на проверку реальных блоков экрана (`FitApp` top bar, «Мои планы», «Завтрак»).
+  - Реализован экран авторизации [`LoginScreen.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginScreen.kt) и [`LoginRoute.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginRoute.kt) в точности по `screenshots/экран авторизации.jpg`:
+    - Белый круглый аватар пользователя [`AuthAvatarHeader.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthAvatarHeader.kt) с чёрным силуэтом;
+    - Поля ввода Email (с иконкой почты) и пароля (с иконкой ключа и скрытием символов) через [`AuthInputField.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthInputField.kt);
+    - Кнопка «Авторизация» (белая заливка, чёрный текст, 52dp) через [`AuthActionButton.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/components/AuthActionButton.kt);
+    - Разделитель «— Нет аккаунта? —», кнопка «Создать аккаунт», кнопки входа «Через Telegram» и «Через Google».
+  - Реализован экран регистрации [`SignUpScreen.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/SignUpScreen.kt) и [`SignUpRoute.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/SignUpRoute.kt) в точности по `screenshots/экран регистрации 1.jpg`:
+    - Ввод email и пароля;
+    - Шаг подтверждения кода из письма («Код из письма» 4–6 цифр, повторная отправка);
+    - Быстрая регистрация «Через Google»;
+    - Кнопка «Назад» для возврата к экрану входа.
+  - Настроена сквозная навигация в [`AppNavHost.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/navigation/AppNavHost.kt) и [`MainActivity.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/MainActivity.kt):
+    - `startDestination = AppDestination.Auth.route` — приложение всегда начинается с экрана авторизации;
+    - Вход (email/пароль, Google, Telegram) -> переход на `Dashboard` с очисткой back stack;
+    - «Создать аккаунт» -> переход на `SignUpScreen` (1.png);
+    - Подтверждение кода / Google регистрация -> переход к 5-шаговому мастеру онбординга (`RegistrationWizardScreen`, 2–6.png: имя/фамилия, параметры тела, активность, бюджет, цель);
+    - Завершение онбординга -> переход на `Dashboard` с очисткой back stack.
+  - Написаны изолированные Robolectric Compose UI тесты: `LoginScreenTest.kt` и `SignUpScreenTest.kt`.
+  - Реализован легковесный и высокопроизводительный сплэш-экран [`SplashActivity.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/SplashActivity.kt) и разметка [`activity_splash.xml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/res/layout/activity_splash.xml) без сторонних библиотек:
+    - Чёрный фон (`#000000`), сверху неоновый логотип `fit-assistent`, в центре 3D-яблоко 200dp ([`splash_logo.png`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/res/drawable/splash_logo.png)), снизу текст «Здравствуйте!»;
+    - Анимация 1.5 секунды: верхний и нижний текст за 1200мс проявляются и плавно встают на места с `DecelerateInterpolator`, центральное яблоко за 1500мс уменьшается с 1.1f до 0.85f (эффект антигравитационного ухода вглубь);
+    - По завершении 1500мс — переход на `MainActivity` с плавной сменой экранов `overridePendingTransition(fade_in, fade_out)` и `finish()`;
+    - Написан Robolectric unit-тест [`SplashActivityTest.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/test/kotlin/dev/andre/nutritionist/android/SplashActivityTest.kt);
+    - Проверена и подтверждена корректность применения иконки приложения: `ic_launcher_background.xml` подключен в adaptive icon `mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml`.
+  - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN, BUILD SUCCESSFUL).
+
+
 ---
 
 ### В работе
 
-- [-] **Шаг 4:** Реализация Compose UI экрана профиля (`ProfileRoute`, `ProfileScreen`) и фичи дневника (diary: AddDiaryEntry + Room KMP + SyncWorker).
+- [-] **Шаг 4:** Реализация фичи дневника (diary: AddDiaryEntry + Room KMP + SyncWorker).
 
 ---
 
@@ -245,6 +273,67 @@
      - `AuthClientInterceptorTest`: 3 теста (делегирование `CallCredentials` в `callOptions`, проверка secondary constructor, проверка неблокирующего поведения).
 - **Верификация сборки и тестов:**
   - `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (BUILD SUCCESSFUL, 59/59 shared tests GREEN, 18/18 androidApp tests GREEN).
+
+## Checkpoint 2026-11-08 — [T-041 / KAN-59] ProfileRoute и ProfileScreen (MVI-связка, форма профиля/регистрации, валидация полей, Previews, UI-тесты)
+- Активные Skills: `legacy-migration`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-59-profile-screen-migration`.
+- **Реализация:**
+  1. **Миграция UI/UX с Flutter (`FitAssistentAndroid` & `@screenshots`):**
+     - На основе экранов регистрации (`экран регистрации 1..6.jpg`) и профиля перенесены ключевые поля: имя пользователя, возраст, целевой вес, дневной калораж.
+     - Виджеты `Form` / `TextFormField` / `Column` транслированы в M3 `OutlinedTextField`, `Column` со скроллом `verticalScroll`, токены `Spacing` и палитру `MaterialTheme.colorScheme`.
+  2. **Чистая валидация полей (`ProfileFieldsValidation.kt`):**
+     - Пакет: `dev.andre.nutritionist.android.presentation.profile.validation`.
+     - Sealed-интерфейс ошибок `ProfileValidationError` (`Empty`, `NotANumber`, `NegativeOrZero`, `OutOfRange`, `TooShort`).
+     - Чистые функции `validateName`, `validateAge`, `validateTargetWeight`, `validateDailyCalories` без побочных эффектов.
+     - Маппер в строковые ресурсы `toErrorMessageResId` с исчерпывающим `when` без `else`.
+  3. **Презентация и MVI-связка (KoTEA в `:mobile:shared` и `:mobile:androidApp`):**
+     - В `ProfileState.Content` и `ProfileUiState.Content` добавлены состояния `Form` и `ValidationError`.
+     - В `ProfileEvent.Ui` добавлены события `SaveProfile`, `NameChanged`, `AgeChanged`, `TargetWeightChanged`, `DailyCaloriesChanged`.
+     - Редьюсер `ProfileUpdate` и маппер `ProfileUiStateMapper` обновлены с исчерпывающим `when` без `else`.
+     - `ProfileViewModel` предоставляет `profileState: StateFlow<ProfileState>` для прямой подписки UI.
+  4. **Compose UI (`ProfileRoute.kt`, `ProfileScreen.kt`):**
+     - `ProfileRoute` (stateful): сбор `profileState` через `collectAsStateWithLifecycle()`, прослушивание `news` (Snackbar, навигация), отправка `LoadProfile`.
+     - `ProfileScreen` (stateless): поддержка состояний `Loading`, `Form`, `ValidationError`, `Success`, `Error`, баннера `OfflineBanner()`, отображение `isError` и `supportingText` для каждого поля ввода.
+     - Полный набор `@Preview` функций для тем Light и Dark для состояний Loading, Content/Form, ValidationError, Error.
+  5. **Локализация:**
+     - Все строки вынесены в `res/values/strings.xml` и `res/values-ru/strings.xml`. Полное отсутствие хардкода строк в Composable-функциях.
+  6. **UI-тестирование (NO MockK):**
+     - `ProfileScreenTest.kt` в `androidTest` и `ProfileScreenUnitTest.kt` в `test` (Robolectric):
+       - Тест-кейс 1: проверка отображения текста ошибки валидации на фиксированном `ProfileState` через `assertIsDisplayed()`.
+       - Тест-кейс 2: клик по кнопке сохранения со скроллом `performScrollTo().performClick()` и верификация диспатча события `ProfileEvent.Ui.SaveProfile`.
+       - Тест чистых функций валидации по всем граничным условиям.
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:shared:allTests` — 53/53 GREEN.
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN (включая RegistrationWizardScreenTest).
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+## Checkpoint 2026-11-08 — [T-041 / KAN-59] 5-шаговый визард онбординга регистрации (HorizontalPager + DotsIndicator + WizardNavButton)
+- Активные Skills: `legacy-migration`, `android-compose-feature`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. **Очистка структуры исходников:**
+     - Все созданные файлы перенесены из `src/main/java/` и `src/androidTest/java/` в канонические каталоги `src/main/kotlin/` и `src/androidTest/kotlin/`. Папки `java` полностью удалены.
+  2. **Реализация компонентов визарда онбординга (по скриншотам 1-6):**
+     - `DotsIndicator.kt`: анимированный 5-точечный индикатор шагов с плавной сменой размеров (8dp -> 10dp) и акцентным цветом `#00D09E`.
+     - `WizardNavButton.kt`: минималистичная круглая кнопка (56dp) с рипплом, поддержкой направлений `BACK` («←»), `FORWARD` («→») и `FINISH` («✓»).
+     - `OnboardingData.kt`: модель данных сессии регистрации (`firstName`, `lastName`, `heightCm`, `weightKg`, `age`, `gender`, `activityLevel`, `weeklyBudget`, `goalType`).
+     - `OnboardingNameStep.kt` (Шаг 1): «Давай знакомиться! Как тебя зовут?» (Имя, Фамилия).
+     - `OnboardingBodyStep.kt` (Шаг 2): «{Имя}, расскажи о себе» (Рост см, Вес кг, Возраст, Пол М/Ж в виде анимированных плашек `GenderPill`).
+     - `OnboardingActivityStep.kt` (Шаг 3): «{Имя}, какой у тебя уровень активности?» (слайдер с 4 уровнями, бейджем статуса и кнопками «Меньше» / «Больше»).
+     - `OnboardingBudgetStep.kt` (Шаг 4): «{Имя}, расскажи о себе — Ваш бюджет» (поле ввода + карточка рекомендации 2000-2500 руб/нед).
+     - `OnboardingGoalStep.kt` (Шаг 5): «Какова ваша цель?» (интерактивные карточки: Набор массы, Похудение, Поддержание веса с изумрудной рамкой активного элемента).
+     - `RegistrationWizardScreen.kt`: хост-экран на базе `HorizontalPager(userScrollEnabled = false)` с плавной анимацией перехода `animateScrollToPage()`, валидацией перед переходом между шагами и нижней панелью.
+     - `RegistrationWizardRoute.kt`: интеграция в граф навигации `AppDestination.Registration` (`AppNavHost.kt`).
+  3. **Локализация:**
+     - Добавлено 28 новых ключей в `res/values/strings.xml` и `res/values-ru/strings.xml`.
+  4. **Тестирование:**
+     - `RegistrationWizardScreenTest.kt`: 3 теста (проверка первого шага и ошибки валидации, переход на шаг 1 при валидном имени, сквозное прохождение всех 5 шагов до финиша с получением `OnboardingData`).
+- **Верификация сборки и тестов:**
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN.
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+
 
 
 

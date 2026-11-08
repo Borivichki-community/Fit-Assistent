@@ -10,6 +10,16 @@ sealed interface ProfileEvent {
         data class LoadProfile(val userId: UserId) : Ui
         data object Retry : Ui
         data object EditClicked : Ui
+        data class SaveProfile(
+            val name: String,
+            val age: String,
+            val targetWeight: String,
+            val dailyCalories: String,
+        ) : Ui
+        data class NameChanged(val name: String) : Ui
+        data class AgeChanged(val age: String) : Ui
+        data class TargetWeightChanged(val targetWeight: String) : Ui
+        data class DailyCaloriesChanged(val dailyCalories: String) : Ui
     }
 
     /** Внутренние события, приходящие из CommandsFlowHandler. */

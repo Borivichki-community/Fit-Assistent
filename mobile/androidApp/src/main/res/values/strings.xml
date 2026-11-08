@@ -33,8 +33,6 @@
     <string name="empty_plan_subtitle">You can generate a meal plan with AI or create one yourself</string>
     <string name="btn_ai_generate">✦ Generate with AI</string>
     <string name="btn_create_plan">Create Plan</string>
-    <string name="btn_add_meal_test">Add meal (small button)</string>
-    <string name="meals_added_count">Added meals: %1$d</string>
 
     <!-- Profile Screen -->
     <string name="profile_title">Profile</string>
@@ -55,4 +53,86 @@
     <string name="profile_menu_settings">Settings</string>
     <string name="profile_menu_notifications">Notifications</string>
     <string name="profile_menu_help">Help</string>
+
+    <!-- Profile Form & Validation -->
+    <string name="profile_save_button">Save</string>
+    <string name="profile_form_title">Edit Profile</string>
+    <string name="profile_name_label">Name</string>
+    <string name="profile_name_placeholder">Enter name</string>
+    <string name="profile_age_label">Age</string>
+    <string name="profile_age_placeholder">Enter age</string>
+    <string name="profile_target_weight_label">Target Weight (kg)</string>
+    <string name="profile_target_weight_placeholder">Enter target weight</string>
+    <string name="profile_daily_calories_label">Daily Calories (kcal)</string>
+    <string name="profile_daily_calories_placeholder">Enter daily calories</string>
+
+    <string name="validation_error_empty">This field cannot be empty</string>
+    <string name="validation_error_name_empty">Name cannot be empty</string>
+    <string name="validation_error_not_a_number">Value must be a valid number</string>
+    <string name="validation_error_negative_or_zero">Value must be greater than zero</string>
+    <string name="validation_error_out_of_range">Value is out of allowed range</string>
+    <string name="validation_error_too_short">Value is too short</string>
+
+    <!-- Onboarding Registration Wizard -->
+    <string name="onboarding_title_welcome">Let\'s get acquainted!</string>
+    <string name="onboarding_subtitle_name">What is your name?</string>
+    <string name="onboarding_first_name_hint">First name</string>
+    <string name="onboarding_last_name_hint">Last name</string>
+    <string name="onboarding_title_about_format">%1$s, tell us about yourself</string>
+    <string name="onboarding_label_height">Your height</string>
+    <string name="onboarding_hint_height">Height (cm)</string>
+    <string name="onboarding_label_weight">Your weight</string>
+    <string name="onboarding_hint_weight">Weight (kg)</string>
+    <string name="onboarding_label_age">Your age</string>
+    <string name="onboarding_hint_age">Age (years)</string>
+    <string name="onboarding_gender_male">Male</string>
+    <string name="onboarding_gender_female">Female</string>
+    <string name="onboarding_title_activity_format">%1$s, what is your activity level?</string>
+    <string name="onboarding_subtitle_activity">Choose the option that best describes your day.</string>
+    <string name="onboarding_activity_sedentary">Sedentary</string>
+    <string name="onboarding_activity_light">Light activity</string>
+    <string name="onboarding_activity_moderate">Moderate</string>
+    <string name="onboarding_activity_very_active">High activity</string>
+    <string name="onboarding_btn_less">Less</string>
+    <string name="onboarding_btn_more">More</string>
+    <string name="onboarding_label_budget">Your budget</string>
+    <string name="onboarding_budget_hint">5000</string>
+    <string name="onboarding_recommendation_title">Recommendation</string>
+    <string name="onboarding_recommendation_text">Minimum budget for balanced nutrition: 2000 - 2500 ₽/week</string>
+    <string name="onboarding_title_goal">What is your goal?</string>
+    <string name="onboarding_goal_gain">Muscle gain</string>
+    <string name="onboarding_goal_lose">Weight loss</string>
+    <string name="onboarding_goal_maintain">Weight maintenance</string>
+    <string name="onboarding_nav_back">Back</string>
+    <string name="onboarding_nav_next">Next</string>
+    <string name="onboarding_nav_finish">Finish</string>
+
+    <!-- Authentication -->
+    <string name="auth_title">Authorization</string>
+    <string name="auth_email_hint">example@mail.com</string>
+    <string name="auth_password_hint">•••••••••••••</string>
+    <string name="auth_forgot_password">Forgot password</string>
+    <string name="auth_login_button">Sign In</string>
+    <string name="auth_no_account">No account?</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_via_telegram">Via Telegram</string>
+    <string name="auth_via_google">Via Google</string>
+
+    <!-- Registration -->
+    <string name="signup_title">Registration</string>
+    <string name="signup_register_button">Register</string>
+    <string name="signup_back_button">Back</string>
+    <string name="signup_via_google">Register with Google</string>
+    <string name="signup_code_title">Confirm Email</string>
+    <string name="signup_code_subtitle">Enter the verification code sent to %1$s</string>
+    <string name="signup_code_hint">Code from email</string>
+    <string name="signup_confirm_code">Confirm Code</string>
+    <string name="signup_resend_code">Resend code</string>
+    <string name="validation_error_invalid_email">Please enter a valid email</string>
+    <string name="validation_error_password_too_short">Password must be at least 6 characters</string>
+    <string name="validation_error_code_invalid">Code must be 4–6 digits</string>
+
+    <!-- Splash Screen -->
+    <string name="splash_logo_title">fit-assistent</string>
+    <string name="splash_greeting">Здравствуйте!</string>
 </resources>

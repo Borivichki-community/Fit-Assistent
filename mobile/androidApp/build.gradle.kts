@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.compose.ui)
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.koin.android)
@@ -35,6 +36,10 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.compose.test.junit4)
     debugImplementation(libs.compose.test.manifest)
+
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.compose.test.junit4)
 }
 
 android {
@@ -47,6 +52,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = "com.budgetntr.fitassistant"
     }
     packaging {

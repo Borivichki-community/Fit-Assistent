@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 AppNavHost(
                     navController = navController,
-                    startDestination = AppDestination.Dashboard.route,
+                    startDestination = AppDestination.Auth.route,
                 )
             }
         }

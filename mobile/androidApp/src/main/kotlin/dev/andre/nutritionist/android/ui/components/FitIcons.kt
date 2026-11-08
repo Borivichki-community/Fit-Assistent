@@ -288,4 +288,115 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка почты (конверт) */
+    val Mail: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitMail",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(4f, 4f)
+                lineTo(20f, 4f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 22f, 6f)
+                lineTo(22f, 18f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 20f, 20f)
+                lineTo(4f, 20f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 2f, 18f)
+                lineTo(2f, 6f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 4f, 4f)
+                close()
+                moveTo(2.5f, 6.5f)
+                lineTo(12f, 13f)
+                lineTo(21.5f, 6.5f)
+            }
+        }.build()
+    }
+
+    /** Иконка ключа (пароль) */
+    val Key: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitKey",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.8f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(7.5f, 8f)
+                arcTo(4.5f, 4.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 7.5f, 17f)
+                arcTo(4.5f, 4.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 7.5f, 8f)
+                close()
+                moveTo(12f, 12.5f)
+                lineTo(21f, 12.5f)
+                moveTo(17f, 12.5f)
+                lineTo(17f, 15.5f)
+                moveTo(20f, 12.5f)
+                lineTo(20f, 15.5f)
+            }
+        }.build()
+    }
+
+    /** Иконка Telegram */
+    val Telegram: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitTelegram",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color(0xFF2AABEE))) {
+                moveTo(12f, 2f)
+                arcTo(10f, 10f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 22f)
+                arcTo(10f, 10f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 2f)
+                close()
+            }
+            path(fill = SolidColor(Color.White)) {
+                moveTo(6.5f, 11.5f)
+                lineTo(17f, 7f)
+                lineTo(14.5f, 17.5f)
+                lineTo(10.5f, 13.5f)
+                lineTo(6.5f, 11.5f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка Google */
+    val Google: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitGoogle",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color(0xFFEA4335)),
+                strokeLineWidth = 2.4f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(20f, 12f)
+                lineTo(12f, 12f)
+                moveTo(19f, 8f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = false, isPositiveArc = false, 5f, 12f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = false, isPositiveArc = false, 18.5f, 15.5f)
+            }
+        }.build()
+    }
 }

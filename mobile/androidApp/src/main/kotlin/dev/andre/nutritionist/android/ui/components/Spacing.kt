@@ -16,4 +16,5 @@ object Spacing {
     val cardRadius: Dp = 24.dp
     val innerCardRadius: Dp = 20.dp
     val buttonRadius: Dp = 32.dp
+    val buttonHeight: Dp = 56.dp
 }
