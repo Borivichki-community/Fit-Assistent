@@ -3,11 +3,14 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-07T18:15
+Обновлено: 2026-11-08T05:00
 
 ---
 
-## Статус проекта: T-036 (SSOT ProfileRepositoryImpl) завершена, тесты починены (53/53 GREEN), лицензия Apache 2.0 для KoTEA оформлена
+## Статус проекта: [T-013 / KAN-13] Завершён Спайк по интеграции Resilience4j (ADR-002 оформлен и принят)
+
+Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13)
+Роли: `implementer` + `test-reviewer`
 
 ---
 
@@ -341,6 +344,7 @@
   2. `scripts/verify-buf-breaking.sh`: переносимый скрипт верификации с динамическим определением базовой ветки (`main`/`master`), симуляцией намеренной поломки контракта (удаление `id = 1` из `profile.proto`), проверкой ненулевого exit code `buf breaking` и чистым прогоном актуальных контрактов.
   3. `.github/workflows/build.yml`: шаг `proto-verify` обновлен для обязательного запуска проверки совместимости против `main`/`master` с гарантией падения пайплайна при breaking change.
 
+## Checkpoint 2026-11-08 — [T-012 / KAN-31] Avro-схемы, BACKWARD-совместимость и CI-проверка Schema Registry
 - Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`.
 - Роли: `implementer` + `test-reviewer`.
 - Ветка: `feature/KAN-31` (`feature/KAN-12-avro-events-compatibility`).
@@ -367,6 +371,23 @@
   - `./gradlew :shared:contracts:generateAvroJava :shared:contracts:testSchemaCompatibility` — BUILD SUCCESSFUL.
   - `./gradlew :shared:contracts:test` — 6/6 tests GREEN, BUILD SUCCESSFUL.
   - `./gradlew :shared:contracts:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+
+## Checkpoint 2026-11-08 — [T-013 / KAN-13] Спайк интеграции Resilience4j в Spring Boot 4.1 + Kotlin Coroutines (ADR-002)
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `spike/KAN-13-resilience4j-spring-boot4`.
+- **Проведено исследование (Spike) и сравнительный анализ трёх подходов:**
+  1. Стартер `resilience4j-spring-boot3/4` (AOP аннотации `@CircuitBreaker`, `@Retry`);
+  2. Чистое ядро + `resilience4j-kotlin` (функциональные неблокирующие расширения для корутин);
+  3. Абстракция Spring Cloud CircuitBreaker (`ReactiveCircuitBreakerFactory` + Reactor bridge).
+- **Результаты:**
+  - Оформлен и принят архитектурный документ [`docs/architecture/adr/adr-002-resilience4j-integration.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-002-resilience4j-integration.md).
+  - Подготовлены демонстрационные прототипы для каждого из 3 подходов в `docs/architecture/adr/prototypes/`:
+    - [`Approach1_Starter.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach1_Starter.kt)
+    - [`Approach2_CoreKotlin.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach2_CoreKotlin.kt)
+    - [`Approach3_SpringCloud.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach3_SpringCloud.kt)
+  - Выбран **Вариант 2 (Чистое ядро + `resilience4j-kotlin`)**: нулевой риск блокировки пулов потоков (`Thread Starvation`), гарантированная защита от ложного срабатывания при отмене корутин (`CancellationException`), строгая изоляция Clean Architecture (домен не знает о resilience4j), минимальный оверхед в рантайме.
+  - Проведён аудит безопасности `test-reviewer` с проверкой отсутствия `runBlocking` и верификацией структурированной конкурентности.
 
 
 
