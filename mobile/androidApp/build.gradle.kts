@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.compose.ui)
 
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.koin.android)

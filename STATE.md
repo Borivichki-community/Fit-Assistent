@@ -109,6 +109,12 @@
     - Подтверждение кода / Google регистрация -> переход к 5-шаговому мастеру онбординга (`RegistrationWizardScreen`, 2–6.png: имя/фамилия, параметры тела, активность, бюджет, цель);
     - Завершение онбординга -> переход на `Dashboard` с очисткой back stack.
   - Написаны изолированные Robolectric Compose UI тесты: `LoginScreenTest.kt` и `SignUpScreenTest.kt`.
+  - Реализован легковесный и высокопроизводительный сплэш-экран [`SplashActivity.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/SplashActivity.kt) и разметка [`activity_splash.xml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/res/layout/activity_splash.xml) без сторонних библиотек:
+    - Чёрный фон (`#000000`), сверху неоновый логотип `fit-assistent`, в центре 3D-яблоко 200dp ([`splash_logo.png`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/res/drawable/splash_logo.png)), снизу текст «Здравствуйте!»;
+    - Анимация 1.5 секунды: верхний и нижний текст за 1200мс проявляются и плавно встают на места с `DecelerateInterpolator`, центральное яблоко за 1500мс уменьшается с 1.1f до 0.85f (эффект антигравитационного ухода вглубь);
+    - По завершении 1500мс — переход на `MainActivity` с плавной сменой экранов `overridePendingTransition(fade_in, fade_out)` и `finish()`;
+    - Написан Robolectric unit-тест [`SplashActivityTest.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/test/kotlin/dev/andre/nutritionist/android/SplashActivityTest.kt);
+    - Проверена и подтверждена корректность применения иконки приложения: `ic_launcher_background.xml` подключен в adaptive icon `mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml`.
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` — ВСЕ ПРОЙДЕНЫ УСПЕШНО (GREEN, BUILD SUCCESSFUL).
 
 

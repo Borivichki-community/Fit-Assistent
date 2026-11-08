@@ -131,4 +131,8 @@
     <string name="validation_error_invalid_email">Please enter a valid email</string>
     <string name="validation_error_password_too_short">Password must be at least 6 characters</string>
     <string name="validation_error_code_invalid">Code must be 4–6 digits</string>
+
+    <!-- Splash Screen -->
+    <string name="splash_logo_title">fit-assistent</string>
+    <string name="splash_greeting">Здравствуйте!</string>
 </resources>
