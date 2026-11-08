@@ -1,0 +1,103 @@
+name: Avro Schema Compatibility Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - "shared/contracts/**"
+      - ".github/workflows/avro-compatibility-check.yml"
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - "shared/contracts/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  avro-compatibility-check:
+    name: Verify Avro Schemas & BACKWARD Compatibility
+    runs-on: ubuntu-latest
+
+    services:
+      zookeeper:
+        image: confluentinc/cp-zookeeper:7.7.0
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+          ZOOKEEPER_TICK_TIME: 2000
+        ports:
+          - 2181:2181
+
+      kafka:
+        image: confluentinc/cp-kafka:7.7.0
+        env:
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        ports:
+          - 9092:9092
+        options: >-
+          --health-cmd "nc -z localhost 9092 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      schema-registry:
+        image: confluentinc/cp-schema-registry:8.2.4
+        env:
+          SCHEMA_REGISTRY_HOST_NAME: schema-registry
+          SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+          SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+          SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: BACKWARD
+        ports:
+          - 8081:8081
+        options: >-
+          --health-cmd "curl -fsS http://localhost:8081/subjects || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Wait for Schema Registry Readiness
+        run: |
+          echo "Waiting for Confluent Schema Registry..."
+          timeout 60s bash -c 'until curl -s http://localhost:8081/subjects; do sleep 2; done'
+          echo "Schema Registry is ready!"
+
+      - name: Set Global Schema Compatibility to BACKWARD
+        run: |
+          curl -X PUT \
+            -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+            --data '{"compatibility": "BACKWARD"}' \
+            http://localhost:8081/config
+          echo "Schema Registry global compatibility configured to BACKWARD."
+
+      - name: Run Avro Code Generation and Schema Compatibility Check
+        env:
+          SCHEMA_REGISTRY_URL: http://localhost:8081
+          REQUIRE_SCHEMA_REGISTRY: "true"
+        run: ./gradlew :shared:contracts:generateAvroJava :shared:contracts:testSchemaCompatibility --stacktrace
+
+      - name: Run Contracts Unit & Mapping Tests
+        run: ./gradlew :shared:contracts:test --stacktrace

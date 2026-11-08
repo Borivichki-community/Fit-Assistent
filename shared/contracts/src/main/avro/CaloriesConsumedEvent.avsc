@@ -1,0 +1,55 @@
+{
+  "type": "record",
+  "name": "CaloriesConsumedEvent",
+  "namespace": "dev.andre.nutritionist.contracts.avro",
+  "doc": "Event published when a user logs calorie intake for a meal.",
+  "fields": [
+    {
+      "name": "userId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "Unique identifier of the user (UUID)."
+    },
+    {
+      "name": "mealId",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "Unique identifier of the consumed meal (UUID)."
+    },
+    {
+      "name": "calories",
+      "type": "int",
+      "doc": "Amount of calories consumed in kcal."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Epoch timestamp in milliseconds when meal was consumed."
+    },
+    {
+      "name": "mealType",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Optional meal category (BREAKFAST, LUNCH, DINNER, SNACK) with default for BACKWARD compatibility."
+    },
+    {
+      "name": "notes",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Optional user notes with default null for BACKWARD compatibility."
+    }
+  ]
+}

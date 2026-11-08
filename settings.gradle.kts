@@ -38,6 +38,7 @@ if (!backendOnly) {
     include(":mobile:shared")
 }
 
+include(":shared:contracts")
 
 include(":backend:profile-service")
 include(":backend:catalog-price-service")

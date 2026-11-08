@@ -1,0 +1,38 @@
+{
+  "type": "record",
+  "name": "UserRegisteredEvent",
+  "namespace": "dev.andre.nutritionist.contracts.avro",
+  "doc": "Event published when a new user registers in the system.",
+  "fields": [
+    {
+      "name": "id",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      },
+      "doc": "Unique identifier of the registered user (UUID)."
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "doc": "User registration email address."
+    },
+    {
+      "name": "registrationTimestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Epoch timestamp in milliseconds when user registration completed."
+    },
+    {
+      "name": "source",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null,
+      "doc": "Optional registration channel/source for BACKWARD schema evolution."
+    }
+  ]
+}
