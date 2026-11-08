@@ -5,7 +5,7 @@ services:
     image: postgres:17-alpine@sha256:eee6c6e1b0894fa4fe0075eb054af9fd1cf39a35321c2d4110626cfe506411fb
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
@@ -96,10 +96,10 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
       KC_DB_USERNAME: ${DB_USERNAME:-postgres}
-      KC_DB_PASSWORD: ${DB_PASSWORD:?}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres}
       KC_HOSTNAME: http://localhost:${KEYCLOAK_HOST_PORT:-8080}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
     volumes:

@@ -333,6 +333,42 @@
   - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN.
   - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
 
+## Checkpoint 2026-11-08 — [T-010] Protobuf / Buf breaking против main в CI с защитой от намеренной поломки
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. `proto/buf.yaml`: расширены правила breaking change с базового `FILE` до `FILE` + `WIRE_JSON` (контроль удаления полей, номеров тегов, типов и RPC).
+  2. `scripts/verify-buf-breaking.sh`: переносимый скрипт верификации с динамическим определением базовой ветки (`main`/`master`), симуляцией намеренной поломки контракта (удаление `id = 1` из `profile.proto`), проверкой ненулевого exit code `buf breaking` и чистым прогоном актуальных контрактов.
+  3. `.github/workflows/build.yml`: шаг `proto-verify` обновлен для обязательного запуска проверки совместимости против `main`/`master` с гарантией падения пайплайна при breaking change.
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-31` (`feature/KAN-12-avro-events-compatibility`).
+- **Реализация:**
+  1. **Avro-схемы (.avsc):**
+     - `UserRegisteredEvent.avsc` (`shared/contracts/src/main/avro/UserRegisteredEvent.avsc`): namespace `dev.andre.nutritionist.contracts.avro`, логические типы `uuid` для `id`, `timestamp-millis` для `registrationTimestamp`, опциональное поле `source` с `"default": null` для безопасной эволюции.
+     - `CaloriesConsumedEvent.avsc` (`shared/contracts/src/main/avro/CaloriesConsumedEvent.avsc`): namespace `dev.andre.nutritionist.contracts.avro`, логические типы `uuid` для `userId` и `mealId`, `timestamp-millis` для `timestamp`, калории `int`, опциональные поля `mealType` и `notes` с обязательным `"default": null` для гарантии BACKWARD-совместимости.
+  2. **Gradle модуль общих контрактов `:shared:contracts`:**
+     - Подключен в `settings.gradle.kts` (`:shared:contracts`).
+     - `build.gradle.kts`: плагин Avro (`com.github.davidmc24.gradle.plugin.avro:1.9.1` в `libs.versions.toml`), таска кодогенерации `generateAvroJava`, зависимость `schema-registry-client` (`io.confluent:kafka-schema-registry-client:8.2.4`), таска `testSchemaCompatibility` (совместима с Gradle 9.6 Configuration Cache, проверяет локальный синтаксис/наличие default-значений для union-типов и сетевую совместимость с Schema Registry в режиме BACKWARD по адресу из `SCHEMA_REGISTRY_URL`).
+  3. **Domain-модели и изолирующий слой маппинга:**
+     - Domain сущности: `UserId`, `MealId` (Typed IDs на базе `@JvmInline value class`), `User`, `Meal` с использованием `kotlinx.datetime.Instant` и строгой изоляцией от Avro DTO (§2.2).
+     - Мапперы `UserRegisteredEventMapper` и `CaloriesConsumedEventMapper`: полное отсутствие оператора `!!`, безопасная валидация `requireNotNull`, маппинг в обе стороны.
+  4. **CI-конвейер GitHub Actions (`.github/workflows/avro-compatibility-check.yml`):**
+     - Запуск при PR в `main`/`master`/`develop` при изменениях в контрактах.
+     - Поднятие сервисов Kafka и Schema Registry (режим `BACKWARD`), установка глобального уровня совместимости в реестре.
+     - Выполнение `./gradlew :shared:contracts:generateAvroJava :shared:contracts:testSchemaCompatibility` и `./gradlew :shared:contracts:test`.
+  5. **Тестирование (без MockK, чистые Fakes/Unit-тесты в `EventMappingTest.kt`):**
+     - Проверка прямого и обратного маппинга с сохранением типизированных ID.
+     - Проверка обработки отсутствующих опциональных полей и подстановки дефолтов из схемы.
+     - Проверка бинарной сериализации/десериализации Avro payload.
+     - Проверка совместимости через `MockSchemaRegistryClient` (подтверждение совместимости V1 $\leftrightarrow$ V2 с default и отказ при breaking changes без default).
+- **Верификация сборки и тестов:**
+  - `./gradlew :shared:contracts:generateAvroJava :shared:contracts:testSchemaCompatibility` — BUILD SUCCESSFUL.
+  - `./gradlew :shared:contracts:test` — 6/6 tests GREEN, BUILD SUCCESSFUL.
+  - `./gradlew :shared:contracts:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+
+
 
 
 

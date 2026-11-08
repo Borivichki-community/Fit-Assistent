@@ -15,6 +15,7 @@ plugins {
     alias(libs.plugins.kotlinJpa) apply false
 
     alias(libs.plugins.protobuf) apply false
+    alias(libs.plugins.avro) apply false
 
     alias(libs.plugins.ktlint) apply false
 
