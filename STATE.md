@@ -333,7 +333,14 @@
   - `./gradlew :mobile:androidApp:testDebugUnitTest` — 28/28 GREEN.
   - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
 
-## Checkpoint 2026-11-08 — [T-012 / KAN-31 (KAN-12)] Avro: Схемы UserRegisteredEvent & CaloriesConsumedEvent, кодогенерация, BACKWARD-совместимость и CI-пайплайн
+## Checkpoint 2026-11-08 — [T-010] Protobuf / Buf breaking против main в CI с защитой от намеренной поломки
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. `proto/buf.yaml`: расширены правила breaking change с базового `FILE` до `FILE` + `WIRE_JSON` (контроль удаления полей, номеров тегов, типов и RPC).
+  2. `scripts/verify-buf-breaking.sh`: переносимый скрипт верификации с динамическим определением базовой ветки (`main`/`master`), симуляцией намеренной поломки контракта (удаление `id = 1` из `profile.proto`), проверкой ненулевого exit code `buf breaking` и чистым прогоном актуальных контрактов.
+  3. `.github/workflows/build.yml`: шаг `proto-verify` обновлен для обязательного запуска проверки совместимости против `main`/`master` с гарантией падения пайплайна при breaking change.
+
 - Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`.
 - Роли: `implementer` + `test-reviewer`.
 - Ветка: `feature/KAN-31` (`feature/KAN-12-avro-events-compatibility`).
