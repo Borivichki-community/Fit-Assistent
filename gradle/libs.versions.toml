@@ -33,7 +33,7 @@ grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
 
-grpc-java = "1.84.1"
+grpc-java = "1.69.0"
 protobuf = "4.36.2"
 protobuf-plugin = "0.10.0"
 
@@ -112,8 +112,8 @@ schema-registry-client = { module = "io.confluent:kafka-schema-registry-client",
 
 
 spring-starter-grpc = { module = "org.springframework.boot:spring-boot-starter-grpc-server" }
-grpc-protobuf = { module = "io.grpc:grpc-protobuf" }
-protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin" }
+grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
+protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
 
 codegen-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
 codegen-grpc-java = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-java" }
