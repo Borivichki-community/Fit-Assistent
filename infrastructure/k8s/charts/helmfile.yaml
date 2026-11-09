@@ -1,0 +1,15 @@
+# infrastructure/k8s/charts/helmfile.yaml
+# Helmfile для декларативного управления установкой Envoy Gateway и сопутствующих CRD
+repositories:
+  - name: envoy-gateway
+    url: https://helm.envoyproxy.io
+
+releases:
+  - name: envoy-gateway
+    namespace: envoy-gateway-system
+    createNamespace: true
+    chart: envoy-gateway/gateway-helm
+    version: "v1.2.4"
+    values:
+      - deployment:
+          replicas: 1

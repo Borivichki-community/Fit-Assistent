@@ -1,0 +1,23 @@
+# infrastructure/k8s/gateway/06-backend-traffic-policy.yaml
+# BackendTrafficPolicy для Global Rate Limiting через Envoy Gateway
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: rate-limit-policy
+  namespace: test-gateway
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: GRPCRoute
+    name: echo-grpc-route
+  rateLimit:
+    type: Global
+    global:
+      rules:
+        - clientSelectors:
+            - headers:
+                - name: x-user-id
+                  type: Distinct
+          limit:
+            requests: 100
+            unit: Minute

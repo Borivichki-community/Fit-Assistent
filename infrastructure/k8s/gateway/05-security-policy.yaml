@@ -1,0 +1,25 @@
+# infrastructure/k8s/gateway/05-security-policy.yaml
+# SecurityPolicy для валидации JWT OAuth 2.1 токенов Keycloak на Envoy Gateway
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: jwt-auth-policy
+  namespace: test-gateway
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: GRPCRoute
+    name: echo-grpc-route
+  jwt:
+    providers:
+      - name: keycloak
+        issuer: "http://keycloak:8080/realms/budget-nutritionist"
+        audiences:
+          - "budget-nutritionist-api"
+        remoteJWKS:
+          uri: "http://keycloak:8080/realms/budget-nutritionist/protocol/openid-connect/certs"
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+          - claim: email
+            header: x-user-email

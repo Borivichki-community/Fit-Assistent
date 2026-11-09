@@ -3,11 +3,14 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-07T18:15
+Обновлено: 2026-11-08T05:00
 
 ---
 
-## Статус проекта: T-036 (SSOT ProfileRepositoryImpl) завершена, тесты починены (53/53 GREEN), лицензия Apache 2.0 для KoTEA оформлена
+## Статус проекта: [T-013 / T-014 / T-015] Завершены Спайки: Resilience4j (ADR-002), gRPC KMP Client (ADR-003) и Envoy Gateway (ADR-004)
+
+Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13, T-014, T-015)
+Роли: `implementer` + `test-reviewer`
 
 ---
 
@@ -341,6 +344,7 @@
   2. `scripts/verify-buf-breaking.sh`: переносимый скрипт верификации с динамическим определением базовой ветки (`main`/`master`), симуляцией намеренной поломки контракта (удаление `id = 1` из `profile.proto`), проверкой ненулевого exit code `buf breaking` и чистым прогоном актуальных контрактов.
   3. `.github/workflows/build.yml`: шаг `proto-verify` обновлен для обязательного запуска проверки совместимости против `main`/`master` с гарантией падения пайплайна при breaking change.
 
+## Checkpoint 2026-11-08 — [T-012 / KAN-31] Avro-схемы, BACKWARD-совместимость и CI-проверка Schema Registry
 - Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`.
 - Роли: `implementer` + `test-reviewer`.
 - Ветка: `feature/KAN-31` (`feature/KAN-12-avro-events-compatibility`).
@@ -367,6 +371,51 @@
   - `./gradlew :shared:contracts:generateAvroJava :shared:contracts:testSchemaCompatibility` — BUILD SUCCESSFUL.
   - `./gradlew :shared:contracts:test` — 6/6 tests GREEN, BUILD SUCCESSFUL.
   - `./gradlew :shared:contracts:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+
+## Checkpoint 2026-11-08 — [T-013 / KAN-13] Спайк интеграции Resilience4j в Spring Boot 4.1 + Kotlin Coroutines (ADR-002)
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `spike/KAN-13-resilience4j-spring-boot4`.
+- **Проведено исследование (Spike) и сравнительный анализ трёх подходов:**
+  1. Стартер `resilience4j-spring-boot3/4` (AOP аннотации `@CircuitBreaker`, `@Retry`);
+  2. Чистое ядро + `resilience4j-kotlin` (функциональные неблокирующие расширения для корутин);
+  3. Абстракция Spring Cloud CircuitBreaker (`ReactiveCircuitBreakerFactory` + Reactor bridge).
+- **Результаты:**
+  - Оформлен и принят архитектурный документ [`docs/architecture/adr/adr-002-resilience4j-integration.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-002-resilience4j-integration.md).
+  - Подготовлены демонстрационные прототипы для каждого из 3 подходов в `docs/architecture/adr/prototypes/`:
+    - [`Approach1_Starter.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach1_Starter.kt)
+    - [`Approach2_CoreKotlin.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach2_CoreKotlin.kt)
+    - [`Approach3_SpringCloud.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/prototypes/Approach3_SpringCloud.kt)
+  - Выбран **Вариант 2 (Чистое ядро + `resilience4j-kotlin`)**: нулевой риск блокировки пулов потоков (`Thread Starvation`), гарантированная защита от ложного срабатывания при отмене корутин (`CancellationException`), строгая изоляция Clean Architecture (домен не знает о resilience4j), минимальный оверхед в рантайме.
+## Checkpoint 2026-11-08 — [T-014] gRPC-клиент для KMP: Unary + Server-Streaming на Android (grpc-kotlin) за интерфейсом RemoteDataSource, стратегия iOS (ADR-003)
+- Активные Skills: `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Проведён аудит реализации и сформирован архитектурный документ:**
+  - Оформлен и зафиксирован [`docs/architecture/adr/adr-003-grpc-kmp-client.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-003-grpc-kmp-client.md).
+  - **Архитектурный выбор:** Clean Architecture изоляция сетевого слоя интерфейсом `*RemoteDataSource` в `commonMain` без прямых зависимостей от `io.grpc.*` и `protobuf`.
+  - **Unary RPC:** `suspend fun invoke(): Result<DomainModel>`, реализация в `ProfileGrpcRemoteDataSource.kt` с защитой от подавления `CancellationException` и маппингом через `ProfileDtoMapper.kt` (без `!!`).
+  - **Server-Streaming RPC:** `fun stream(): Flow<DomainModel>`, сквозной `Flow` из `grpc-kotlin` с `map` в domain-модели и автоматической отменой HTTP/2 `RST_STREAM` при отмене сбора flow.
+  - **Безопасная неблокирующая авторизация:** `AuthCallCredentials` наследует `io.grpc.CallCredentials`, обновляет токен в `dispatchers.io` через `refreshIfNeeded()` без `runBlocking` (опция А из T-040).
+  - **Стратегия готовности к iOS:** `commonMain` полностью платформонезависим; при подключении `iosArm64`/`iosSimulatorArm64` реализация `IosProfileRemoteDataSource` биндится через Koin с использованием `grpc-swift` и iOS Keychain.
+  - Верифицировано тестами в `commonTest` и `androidHostTest` без использования MockK (чистые Fakes).
+
+## Checkpoint 2026-11-08 — [T-015] Envoy Gateway в kind/k3d: GatewayClass + GRPCRoute на echo-сервис, grpcurl через gateway (ADR-004)
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Проведён спайк и сформированы инфраструктурные манифесты:**
+  - Оформлен и принят архитектурный документ [`docs/architecture/adr/adr-004-envoy-gateway.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-004-envoy-gateway.md).
+  - Создана конфигурация кластера kind с пробросом портов (80, 443, 9090): [`infrastructure/k8s/kind-config.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/kind-config.yaml).
+  - Сформированы манифесты Kubernetes Gateway API v1:
+    - [`01-gateway-class.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/01-gateway-class.yaml) (Envoy Gateway controller);
+    - [`02-gateway.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/02-gateway.yaml) (порт 9090 gRPC, порт 80 HTTP);
+    - [`03-echo-service.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/03-echo-service.yaml) (gRPC echo-сервер `rancher/grpc-echo:v1.0.0` на порту 9090);
+    - [`04-grpc-route.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/04-grpc-route.yaml) (маршрутизация `echo.EchoServer` на `echo-grpc-service`);
+    - [`05-security-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/05-security-policy.yaml) (SecurityPolicy для валидации JWT токенов Keycloak);
+    - [`06-backend-traffic-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/06-backend-traffic-policy.yaml) (Rate Limiter);
+    - [`helmfile.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/charts/helmfile.yaml) (декларативное развёртывание Envoy Gateway v1.2.4).
+  - Написаны переносимые скрипты автоматического развертывания и тестирования спайка через `grpcurl`:
+    - Bash: [`scripts/verify-envoy-gateway.sh`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.sh);
+    - PowerShell: [`scripts/verify-envoy-gateway.ps1`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.ps1).
 
 
 
