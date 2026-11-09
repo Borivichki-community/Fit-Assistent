@@ -1,0 +1,9 @@
+# infrastructure/k8s/gateway/01-gateway-class.yaml
+# Определение класса шлюза Envoy Gateway в рамках Kubernetes Gateway API v1
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy-gateway
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  description: "Envoy Gateway Controller for FitAssistent2 API Gateway"

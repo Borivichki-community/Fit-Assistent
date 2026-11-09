@@ -1,0 +1,55 @@
+# infrastructure/k8s/gateway/03-echo-service.yaml
+# Тестовый gRPC echo-сервис для верификации маршрутизации через Envoy Gateway
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-grpc
+  namespace: test-gateway
+  labels:
+    app: echo-grpc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-grpc
+  template:
+    metadata:
+      labels:
+        app: echo-grpc
+    spec:
+      containers:
+        - name: echo
+          image: rancher/grpc-echo:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-grpc-service
+  namespace: test-gateway
+  labels:
+    app: echo-grpc
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+      appProtocol: grpc
+  selector:
+    app: echo-grpc

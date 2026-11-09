@@ -1,0 +1,28 @@
+# infrastructure/k8s/gateway/02-gateway.yaml
+# Определение основного шлюза Envoy Gateway с прослушиванием gRPC-порта 9090
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: envoy-gateway
+  listeners:
+    - name: grpc-insecure
+      protocol: HTTP
+      port: 9090
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: GRPCRoute
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute

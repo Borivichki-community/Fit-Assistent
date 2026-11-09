@@ -7,9 +7,9 @@
 
 ---
 
-## Статус проекта: [T-013 / T-014] Завершены Спайки по Resilience4j (ADR-002) и gRPC KMP Client (ADR-003)
+## Статус проекта: [T-013 / T-014 / T-015] Завершены Спайки: Resilience4j (ADR-002), gRPC KMP Client (ADR-003) и Envoy Gateway (ADR-004)
 
-Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13, T-014)
+Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13, T-014, T-015)
 Роли: `implementer` + `test-reviewer`
 
 ---
@@ -398,6 +398,24 @@
   - **Безопасная неблокирующая авторизация:** `AuthCallCredentials` наследует `io.grpc.CallCredentials`, обновляет токен в `dispatchers.io` через `refreshIfNeeded()` без `runBlocking` (опция А из T-040).
   - **Стратегия готовности к iOS:** `commonMain` полностью платформонезависим; при подключении `iosArm64`/`iosSimulatorArm64` реализация `IosProfileRemoteDataSource` биндится через Koin с использованием `grpc-swift` и iOS Keychain.
   - Верифицировано тестами в `commonTest` и `androidHostTest` без использования MockK (чистые Fakes).
+
+## Checkpoint 2026-11-08 — [T-015] Envoy Gateway в kind/k3d: GatewayClass + GRPCRoute на echo-сервис, grpcurl через gateway (ADR-004)
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Проведён спайк и сформированы инфраструктурные манифесты:**
+  - Оформлен и принят архитектурный документ [`docs/architecture/adr/adr-004-envoy-gateway.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/adr/adr-004-envoy-gateway.md).
+  - Создана конфигурация кластера kind с пробросом портов (80, 443, 9090): [`infrastructure/k8s/kind-config.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/kind-config.yaml).
+  - Сформированы манифесты Kubernetes Gateway API v1:
+    - [`01-gateway-class.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/01-gateway-class.yaml) (Envoy Gateway controller);
+    - [`02-gateway.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/02-gateway.yaml) (порт 9090 gRPC, порт 80 HTTP);
+    - [`03-echo-service.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/03-echo-service.yaml) (gRPC echo-сервер `rancher/grpc-echo:v1.0.0` на порту 9090);
+    - [`04-grpc-route.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/04-grpc-route.yaml) (маршрутизация `echo.EchoServer` на `echo-grpc-service`);
+    - [`05-security-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/05-security-policy.yaml) (SecurityPolicy для валидации JWT токенов Keycloak);
+    - [`06-backend-traffic-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/06-backend-traffic-policy.yaml) (Rate Limiter);
+    - [`helmfile.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/charts/helmfile.yaml) (декларативное развёртывание Envoy Gateway v1.2.4).
+  - Написаны переносимые скрипты автоматического развертывания и тестирования спайка через `grpcurl`:
+    - Bash: [`scripts/verify-envoy-gateway.sh`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.sh);
+    - PowerShell: [`scripts/verify-envoy-gateway.ps1`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.ps1).
 
 
 

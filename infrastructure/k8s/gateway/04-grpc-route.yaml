@@ -1,0 +1,18 @@
+# infrastructure/k8s/gateway/04-grpc-route.yaml
+# GRPCRoute маршрутизации вызовов echo.EchoServer на echo-grpc-service
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: echo-grpc-route
+  namespace: test-gateway
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: envoy-gateway-system
+  rules:
+    - matches:
+        - method:
+            service: echo.EchoServer
+      backendRefs:
+        - name: echo-grpc-service
+          port: 9090
