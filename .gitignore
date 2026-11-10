@@ -132,6 +132,7 @@ Pods/
 *.ipr
 out/
 screenshots/
+buf.exe
 
 # VS Code
 .vscode/

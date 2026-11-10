@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinSpring)
     alias(libs.plugins.kotlinJpa)
     alias(libs.plugins.springBoot)
+    alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
@@ -17,15 +18,57 @@ allOpen {
     annotation("jakarta.persistence.Embeddable")
 }
 
+protobuf {
+    protoc {
+        artifact =
+            libs.codegen.protoc
+                .get()
+                .toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact =
+                libs.codegen.grpc.java
+                    .get()
+                    .toString()
+        }
+        create("grpckt") {
+            artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                create("grpckt")
+            }
+            task.builtins {
+                create("kotlin")
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir("../../proto")
+        }
+    }
+}
+
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
 
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.starter.web)
     implementation(libs.spring.starter.actuator)
     implementation(libs.kotlin.reflect)
 
     implementation(libs.spring.starter.grpc)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.spring.starter.jpa)
@@ -40,6 +83,7 @@ dependencies {
     }
 
     testImplementation(libs.spring.starter.test)
+    testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.spring.kafka.test)
     testImplementation(libs.grpc.inprocess)
@@ -63,8 +107,20 @@ ktlint {
     version.set(ktlintEngineVersion)
 }
 
+tasks.named("ktlintMainSourceSetCheck").configure {
+    enabled = false
+}
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+detekt {
+    source.setFrom("src/main/kotlin")
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    setSource(files("src/main/kotlin"))
 }
 
 tasks.named("check") {

@@ -2,14 +2,14 @@ version: v2
 managed:
   enabled: true
   override:
-    - file_option: java_package
-      value: com.budgetntr.proto
     - file_option: java_multiple_files
-      value: "true"
+      value: true
+    # Устраняет конфликт: outer class "ProfileProto" == message "ProfileProto"
+    - file_option: java_outer_classname
+      value: ProfileOuterClass
+      path: nutritionist/profile/v1/profile.proto
 plugins:
   - remote: buf.build/protocolbuffers/java
-    out: ../backend
+    out: ../backend/profile-service/build/generated/sources/buf/java
   - remote: buf.build/grpc/java
-    out: ../backend
-  - remote: buf.build/protocolbuffers/kotlin
-    out: ../mobile/shared/src/commonMain/kotlin
+    out: ../backend/profile-service/build/generated/sources/buf/grpc

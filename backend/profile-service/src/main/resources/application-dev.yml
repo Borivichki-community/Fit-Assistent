@@ -1,0 +1,35 @@
+# Профиль: local разработка (--spring.profiles.active=dev)
+# Активирует: gRPC Reflection, детальное логирование, быстрый рестарт
+
+spring:
+  grpc:
+    server:
+      address: "127.0.0.1"          # локально — только loopback
+      reflection:
+        enabled: true               # grpcurl list / grpcurl describe — разрешено в dev
+      shutdown-timeout: 0s          # мгновенный стоп для быстрого hot-reload
+
+  jpa:
+    hibernate:
+      ddl-auto: update              # удобно при локальных правках схемы
+    show-sql: false                 # включить вручную при отладке SQL
+
+  lifecycle:
+    timeout-per-shutdown-phase: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,beans
+
+  endpoint:
+    health:
+      show-details: always          # полный вывод деталей в dev
+
+logging:
+  level:
+    root: INFO
+    dev.andre.nutritionist: DEBUG
+    org.springframework.grpc: DEBUG
+    io.grpc: INFO

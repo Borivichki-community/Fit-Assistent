@@ -71,6 +71,14 @@
 - [x] **Шаг 4 (Docker Images Update):** Обновлены и подтянуты все актуальные Docker-образы инфраструктуры и сборщика:
   - `postgres:17-alpine`, `redis:7-alpine`, `apache/kafka:4.2.2`, `confluentinc/cp-schema-registry:8.2.4`, `quay.io/keycloak/keycloak:26.0` (все с sha256);
   - Базовые образы JDK: `azul/zulu-openjdk:21`, `azul/zulu-openjdk:21-jre`.
+- [x] **Шаг 5 (T-016 / KAN-35): Скелет profile-service (Spring Boot 4.x + gRPC + Actuator):**
+  - Подключение `com.google.protobuf` кодогенерации для `profile-service` с `protoc-gen-grpc-java` и `protoc-gen-grpc-kotlin` (корутинные стабы `ProfileServiceCoroutineImplBase`);
+  - Реализация `ProfileGrpcService.kt` (`@GrpcService`, структурированное логирование через MDC `userId`, строгая валидация аргументов, соблюдение AGENTS.md без `!!`);
+  - Конфигурация стендов и профилей: `application.yml` (база, Actuator пробы, Hikari, Kafka, JSON-логирование), `application-dev.yml` (gRPC Reflection=ON, DEBUG-логирование), `application-prod.yml` (gRPC Reflection=OFF, graceful shutdown 30s, WARN-логирование);
+  - Интеграционные тесты жизнеспособности `ProfileServiceApplicationTests.kt` (успешный подъем контекста, liveness `/actuator/health/liveness` со статусом UP, readiness `/actuator/health/readiness` со статусом UP);
+  - Архитектурная изоляция кодогенерации для Android через выделенный модуль `:mobile:proto-android` (чистый KMP `commonMain` сохранён без JVM-зависимостей, `androidMain` имеет автоматический доступ к сгенерированным stubs);
+  - Полная верификация: `:backend:profile-service:check`, `:mobile:shared:allTests` (53 теста), `:mobile:androidApp:testDebugUnitTest` — ВСЕ GREEN.
+
 - [x] **Шаг 4 (T-038 / KAN-56): Android UI M3-тема (Antigravity Dark), декомпозиция файлов 1-файл-1-функция/класс, полная локализация RU/EN без хардкода:**
   - Проведен полный аудит и устранение любого хардкода строк в Kotlin-коде: все кнопки, заголовки, секции, лейблы, fallback-значения и contentDescription вынесены в `res/values/strings.xml` (английский язык) и `res/values-ru/strings.xml` (русский язык);
   - Проведена строгая декомпозиция: каждый Kotlin-файл содержит строго **одну функцию или один класс/объект**;

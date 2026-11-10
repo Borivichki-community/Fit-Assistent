@@ -52,7 +52,7 @@ kotlin {
             implementation(libs.compose.uiTooling)
             implementation(libs.grpc.okhttp)
             implementation(libs.grpc.stub)
-            implementation(libs.grpc.protobuf.lite)
+            implementation(libs.grpc.protobuf)
             implementation(libs.grpc.kotlin.stub)
         }
         commonMain.dependencies {
