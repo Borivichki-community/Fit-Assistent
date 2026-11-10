@@ -2,26 +2,38 @@ spring:
   application:
     name: profile-service
 
+  # ── gRPC Server ──────────────────────────────────────────────────────────────
   grpc:
     server:
-      address: 127.0.0.1
-      port: ${PROFILE_GRPC_PORT:9091}
+      address: "0.0.0.0"
+      port: ${PROFILE_GRPC_PORT:9090}
       health:
         enabled: true
+      # Таймаут graceful shutdown переопределяется в prod-профиле
+      shutdown-timeout: 0s
 
+  # ── Database ─────────────────────────────────────────────────────────────────
   datasource:
     url: ${PROFILE_DB_URL:jdbc:postgresql://localhost:5432/profile_db}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 3000
 
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: public
 
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
 
+  # ── Kafka ─────────────────────────────────────────────────────────────────────
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
@@ -35,3 +47,51 @@ spring:
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         "[specific.avro.reader]": true
+
+  # ── Lifecycle (базовый graceful shutdown) ────────────────────────────────────
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+
+# ── Actuator ──────────────────────────────────────────────────────────────────
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8080}   # HTTP-порт для Actuator отдельно от gRPC
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  endpoint:
+    health:
+      show-details: never           # переопределяется в dev
+      probes:
+        enabled: true               # /actuator/health/liveness + /actuator/health/readiness
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,grpcServer,db
+
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+  # ── OpenTelemetry / Micrometer ──────────────────────────────────────────────
+  tracing:
+    sampling:
+      probability: 1.0
+
+# ── Logging (JSON — базовый шаблон) ──────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    dev.andre.nutritionist: INFO
+  pattern:
+    console: >-
+      {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
+       "level":"%level","service":"${spring.application.name}",
+       "traceId":"%X{traceId}","spanId":"%X{spanId}",
+       "userId":"%X{userId}","message":"%msg"}%n

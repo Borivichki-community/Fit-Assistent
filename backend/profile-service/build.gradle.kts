@@ -61,6 +61,7 @@ dependencies {
     testImplementation(platform(libs.spring.boot.bom))
 
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.starter.web)
     implementation(libs.spring.starter.actuator)
     implementation(libs.kotlin.reflect)
 
@@ -82,6 +83,7 @@ dependencies {
     }
 
     testImplementation(libs.spring.starter.test)
+    testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.spring.kafka.test)
     testImplementation(libs.grpc.inprocess)

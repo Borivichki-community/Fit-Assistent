@@ -1,0 +1,43 @@
+# Профиль: production (--spring.profiles.active=prod)
+# Принцип минимизации привилегий: Reflection ВЫКЛЮЧЕН, детали здоровья скрыты
+
+spring:
+  grpc:
+    server:
+      address: "0.0.0.0"
+      reflection:
+        enabled: false              # ЗАПРЕЩЕНО в prod (AGENTS.md §4 — принцип минимизации)
+      shutdown-timeout: 30s         # ждём 30s завершения in-flight gRPC-вызовов
+
+  jpa:
+    hibernate:
+      ddl-auto: validate            # схема управляется только через Liquibase
+
+  lifecycle:
+    timeout-per-shutdown-phase: 35s # > shutdown-timeout, чтобы Spring дождался gRPC
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus   # /env и /beans закрыты
+
+  endpoint:
+    health:
+      show-details: never           # внутренние детали не раскрываются вовне
+
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4318/v1/traces}
+
+logging:
+  level:
+    root: WARN
+    dev.andre.nutritionist: INFO
+    org.springframework: WARN
+    io.grpc: WARN
