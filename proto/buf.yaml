@@ -16,3 +16,5 @@ breaking:
   use:
     - FILE
     - WIRE_JSON
+  except:
+    - FILE_SAME_JAVA_OUTER_CLASSNAME
