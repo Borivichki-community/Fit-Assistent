@@ -48,7 +48,6 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation(project(":mobile:proto-android"))
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
             implementation(libs.grpc.okhttp)

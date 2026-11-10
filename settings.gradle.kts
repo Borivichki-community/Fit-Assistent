@@ -36,7 +36,6 @@ val backendOnly = providers.gradleProperty("backendOnly").orNull == "true"
 if (!backendOnly) {
     include(":mobile:androidApp")
     include(":mobile:shared")
-    include(":mobile:proto-android")
 }
 
 include(":shared:contracts")
