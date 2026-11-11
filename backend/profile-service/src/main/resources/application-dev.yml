@@ -11,8 +11,15 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update              # удобно при локальных правках схемы
-    show-sql: false                 # включить вручную при отладке SQL
+      ddl-auto: "none"
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+  liquibase:
+    enabled: true
 
   lifecycle:
     timeout-per-shutdown-phase: 1s
@@ -33,3 +40,6 @@ logging:
     dev.andre.nutritionist: DEBUG
     org.springframework.grpc: DEBUG
     io.grpc: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    liquibase: INFO

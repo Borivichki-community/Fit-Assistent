@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-create-profiles-table" author="implementer">
+        <createTable tableName="profiles">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" primaryKeyName="pk_profiles" nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(64)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_profiles_user_id"/>
+            </column>
+            <column name="height_cm" type="integer"><constraints nullable="false"/></column>
+            <column name="weight_kg" type="numeric(5, 2)"><constraints nullable="false"/></column>
+            <column name="gender" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="activity_level" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="goal_type" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="target_calories" type="integer"><constraints nullable="false"/></column>
+            <column name="target_proteins_grams" type="numeric(6, 2)"><constraints nullable="false"/></column>
+            <column name="target_fats_grams" type="numeric(6, 2)"><constraints nullable="false"/></column>
+            <column name="target_carbs_grams" type="numeric(6, 2)"><constraints nullable="false"/></column>
+            <column name="target_weight_kg" type="numeric(5, 2)"><constraints nullable="false"/></column>
+            <column name="weekly_budget" type="numeric(10, 2)"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="updated_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

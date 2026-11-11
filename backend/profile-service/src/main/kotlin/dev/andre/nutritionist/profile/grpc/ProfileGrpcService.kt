@@ -10,16 +10,6 @@ import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.grpc.server.service.GrpcService
 
-/**
- * gRPC-сервис профиля пользователя.
- *
- * Скелетная реализация [ProfileServiceGrpcKt.ProfileServiceCoroutineImplBase] для
- * верификации запуска сервера и работоспособности gRPC Reflection в dev-окружении.
- *
- * Запрещено:
- *  - Использование оператора !! (AGENTS.md §1.1)
- *  - Сетевые вызовы внутри @Transactional (AGENTS.md §4.1)
- */
 @GrpcService
 class ProfileGrpcService : ProfileServiceGrpcKt.ProfileServiceCoroutineImplBase() {
     private val logger = LoggerFactory.getLogger(ProfileGrpcService::class.java)
