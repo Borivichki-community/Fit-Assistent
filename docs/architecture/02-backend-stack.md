@@ -40,9 +40,9 @@
 | Сервис | БД | gRPC Port | Kafka Topics (produce) | Kafka Topics (consume) |
 |---|---|---|---|---|
 | `profile-service` | `profile_db` | 9090 | `user.profile.updated` | — |
-| `catalog-price-service` | `catalog_db` | 9091 | `food.price.updated` | `user.profile.updated` |
+| `catalog-price-service` | `catalog_db` | 9091 | `food.price.updated`, `user.favorite.changed` | `user.profile.updated` |
 | `diary-service` | `diary_db` | 9092 | `diary.entry.created` | `food.price.updated` |
-| `recipe-ai-service` | Redis (cache) | 9093 | `recipe.generated` | `diary.entry.created` |
+| `recipe-ai-service` | Redis (cache) | 9093 | `recipe.generated` | `diary.entry.created`, `user.favorite.changed` |
 | `food-cv-service` | Redis (cache) | 9094 | `food.detected` | — |
 
 ---
@@ -284,7 +284,27 @@ message DiaryEntryProto {
 ```
 Режим совместимости: **BACKWARD** (новые поля с `default`, удаление запрещено).
 
-### 4.2 Transactional Outbox Pattern
+### 4.2 Avro-схема (`user-favorite-changed.avsc`)
+```json
+{
+  "namespace": "com.budgetntr.events.catalog.v1",
+  "type": "record",
+  "name": "UserFavoriteChanged",
+  "doc": "Событие изменения избранного (продукт, рецепт, дневной рацион) для персонализации AI.",
+  "fields": [
+    { "name": "eventId",     "type": "string", "doc": "UUID события" },
+    { "name": "userId",      "type": "string", "doc": "ID пользователя" },
+    { "name": "targetType",  "type": { "type": "enum", "name": "FavoriteTargetType", "symbols": ["FOOD_ITEM", "RECIPE", "DAILY_MEAL_PLAN"] } },
+    { "name": "targetId",    "type": "string", "doc": "UUID продукта, рецепта или плана питания" },
+    { "name": "action",      "type": { "type": "enum", "name": "FavoriteAction", "symbols": ["ADDED", "REMOVED"] } },
+    { "name": "timestampMs", "type": "long",   "logicalType": "timestamp-millis" }
+  ]
+}
+```
+* **Продюсер:** `catalog-price-service` (через Transactional Outbox при gRPC-вызове `AddFavorite`/`RemoveFavorite`).
+* **Консьюмер:** `recipe-ai-service` (обновляет матрицу предпочтений пользователя в Redis для приоритизации любимых продуктов и рецептов при генерации рационов).
+
+### 4.3 Transactional Outbox Pattern
 
 ```
 ┌──────────────────────────────────────────────────────┐

@@ -77,10 +77,17 @@ app/androidApp/src/main/
 │       ├── ProfileViewModel.kt
 │       ├── ProfileRoute.kt
 │       └── ProfileScreen.kt
+│   └── favorites/
+│       ├── FavoritesIntent.kt
+│       ├── FavoritesViewState.kt
+│       ├── FavoritesViewModel.kt
+│       ├── FavoritesRoute.kt
+│       └── FavoritesScreen.kt
 ├── di/
 │   └── AppModule.kt                       # Koin ViewModels
 └── sync/
-    └── SyncDiaryWorker.kt                 # WorkManager Worker
+    ├── SyncDiaryWorker.kt                 # WorkManager Worker дневника
+    └── SyncFavoritesWorker.kt             # WorkManager Worker избранного
 ```
 
 ---
@@ -419,6 +426,52 @@ class SyncDiaryWorker(
                 )
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
+    }
+}
+```
+
+### 3.4 Оффлайн-синхронизация Избранного (SyncFavoritesWorker)
+Принцип аналогичен дневнику:
+1. Пользователь нажимает иконку «Сердечко» в каталоге (продукт, рецепт или готовое меню на день).
+2. Запись добавляется / удаляется в Room KMP (`FavoriteItemEntity`) со статусом `SyncStatus.PENDING` и уникальным `idempotencyKey = IdempotencyKey(Uuid.random().toString())`. UI переключается мгновенно (0 мс).
+3. `SyncFavoritesWorker` (OneTimeWorkRequest с триггером сетевого подключения или PeriodicWorkRequest) вычитывает несинхронизированные элементы и вызывает gRPC-метод `CatalogService.AddFavorite` / `RemoveFavorite` с метаданными `idempotency-key`.
+4. После успешного ответа сервера статус в Room обновляется до `SyncStatus.SYNCED`.
+
+```kotlin
+// androidMain
+class SyncFavoritesWorker(
+    context: Context,
+    params: WorkerParameters,
+    private val favoritesRepository: FavoritesRepository,
+    private val catalogGrpcDataSource: CatalogGrpcDataSource,
+) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val pending = favoritesRepository.getPendingSyncItems()
+        if (pending.isEmpty()) return Result.success()
+
+        pending.forEach { item ->
+            runCatching {
+                val metadata = Metadata().apply {
+                    put(
+                        Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER),
+                        item.idempotencyKey.raw,
+                    )
+                }
+                catalogGrpcDataSource.syncFavorite(item, metadata)
+                favoritesRepository.markSynced(item.id)
+            }.onFailure {
+                if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
+                    return Result.retry()
+                }
+            }
+        }
+        return Result.success()
+    }
+
+    companion object {
+        const val MAX_RETRY_ATTEMPTS = 5
+        const val WORK_NAME = "sync_favorites_worker"
     }
 }
 ```
