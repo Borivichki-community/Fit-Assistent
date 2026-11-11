@@ -2,12 +2,14 @@
 
 > Микросервис управления биометрическим профилем пользователя, целями питания (КБЖУ) и недельным бюджетом.
 
+> **Статус:** Profile Proto существует, серверные RPC пока являются каркасом. SQL/JPA ниже — целевая модель; master-changelog пуст.
+
 ---
 
 ## 1. База данных и схема (`profile_db`)
 
 - **СУБД:** PostgreSQL 17 (порт `5432`, база `profile_db`).
-- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.xml`).
+- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.yaml`).
 - **Стратегия первичных ключей:** UUID v7 / Sequential UUID.
 
 ### Схема таблицы `profiles` (`001-init-profile-table.xml`)
@@ -111,9 +113,10 @@ message ProfileProto {
 
 ---
 
-## 4. Межсервисные события (Kafka + Avro)
+## 4. Владение профилем и события
 
-- **Produced Events:**
-  - Топик: `user.profile.updated`
-  - Схема Avro: `shared/contracts/src/main/avro/UserRegisteredEvent.avsc`
-  - Потребители: `catalog-price-service`, `recipe-ai-service`.
+Profile хранит биометрию, цели питания и установленный пользователем недельный лимит бюджета. Мобильный клиент использует существующие `GetProfile` / `UpdateProfile` и локальную копию в Room. Остаток лимита вычисляет мобильный доменный слой по снимкам дневника; это не отдельный серверный денежный счёт.
+
+[UserRegisteredEvent](../../shared/contracts/src/main/avro/UserRegisteredEvent.avsc) описывает регистрацию (`id`, `email`, `registrationTimestamp`, `source`). Это не событие изменения профиля; при `UpdateProfile` оно не публикуется в `user.profile.updated`. Производитель регистрации и доставка — отдельная будущая интеграция.
+
+Отдельное событие обновления профиля для текущего сценария не нужно: мобильный клиент передаёт ограничения в запрос Recipe AI. Новая схема `ProfileUpdated` и подписки каталога/AI не добавляются. Действующая Avro-схема регистрации сохраняется.

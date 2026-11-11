@@ -261,17 +261,26 @@ dependencies {
 ```
 
 ### 4.3 Паттерн Entity → DAO → Repository
+
+Целевой сокращённый пример дневника. Полная модель снимка — [Mobile README](../../mobile/README.md), единые правила денежных расчётов, retry и очередь избранного — [Mobile Stack §3](03-mobile-stack.md#3-offline-first-дневник-и-избранное). Сервер сохраняет клиентскую стоимость и не переоценивает её по каталогу.
 ```kotlin
 // Entity (не попадает в domain!)
 @Entity(tableName = "diary_entries")
 data class DiaryEntryEntity(
     @PrimaryKey val id: String,            // хранится как String, в domain — DiaryEntryId
+    val userId: String,
     val idempotencyKey: String,
     val foodItemId: String,
+    val foodName: String,
+    val quantityGrams: Double,
     val calories: Int,
     val proteins: Double,
     val fats: Double,
     val carbs: Double,
+    val costMinor: Long?,
+    val unitPriceMinor: Long?,
+    val priceBasisMilligrams: Long?,
+    val mealType: String,
     val recordedAt: Long,                  // epochMillis → kotlinx-datetime Instant в domain
     val syncStatus: String,                // "PENDING" | "SYNCED" | "FAILED"
 )
@@ -279,8 +288,8 @@ data class DiaryEntryEntity(
 // DAO
 @Dao
 interface DiaryDao {
-    @Query("SELECT * FROM diary_entries WHERE syncStatus = 'PENDING'")
-    fun observePending(): Flow<List<DiaryEntryEntity>>
+    @Query("SELECT * FROM diary_entries WHERE userId = :userId AND syncStatus = 'PENDING'")
+    fun observePending(userId: String): Flow<List<DiaryEntryEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrReplace(entry: DiaryEntryEntity)

@@ -2,13 +2,15 @@
 
 > Микросервис каталога продуктов питания, базы рецептов блюд, истории и актуальных цен из супермаркетов, а также пользовательских избранных блюд.
 
+> **Статус:** целевая спецификация. Таблицы, JPA-сущности и Catalog API ещё не реализованы; SQL и Protobuf ниже — проекты, не миграции и не опубликованные контракты.
+
 ---
 
 ## 1. База данных и схема (`catalog_db`)
 
 - **СУБД:** PostgreSQL 17 (порт `5432`, база `catalog_db`).
 - **Кэш:** Redis 7 (кэширование цен и каталога для быстрых выборок).
-- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.xml`).
+- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.yaml`).
 
 ### Схема таблиц каталога (`001-catalog-schema.xml`)
 
@@ -30,7 +32,7 @@ CREATE TABLE food_items (
     proteins_per_100g NUMERIC(6, 2) NOT NULL,
     fats_per_100g NUMERIC(6, 2) NOT NULL,
     carbs_per_100g NUMERIC(6, 2) NOT NULL,
-    price_per_100g NUMERIC(10, 2) NOT NULL,
+    price_per_100g NUMERIC(10, 2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -100,7 +102,17 @@ service CatalogService {
   rpc GetFoodItem(GetFoodItemRequest) returns (FoodItemProto);
   rpc SearchFoodItems(SearchFoodItemsRequest) returns (SearchFoodItemsResponse);
   rpc GetBudgetRecipes(GetBudgetRecipesRequest) returns (GetBudgetRecipesResponse);
-  rpc ToggleFavoriteRecipe(ToggleFavoriteRecipeRequest) returns (ToggleFavoriteRecipeResponse);
+  rpc SetFavorite(SetFavoriteRequest) returns (SetFavoriteResponse);
+  rpc ListFavorites(ListFavoritesRequest) returns (ListFavoritesResponse);
+}
+
+message GetFoodItemRequest {
+  string id = 1;
+}
+
+message Money {
+  int64 amount_minor = 1;
+  string currency_code = 2;
 }
 
 message FoodItemProto {
@@ -111,7 +123,7 @@ message FoodItemProto {
   double proteins_per_100g = 5;
   double fats_per_100g = 6;
   double carbs_per_100g = 7;
-  double price_per_100g = 8;
+  Money price_per_100g = 8;
   string barcode = 9;
 }
 
@@ -126,7 +138,7 @@ message SearchFoodItemsResponse {
 }
 
 message GetBudgetRecipesRequest {
-  double max_price = 1;
+  Money max_price = 1;
   double target_calories = 2;
 }
 
@@ -139,7 +151,7 @@ message RecipeProto {
   string name = 2;
   string description = 3;
   double total_calories = 4;
-  double total_price = 5;
+  Money estimated_price = 5;
   int32 prep_time_minutes = 6;
   repeated RecipeIngredientProto ingredients = 7;
 }
@@ -150,21 +162,54 @@ message RecipeIngredientProto {
   double quantity_grams = 3;
 }
 
-message ToggleFavoriteRecipeRequest {
-  string user_id = 1;
-  string recipe_id = 2;
+enum FavoriteTargetType {
+  FAVORITE_TARGET_TYPE_UNSPECIFIED = 0;
+  FAVORITE_TARGET_TYPE_FOOD_ITEM = 1;
+  FAVORITE_TARGET_TYPE_RECIPE = 2;
+  FAVORITE_TARGET_TYPE_DAILY_MEAL_PLAN = 3;
 }
 
-message ToggleFavoriteRecipeResponse {
-  bool is_favorite = 1;
+message FavoriteTarget {
+  FavoriteTargetType type = 1;
+  string target_id = 2;
+}
+
+message SetFavoriteRequest {
+  FavoriteTarget target = 1;
+  optional bool is_favorite = 2;
+}
+
+message SetFavoriteResponse {
+  FavoriteTarget target = 1;
+  bool is_favorite = 2;
+}
+
+message ListFavoritesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListFavoritesResponse {
+  repeated FavoriteTarget targets = 1;
+  string next_page_token = 2;
 }
 ```
 
 ---
 
-## 4. Межсервисные события (Kafka + Avro)
+## 4. Семантика избранного и цен
 
-- **Produced Events:**
-  - Топик: `food.price.updated` (публикуется при изменении цен продуктов в каталоге).
-- **Consumed Events:**
-  - Топик: `user.profile.updated` (учитывает предпочтения и аллергии пользователя).
+- Единственная мутация — `SetFavorite(target, is_favorite)`: `true` добавляет, `false` удаляет. Поле обязательно по presence; `UNSPECIFIED` и пустой ID запрещены. Пользователь определяется по проверенному субъекту авторизации, а не телу запроса.
+- Каталог владеет продуктами (`FOOD_ITEM`), сохранёнными рецептами (`RECIPE`) и шаблонами дневных меню (`DAILY_MEAL_PLAN`). Связи `user_favorite_foods` и `user_favorite_meal_plans` аналогичны показанной `user_favorite_recipes`: UUID PK, user_id, FK на объект каталога, added_at, UNIQUE(user_id, target_id). Разовый результат AI пока не имеет постоянного ID каталога; его сохранение в избранное требует отдельной будущей функции сохранения в каталог.
+- Повтор установки того же состояния успешен. Удаление отсутствующей связи также успешно, даже если объект каталога уже удалён. Добавление отсутствующего объекта — `NOT_FOUND`.
+- Обязательный `idempotency-key` равен ID локальной операции. В одной транзакции сервер проверяет запись дедупликации `(subject, RPC, key)`, fingerprint запроса, меняет связь и сохраняет ответ. Уникальное ограничение сериализует конкурентные дубли. Повтор возвращает исходный ответ без изменения связи; другой payload со старым ключом — `INVALID_ARGUMENT`.
+- Дедупликация хранится в БД вместе с аккаунтом, а не только в Redis с TTL. Очистка ключей по времени требует отдельного протокола ограничения возраста офлайн-операций. Иначе поздний дубль добавления может отменить новое удаление.
+- `ListFavorites` восстанавливает данные на другом устройстве. page_size: 1–100 (0 означает 50); page_token привязан к пользователю и снимку списка. Клиент применяет снимок только если локальная очередь была пуста и не менялась с начала чтения; иначе повторяет чтение.
+- Между устройствами действует порядок фиксации на сервере. Гарантии глобального порядка офлайн-нажатий нет. После отправки очереди клиент обновляет серверный снимок.
+- Цены каталога — текущие справочные предложения. `Money` передаёт целые минимальные единицы, для MVP — RUB/копейки. Отсутствующий `price_per_100g` означает неизвестную цену, не ноль. Оценка рецепта нужна для поиска кандидатов; сумму выбранной порции рассчитывает мобильный клиент.
+
+## 5. Межсервисные события
+
+`food.price.updated` — отложенный вариант уведомления об обновлении каталога; схема и потребители не реализованы. Дневник не подписывается на него и не переписывает расходы.
+
+Для текущего сценария не требуются `user.profile.updated` и `user.favorite.changed`: ограничения и локальное избранное приходят в запросе генерации. Новые Avro-схемы и подписки не вводятся. При появлении подтверждённого потребителя события публикация выполняется через Transactional Outbox.

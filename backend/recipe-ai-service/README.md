@@ -2,14 +2,16 @@
 
 > Микросервис генерации персонализированных блюд и меню под остаток суточного калоража и оставшийся бюджет с использованием ИИ (Gemini / LLM) и RAG по базе рецептов.
 
+> **Статус:** целевой API генерации; рабочей реализации и recipe_ai.proto пока нет. Персональный баланс на сервере не ведётся.
+
 ---
 
 ## 1. База данных и хранилище
 
 - **СУБД / Кэш:** Redis 7 (порт `6379`).
 - **Назначение Redis:**
-  - Кэширование сгенерированных рецептов по хэшу параметров: `recipe:ai:cache:{hash(targetCalories, budget, dietaryFlags)}`;
-  - Хранение векторных эмбеддингов для семантического поиска блюд;
+  - Ключ кэша: SHA-256 канонического полного запроса, субъекта авторизации, версии модели и версии используемых данных каталога. Учитываются КБЖУ, денежный предел, исключения, избранное и тип приёма пищи; частичный ключ по калориям/бюджету запрещён.
+  - Векторный поиск/RAG — отдельное будущее расширение; текущая спецификация не требует нового индекса.
   - Fallback-буфер при сбоях или таймаутах внешнего API нейросети.
 
 ---
@@ -20,13 +22,8 @@
   - `cacheKey`: String (MD5/SHA256 от параметров запроса);
   - `recipesJson`: String (JSON-сериализованный список блюд);
   - `expiresAt`: Long (TTL 24 часа).
-- **`UserDietaryContext`** (in-memory):
-  - `userId`: String;
-  - `remainingCalories`: Double;
-  - `remainingBudget`: Double;
-  - `consumedProteinsGrams`: Double;
-  - `consumedFatsGrams`: Double;
-  - `consumedCarbsGrams`: Double.
+- **Контекст генерации** приходит от мобильного клиента в каждом запросе. Он включает доступные для этой генерации калории и БЖУ, выделенный денежный лимит, исключённые ингредиенты и ID выбранного избранного.
+- Мобильный клиент сам определяет, сколько оставшегося недельного бюджета выделить на блюдо или день. На сервер не передаётся инструкция вычитать прошлые расходы; пользовательская сумма для рекомендаций не является платёжным лимитом.
 
 ---
 
@@ -48,12 +45,26 @@ service RecipeAiService {
   rpc GenerateDailyMealPlan(DailyMealPlanRequest) returns (DailyMealPlanResponse);
 }
 
+message Money {
+  int64 amount_minor = 1;
+  string currency_code = 2;
+}
+
+message GenerationContext {
+  double available_calories = 1;
+  double available_proteins_grams = 2;
+  double available_fats_grams = 3;
+  double available_carbs_grams = 4;
+  Money spending_limit = 5;
+  repeated string exclude_ingredients = 6;
+  repeated string preferred_food_item_ids = 7;
+  repeated string preferred_recipe_ids = 8;
+  repeated string preferred_daily_meal_plan_ids = 9;
+}
+
 message GenerateDishRequest {
-  string user_id = 1;
-  double remaining_calories = 2;
-  double remaining_budget = 3;
-  string meal_type = 4; // BREAKFAST, LUNCH, DINNER, SNACK
-  repeated string exclude_ingredients = 5;
+  GenerationContext context = 1;
+  string meal_type = 2;
 }
 
 message GenerateDishResponse {
@@ -61,38 +72,35 @@ message GenerateDishResponse {
   string description = 2;
   repeated string instructions = 3;
   double estimated_calories = 4;
-  double estimated_price = 5;
+  Money estimated_price = 5;
   repeated AiIngredientProto ingredients = 6;
 }
 
 message AiIngredientProto {
-  string name = 1;
-  double quantity_grams = 2;
-  double estimated_price = 3;
+  string food_item_id = 1;
+  string name = 2;
+  double quantity_grams = 3;
 }
 
 message DailyMealPlanRequest {
-  string user_id = 1;
-  double target_calories = 2;
-  double daily_budget = 3;
+  GenerationContext context = 1;
 }
 
 message DailyMealPlanResponse {
   repeated GenerateDishResponse meals = 1;
   double total_calories = 2;
-  double total_price = 3;
+  Money estimated_price = 3;
 }
 ```
 
 ---
 
-## 4. Межсервисные события и отказоустойчивость
+## 4. Данные для генерации и отказоустойчивость
 
-- **Consumed Events:**
-  - Топик: `diary.entry.created` (Avro `CaloriesConsumedEvent`) — вычитает съеденные калории и потраченные деньги из суточного/недельного лимита пользователя.
-- **Produced Events:**
-  - Топик: `recipe.generated`
-- **Resilience4j:**
-  - `@CircuitBreaker(name = "llm-api", fallbackMethod = "getCachedRecipes")`
-  - `@TimeLimiter(10s)`
-  - При недоступности внешнего LLM API сервис возвращает проверенные популярные рецепты из Redis, не ломая пользовательский опыт.
+- Мобильный клиент вычисляет контекст по текущему профилю и дневнику Room, включая ещё не отправленные записи. Избранное берётся из локального желаемого состояния, включая офлайн-нажатия. Для генерации не нужно предварительно отправлять весь дневник или ждать Kafka.
+- `context` и `spending_limit` обязательны; лимиты конечны и неотрицательны, деньги — RUB/копейки. Отрицательный остаток клиент показывает как превышение и не запускает генерацию с отрицательным пределом. При неполной истории или неизвестных стоимостях UI сообщает, что бюджет приблизительный, и пользователь задаёт лимит генерации явно.
+- Recipe AI использует переданный лимит для подбора кандидатов по текущим данным каталога. Он может оценивать стоимость будущего предложения при подборе, но не рассчитывает заново расходы дневника и не изменяет бюджет профиля. `estimated_price` не гарантирует цену покупки; отсутствующее поле означает неизвестную оценку.
+- Итог выбранной порции мобильный доменный слой рассчитывает по выбранным пользователем ценам и количеству, затем сохраняет снимок в дневнике. Сервер не выдаёт свой результат за подтверждённую стоимость клиента.
+- ID предпочтений относятся только к существующим объектам каталога. Сервер проверяет доступ к ним и пропускает удалённые/недоступные предпочтения; ограничения по исключённым ингредиентам имеют приоритет. Список предпочтений из запроса не изменяет серверное избранное.
+- Подписки на `diary.entry.created`, `user.profile.updated`, `user.favorite.changed` не нужны этому сценарию. В Redis нет накапливаемого по событиям персонального денежного баланса. `recipe.generated` остаётся отложенным событием без нового обязательного потребителя.
+- Отказоустойчивость реализуется в инфраструктурном клиенте функциональными корутинными обёртками согласно [ADR-002](../../docs/architecture/adr/adr-002-resilience4j-integration.md), с таймаутом и пробросом отмены. Fallback должен удовлетворять тем же ограничениям; если подходящего кэша нет, возвращается явная недоступность, а не произвольное блюдо.

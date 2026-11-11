@@ -3,7 +3,7 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-08T05:00
+Обновлено: 2026-11-11
 
 ---
 
@@ -424,6 +424,14 @@
   - Написаны переносимые скрипты автоматического развертывания и тестирования спайка через `grpcurl`:
     - Bash: [`scripts/verify-envoy-gateway.sh`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.sh);
     - PowerShell: [`scripts/verify-envoy-gateway.ps1`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.ps1).
+
+## Checkpoint 2026-11-11 — Исправление архитектурного аудита 83f9352
+
+- Ветка: `feature/KAN-36-liquibase`; исходный HEAD: `83f935266f4d7f4228fb34d19c57747a4578139e`; рабочее дерево перед началом чистое.
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роли: `implementer`, затем `test-reviewer`.
+- В работе: согласование избранного, устойчивой очереди операций, worker, событий и клиентского расчёта стоимости (пункты 2–5 и 7 аудита).
+- Решение: стоимость и остатки рассчитывает мобильный доменный слой; сервер хранит снимок записи. Recipe AI получает ограничения запроса, без событийного денежного баланса.
+- Границы: новые функциональные модули не реализуются; действующие Proto/Avro сохраняются, целевые контракты уточняются в документации. Без commit/push.
 
 
 

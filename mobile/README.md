@@ -12,7 +12,7 @@
 ### Схема сущностей Room
 
 #### 1. Таблица `profiles` (`ProfileEntity.kt`)
-Локальный кэш профиля пользователя. Полностью совпадает с `profile.proto` и серверной таблицей `profiles`.
+Локальный кэш профиля пользователя; сопоставление с существующим Profile Proto выполняет mapper. Серверная таблица пока запланирована.
 
 ```kotlin
 @Entity(tableName = "profiles")
@@ -35,21 +35,25 @@ data class ProfileEntity(
 ```
 
 #### 2. Таблица `diary_entries` (`DiaryEntryEntity.kt`)
-Локальный журнал питания с поддержкой Offline-first режима.
+Целевая модель, ещё не подключённая в AppDatabase. Room хранит клиентский снимок, а не пересчитываемую по каталогу историю.
 
 ```kotlin
 @Entity(tableName = "diary_entries")
 data class DiaryEntryEntity(
     @PrimaryKey val id: String,
+    val userId: String,
     val idempotencyKey: String,     // генерируется 1 раз на клиенте при создании записи
     val foodItemId: String,
     val foodName: String,
     val quantityGrams: Double,
-    val calories: Double,
+    val calories: Int,
     val proteins: Double,
     val fats: Double,
     val carbs: Double,
-    val price: Double,
+    val costMinor: Long?,
+    val unitPriceMinor: Long?,
+    val priceBasisMilligrams: Long?,
+    val mealType: String,
     val recordedAtEpochMs: Long,
     val syncStatus: String,         // "PENDING" | "SYNCED" | "FAILED"
 )
@@ -68,32 +72,26 @@ data class DiaryEntryEntity(
 
 ---
 
-## 3. Offline-First механизм синхронизации
+## 3. Offline-First: стоимость и синхронизация
 
-```
-Пользователь нажал «Добавить приём пищи»
-             │
-             ▼
-    Генерация IdempotencyKey (UUID v4)
-             │
-             ▼
-   Запись в Room SQLite (status = PENDING)
-             │
-             ▼
-   UI обновляется мгновенно (0 мс задержка)
-             │
-             ▼
-   SyncDiaryWorker (WorkManager)
-             │
-   Отправка gRPC AddEntry(idempotency-key: <key>)
-             │
-   ┌─────────┴─────────┐
-   ▼                   ▼
-Успех                Ошибка
-status=SYNCED       status=FAILED
-                    BackoffPolicy.EXPONENTIAL
-                    (тот же IdempotencyKey!)
-```
+- Каталог предоставляет справочные цены. Итог порции и остаток недельного лимита рассчитывает `mobile/shared/domain`; Compose получает готовые строки из UiStateMapper.
+- MVP использует RUB/копейки. `costMinor=null` — неизвестная стоимость, 0 — известная нулевая. `unitPriceMinor` и положительный `priceBasisMilligrams` сохраняются вместе при известной исходной цене; ручная итоговая сумма может быть без них. Количество — до 0.001 г; точные операции и HALF_UP описаны в [Mobile Stack §3.1](../docs/architecture/03-mobile-stack.md#31-стоимость-и-запись-дневника).
+- Room атомарно сохраняет полный снимок и один idempotencyKey до сети. Retry отправляет прежний снимок. Новый каталог не изменяет прошлый расход.
+- `Diary.AddEntry` сохраняет клиентскую сумму и проверяет данные; денежный пересчёт на сервере не нужен. ACK переводит запись в SYNCED; временная ошибка сохраняет PENDING и запускает ограниченный backoff; постоянная ошибка/исчерпание попыток сохраняет FAILED для явного повтора. CancellationException пробрасывается.
+- При восстановлении серверные записи объединяются с локальными по entry_id, чтобы не удвоить расход. Неполная история периода или неизвестные стоимости помечаются в UI. Recipe AI получает рассчитанные ограничения конкретного запроса, не строит остаток по Kafka.
+
+### Избранное
+
+Единый целевой RPC — `Catalog.SetFavorite(target, is_favorite)` для FOOD_ITEM, RECIPE, DAILY_MEAL_PLAN. Схема локального хранения:
+
+| Таблица | Назначение |
+|---|---|
+| favorite_items | Желаемое состояние по (userId, targetType, targetId), lastOperationId и данные отображения; false хранится как tombstone до подтверждения |
+| favorite_operations | Неизменяемый payload, operationId (= ключ), sequence, владелец, статус, attempts и код ошибки |
+
+Обновление UI и вставка операции атомарны. Worker отправляет FIFO одного аккаунта; старый ACK удаляет только свою операцию и не меняет более новое состояние. После шести неудачных отправок автоматическая работа останавливается, данные сохраняются. Вход/явный повтор возобновляет очередь, сохраняя ключ неизвестного исхода. Подробные состояния, восстановление и пример worker — [Mobile Stack §3](../docs/architecture/03-mobile-stack.md#3-offline-first-дневник-и-избранное).
+
+Это план реализации: существующая Room БД содержит только profiles. Новые таблицы и workers данным изменением не создаются.
 
 ---
 

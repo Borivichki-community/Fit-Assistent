@@ -6,44 +6,28 @@
 
 ## 1. Карта компонентов системы
 
+```text
+Mobile (Room + расчёт порций/остатков)
+  -> Envoy Gateway (JWT / rate limit)
+     -> Profile: профиль и недельный лимит
+     -> Catalog: справочные цены и SetFavorite / ListFavorites
+     -> Diary: хранение клиентских снимков дневника
+     -> Recipe AI: генерация по ограничениям запроса, чтение каталога
+     -> Food CV: будущий сценарий распознавания
+Diary -> Outbox -> diary.entry.created -> будущие потребители факта питания
 ```
-                         ┌──────────────────────────────────────┐
-                         │  Kubernetes Gateway API + Envoy GW   │
-                         │  GRPCRoute  SecurityPolicy  BackendTP │
-                         └──────────────┬───────────────────────┘
-                                        │ gRPC (mTLS)
-              ┌─────────────────────────┼──────────────────────────┐
-              ▼                         ▼                          ▼
-   ┌─────────────────┐      ┌─────────────────────┐    ┌─────────────────┐
-   │  profile-       │      │  catalog-price-     │    │  diary-service  │
-   │  service        │      │  service            │    │                 │
-   │  (PostgreSQL    │      │  (PostgreSQL        │    │  (PostgreSQL    │
-   │  profile_db)    │      │  catalog_db)        │    │   diary_db)     │
-   └─────────────────┘      └─────────────────────┘    └────────┬────────┘
-                                                                │ Kafka
-                                                      ┌─────────▼────────┐
-                                                      │  recipe-ai-      │
-                                                      │  service         │
-                                                      │  (Gemini/OpenAI  │
-                                                      │   + Redis cache) │
-                                                      └─────────┬────────┘
-                                                                │ Kafka
-                                                      ┌─────────▼────────┐
-                                                      │  food-cv-service │
-                                                      │  (Vision AI +    │
-                                                      │   food detection) │
-                                                      └──────────────────┘
-```
+
+Это целевая карта. Серверные предметные API, кроме каркаса Profile, пока не реализованы. Recipe AI не ведёт баланс по Kafka; сквозные решения по стоимости и синхронизации — в [топологии](04-database-and-contracts-topology.md).
 
 ### 1.1 Описание сервисов
 
 | Сервис | БД | gRPC Port | Kafka Topics (produce) | Kafka Topics (consume) |
 |---|---|---|---|---|
-| `profile-service` | `profile_db` | 9090 | `user.profile.updated` | — |
-| `catalog-price-service` | `catalog_db` | 9091 | `food.price.updated`, `user.favorite.changed` | `user.profile.updated` |
-| `diary-service` | `diary_db` | 9092 | `diary.entry.created` | `food.price.updated` |
-| `recipe-ai-service` | Redis (cache) | 9093 | `recipe.generated` | `diary.entry.created`, `user.favorite.changed` |
-| `food-cv-service` | Redis (cache) | 9094 | `food.detected` | — |
+| `profile-service` | `profile_db` | 9090 | не требуется для текущего сценария | — |
+| `catalog-price-service` | `catalog_db` | 9091 | `food.price.updated` (отложено) | — |
+| `diary-service` | `diary_db` | 9092 | `diary.entry.created` (план, схема существует) | — |
+| `recipe-ai-service` | Redis (cache) | 9093 | `recipe.generated` (отложено) | — |
+| `food-cv-service` | Redis (cache) | 9094 | `food.detected` (отложено) | — |
 
 ---
 
@@ -198,111 +182,32 @@ buf generate proto/
 buf push proto/ --label main
 ```
 
-### 3.4 Пример proto-файла (diary.proto)
-```protobuf
-// proto/diary/v1/diary.proto
-syntax = "proto3";
+### 3.4 Канонические контракты и проекты API
 
-package com.budgetntr.diary.v1;
+Действующий [profile.proto](../../proto/nutritionist/profile/v1/profile.proto) остаётся без изменений. Проекты ещё не реализованных API приведены в одном месте: [Catalog](../../backend/catalog-price-service/README.md), [Diary](../../backend/diary-service/README.md), [Recipe AI](../../backend/recipe-ai-service/README.md). Изменение типов в этих Markdown-примерах не является миграцией опубликованных контрактов. При реализации потребуются реальные .proto, Buf lint/breaking и кодогенерация.
 
-import "google/protobuf/timestamp.proto";
-import "google/api/annotations.proto";
-
-option java_package = "com.budgetntr.proto.diary.v1";
-option java_multiple_files = true;
-
-// DiaryService provides operations for managing food diary entries.
-service DiaryService {
-  // AddEntry creates a new diary entry.
-  // The idempotency-key metadata MUST be provided by the client.
-  rpc AddEntry(AddEntryRequest) returns (AddEntryResponse);
-
-  // GetDailyEntries returns all diary entries for a specific date.
-  rpc GetDailyEntries(GetDailyEntriesRequest) returns (GetDailyEntriesResponse);
-}
-
-message AddEntryRequest {
-  string food_item_id = 1;
-  double quantity_grams = 2;
-  google.protobuf.Timestamp recorded_at = 3;
-}
-
-message AddEntryResponse {
-  string entry_id = 1;
-  NutritionSummary nutrition = 2;
-}
-
-message NutritionSummary {
-  double calories = 1;
-  double proteins = 2;
-  double fats = 3;
-  double carbs = 4;
-  string price_label = 5; // форматированная строка, напр. "350 ₽"
-}
-
-message GetDailyEntriesRequest {
-  string date = 1; // ISO-8601: "2024-10-19"
-}
-
-message GetDailyEntriesResponse {
-  repeated DiaryEntryProto entries = 1;
-  NutritionSummary daily_total = 2;
-}
-
-message DiaryEntryProto {
-  string id = 1;
-  string food_item_id = 2;
-  string food_name = 3;
-  double quantity_grams = 4;
-  NutritionSummary nutrition = 5;
-  google.protobuf.Timestamp recorded_at = 6;
-}
-```
+Diary принимает сохранённые клиентом нутриенты и `CostSnapshot`; сервер не рассчитывает сумму порции по каталогу. Catalog использует `SetFavorite`, без toggle. Recipe AI принимает контекст генерации с доступными КБЖУ и денежным пределом. Денежные поля новых API — целые минимальные единицы с валютой; форматированные строки остаются в UiStateMapper.
 
 ---
 
 ## 4. Kafka + Avro + Schema Registry
 
-### 4.1 Avro-схема (`diary-entry-created.avsc`)
-```json
-{
-  "namespace": "com.budgetntr.events.diary.v1",
-  "type": "record",
-  "name": "DiaryEntryCreated",
-  "doc": "Event emitted when a diary entry is successfully persisted.",
-  "fields": [
-    { "name": "eventId",       "type": "string",  "doc": "UUID события" },
-    { "name": "entryId",       "type": "string",  "doc": "ID записи дневника" },
-    { "name": "userId",        "type": "string",  "doc": "ID пользователя" },
-    { "name": "foodItemId",    "type": "string",  "doc": "ID продукта" },
-    { "name": "quantityGrams", "type": "double" },
-    { "name": "calories",      "type": "double" },
-    { "name": "recordedAtMs",  "type": "long",    "logicalType": "timestamp-millis" },
-    { "name": "idempotencyKey","type": "string" }
-  ]
-}
-```
-Режим совместимости: **BACKWARD** (новые поля с `default`, удаление запрещено).
+### 4.1 Существующие схемы и их назначение
 
-### 4.2 Avro-схема (`user-favorite-changed.avsc`)
-```json
-{
-  "namespace": "com.budgetntr.events.catalog.v1",
-  "type": "record",
-  "name": "UserFavoriteChanged",
-  "doc": "Событие изменения избранного (продукт, рецепт, дневной рацион) для персонализации AI.",
-  "fields": [
-    { "name": "eventId",     "type": "string", "doc": "UUID события" },
-    { "name": "userId",      "type": "string", "doc": "ID пользователя" },
-    { "name": "targetType",  "type": { "type": "enum", "name": "FavoriteTargetType", "symbols": ["FOOD_ITEM", "RECIPE", "DAILY_MEAL_PLAN"] } },
-    { "name": "targetId",    "type": "string", "doc": "UUID продукта, рецепта или плана питания" },
-    { "name": "action",      "type": { "type": "enum", "name": "FavoriteAction", "symbols": ["ADDED", "REMOVED"] } },
-    { "name": "timestampMs", "type": "long",   "logicalType": "timestamp-millis" }
-  ]
-}
-```
-* **Продюсер:** `catalog-price-service` (через Transactional Outbox при gRPC-вызове `AddFavorite`/`RemoveFavorite`).
-* **Консьюмер:** `recipe-ai-service` (обновляет матрицу предпочтений пользователя в Redis для приоритизации любимых продуктов и рецептов при генерации рационов).
+| Схема | Содержание | Применение |
+|---|---|---|
+| [UserRegisteredEvent](../../shared/contracts/src/main/avro/UserRegisteredEvent.avsc) | id, email, registrationTimestamp, source | Регистрация; производитель/доставка — будущая интеграция. Не обновление профиля |
+| [CaloriesConsumedEvent](../../shared/contracts/src/main/avro/CaloriesConsumedEvent.avsc) | userId, mealId, calories, timestamp, mealType, notes | Факт питания; целевой topic `diary.entry.created`. Не денежный расход |
+
+Режим совместимости BACKWARD сохраняется. Обе схемы и существующие мапперы остаются неизменными. Стоимость не добавляется в CaloriesConsumedEvent. Новые поля/схемы вводятся только при появлении реального потребителя, с проверкой совместимости.
+
+### 4.2 Данные потребителей без лишних событий
+
+- Регистрация и обновление профиля — разные факты. `UpdateProfile` не публикует UserRegisteredEvent; `user.profile.updated` не требуется текущему запросному сценарию.
+- Мобильный клиент вычисляет оставшиеся КБЖУ и выделенный бюджет, передаёт их в Recipe AI вместе с исключениями и ID локального избранного. Так учитываются даже PENDING-записи без ожидания Kafka.
+- `user.favorite.changed` и соответствующая матрица предпочтений Redis исключены из текущего плана: для персонализации достаточно контекста запроса. Нового события и Avro-файла нет.
+- Дневник не потребляет `food.price.updated`; исторический снимок не пересчитывается.
+- При будущей публикации CaloriesConsumedEvent значение mealId равно ID сохранённой записи, timestamp — времени приёма пищи, calories — сохранённым целым ккал. Outbox создаётся в той же транзакции. Повторная доставка допустима; потребитель дедуплицирует факт создания по (userId, mealId), а не вычитает его несколько раз.
 
 ### 4.3 Transactional Outbox Pattern
 
@@ -351,7 +256,7 @@ message DiaryEntryProto {
 </changeSet>
 ```
 
-### 4.3 OutboxProcessor (Kotlin Spring)
+### 4.4 OutboxProcessor (Kotlin Spring)
 ```kotlin
 @Component
 class OutboxProcessor(
