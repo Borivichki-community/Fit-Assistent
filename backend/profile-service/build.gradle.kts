@@ -70,9 +70,11 @@ dependencies {
     implementation(libs.protobuf.kotlin)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.slf4j)
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.uuid.creator)
     runtimeOnly(libs.postgresql.jdbc)
 
     implementation(libs.spring.kafka)

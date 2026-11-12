@@ -3,13 +3,13 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-11
+Обновлено: 2026-11-12
 
 ---
 
-## Статус проекта: [T-013 / T-014 / T-015] Завершены Спайки: Resilience4j (ADR-002), gRPC KMP Client (ADR-003) и Envoy Gateway (ADR-004)
+## Статус проекта: [T-016 / T-017 / T-018] Завершены: Скелет profile-service, Liquibase и реализация gRPC-сервиса (ProfileGrpcService + ProfileService + ProfileDtoMapper)
 
-Ветка: `spike/KAN-13-resilience4j-spring-boot4` (Ключ задачи: KAN-13, T-014, T-015)
+Ветка: `feature/KAN-36-liquibase` (Ключ задачи: KAN-36, T-016, T-017, T-018)
 Роли: `implementer` + `test-reviewer`
 
 ---
@@ -468,6 +468,53 @@
   - `docs/architecture/04-database-and-contracts-topology.md`: обновлена схема топологии, таблицы `catalog_db` и Room, добавлен разбор «Альтернатива 4».
   - `docs/architecture/02-backend-stack.md`: добавлен топик `user.favorite.changed` и Avro-схема `UserFavoriteChanged`.
   - `docs/architecture/03-mobile-stack.md`: добавлен `SyncFavoritesWorker` и структура фичи `favorites`.
+
+## Checkpoint 2026-11-12 — [T-016 / T-017 / T-018 / KAN-36] Полная реализация profile-service (gRPC, JPA, ProfileDtoMapper, Testcontainers)
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-36-liquibase` (задачи T-016, T-017, T-018).
+- **Реализация:**
+  1. **[T-016] Скелет и конфигурация профилей profile-service:**
+     - Подтверждена работоспособность Spring Boot 4.1 + `spring-boot-starter-grpc-server`.
+     - Actuator endpoints: `/actuator/health/liveness` и `/actuator/health/readiness` (с проверкой db), изоляция портов (Management port 8080, gRPC 9090).
+     - Конфигурации окружений: `application.yml` (базовая конфигурация), `application-dev.yml` (gRPC Reflection включен, show-sql=true), `application-prod.yml` (Reflection выключен по принципу минимизации привилегий, graceful shutdown 30s).
+  2. **[T-017] Liquibase миграция и топология базы данных:**
+     - Подтверждено применение `001-init-profile-table.xml`: единая таблица `profiles` с первичным ключом UUID, уникальным ограничением `uq_profiles_user_id` на `user_id`, КБЖУ целями и бюджетом.
+     - Ликвидированы легаси-галлюцинации (аккумуляторы шагов, воды и отдельная таблица TargetEntity).
+  3. **[T-018] Бизнес-логика, JPA сущности, DTO-маппинг и gRPC-сервис:**
+     - `ProfileEntity` с `@Embedded NutritionGoalEmbeddable` и `ProfileJpaRepository`.
+     - `ProfileDtoMapper.kt` и `ProfileEnumMapper.kt`:
+       - Исчерпывающий `when` для enum'ов (`Gender`, `ActivityLevel`, `GoalType`) без ветки `else`;
+       - Конвертация `BigDecimal` $\leftrightarrow$ `Double` без потери точности (`setScale(2, RoundingMode.HALF_UP)`);
+       - Защита от `null` без оператора `!!`.
+     - Транзакционный слой `ProfileService.kt`: `getProfileByUserId` (`@Transactional(readOnly = true)`) и `upsertProfile` (`@Transactional`), соблюдение запрета сетевых вызовов в `@Transactional`.
+     - `CoroutineDispatchers.kt` (`DefaultCoroutineDispatchers`, `TestCoroutineDispatchers`): единый интерфейс диспетчеров корутин для бэкенда в точном соответствии с Android/KMP (§1.5).
+     - Выделенный слой валидации `grpc.validation` (`Violation.kt`, `ViolationsGrpcMapper.kt`, `ProfileRequestValidator.kt`):
+       - Защита от `NaN` и `Infinity` через первоочередную проверку `!value.isFinite()`;
+       - Реалистичные верхние и нижние границы параметров тела, бюджета и КБЖУ;
+       - Сбор всех нарушений одновременно в единый список (детерминированный порядок без `HashSet`);
+       - Преобразование нарушений в стандартный `StatusException` с `com.google.rpc.BadRequest` (`FieldViolation`) через `StatusProto` (gRPC Rich Error Model);
+       - Использование `kotlinx-coroutines-slf4j` (`MDCContext`) для безопасной передачи `userId` в логирование при переключении потоков корутин на `dispatchers.io`.
+     - `ProfileGrpcService.kt`:
+       - Реализация `getProfile(request)`: вызов валидатора, переключение на `MDCContext + dispatchers.io`, возврат `ProfileProto`, при отсутствии — `Status.NOT_FOUND`;
+       - Реализация `updateProfile(request)`: вызов валидатора, сохранение в PostgreSQL (UPSERT по `userId`), возврат `ProfileProto`;
+       - Тонкий контроллер без бойлерплейта ручной валидации и без потери MDC.
+  4. **Тестирование и верификация (Testcontainers PostgreSQL 17):**
+     - `ProfileGrpcServiceIntegrationTest.kt` (Testcontainers PostgreSQL 17 + gRPC in-process channel):
+       - Тест-кейс 1: `getProfile` для несуществующего пользователя возвращает `Status.NOT_FOUND`;
+       - Тест-кейс 2: `updateProfile` успешно создаёт профиль, сохраняет в PostgreSQL и возвращает `ProfileProto` со всеми полями КБЖУ;
+       - Тест-кейс 3: повторный вызов `updateProfile` обновляет существующий профиль (UPSERT по `userId`), не создавая дубликат;
+       - Тест-кейс 4: валидация граничных условий (пустой `userId`, неположительный рост/вес, отрицательный бюджет).
+     - `ProfileRequestValidatorTest.kt`: 15 параметризованных и изолированных тестов на все типы нарушений (`REQUIRED`, `OUT_OF_RANGE`, `NOT_FINITE`, включая `NaN`, `Infinity`, превышение максимума и одновременный сбор всех ошибок).
+     - `ProfileDtoMapperTest.kt`: 10 unit-тестов на прямое и обратное преобразование enum'ов, целей КБЖУ, профилей и обновления сущностей.
+     - `ProfilePersistenceTests.kt`: валидация Liquibase миграций и уникального ограничения `user_id`.
+     - `ProfileServiceApplicationTests.kt`: валидация запуска контекста и Actuator liveness/readiness проб.
+- **Верификация сборки и линтеров:**
+  - `./gradlew :backend:profile-service:test` — 39/39 tests GREEN (BUILD SUCCESSFUL).
+  - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
+
 
 
 
