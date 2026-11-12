@@ -18,20 +18,27 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
+      pool-name: ProfileServiceHikariPool
       maximum-pool-size: 10
       connection-timeout: 3000
 
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: "none"
     properties:
       hibernate:
         default_schema: public
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+          order_inserts: true
+          order_updates: true
 
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.yaml
+    change-log: classpath:db/changelog/db.changelog-master.xml
     enabled: true
+    default-schema: public
 
   # ── Kafka ─────────────────────────────────────────────────────────────────────
   kafka:
@@ -71,7 +78,7 @@ management:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState,grpcServer,db
+          include: readinessState,db
 
   health:
     livenessstate:

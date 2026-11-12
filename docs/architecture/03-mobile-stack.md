@@ -77,10 +77,17 @@ app/androidApp/src/main/
 │       ├── ProfileViewModel.kt
 │       ├── ProfileRoute.kt
 │       └── ProfileScreen.kt
+│   └── favorites/
+│       ├── FavoritesIntent.kt
+│       ├── FavoritesViewState.kt
+│       ├── FavoritesViewModel.kt
+│       ├── FavoritesRoute.kt
+│       └── FavoritesScreen.kt
 ├── di/
 │   └── AppModule.kt                       # Koin ViewModels
 └── sync/
-    └── SyncDiaryWorker.kt                 # WorkManager Worker
+    ├── SyncDiaryWorker.kt                 # WorkManager Worker дневника
+    └── SyncFavoritesWorker.kt             # WorkManager Worker избранного
 ```
 
 ---
@@ -306,122 +313,125 @@ fun RecipeScreen(
 
 ---
 
-## 3. Offline-first дневник с IdempotencyKey
+## 3. Offline-first: дневник и избранное
 
-### 3.1 Схема работы
-```
-Пользователь вводит приём пищи
-            │
-            ▼
-  AddDiaryEntryUseCase.invoke()
-            │
-    ┌───────▼────────────────────────────┐
-    │  1. idempotencyKey = IdempotencyKey │
-    │     .generate()  [ОДИН РАЗ!]        │
-    │  2. DiaryEntryEntity(              │
-    │       syncStatus = PENDING,        │
-    │       idempotencyKey = key,        │
-    │     )                              │
-    │  3. DiaryDao.insertOrReplace()     │
-    └───────┬────────────────────────────┘
-            │ Room (in-memory + WAL)
-            │
-   UI показывает запись немедленно
-            │
-   SyncScheduler.scheduleSync()
-            │
-            ▼
-  ┌─────────────────────────────────────┐
-  │  SyncDiaryWorker (WorkManager)      │
-  │  - Читает PENDING из Room           │
-  │  - Отправляет gRPC с метаданными:  │
-  │    idempotency-key: <key.raw>       │
-  │  - BackoffPolicy.EXPONENTIAL        │
-  │  - При успехе: syncStatus=SYNCED    │
-  │  - При ошибке: syncStatus=FAILED,  │
-  │    оставляет ТОТ ЖЕ idempotencyKey  │
-  └─────────────────────────────────────┘
-```
+> **Статус:** целевой протокол. В рабочем AppDatabase пока есть только ProfileEntity. Примеры ниже не создают готовую реализацию воркеров, DAO или gRPC.
 
-### 3.2 AddDiaryEntryUseCase
-```kotlin
-class AddDiaryEntryUseCase(
-    private val diaryRepository: DiaryRepository,
-    private val syncScheduler: SyncScheduler,
-    private val dispatchers: CoroutineDispatchers,
-) {
-    suspend operator fun invoke(
-        foodItemId: FoodItemId,
-        quantityGrams: Double,
-        recordedAt: Instant,
-    ): Result<DiaryEntry> = withContext(dispatchers.io) {
-        runCatching {
-            val entry = DiaryEntry(
-                id = DiaryEntryId(Uuid.random().toString()),
-                idempotencyKey = IdempotencyKey.generate(), // генерируется ОДИН раз
-                foodItemId = foodItemId,
-                quantityGrams = quantityGrams,
-                recordedAt = recordedAt,
-                syncStatus = SyncStatus.PENDING,
-            )
-            diaryRepository.save(entry)
-            syncScheduler.scheduleSync()
-            entry
-        }
-    }
-}
-```
+### 3.1 Стоимость и запись дневника
 
-### 3.3 SyncDiaryWorker (WorkManager)
+Стоимость порции, КБЖУ и остаток бюджета рассчитываются в `:mobile:shared/domain`, вне Compose. `UiStateMapper` форматирует результат. Каталог предоставляет цены и пищевую ценность; `profile-service` хранит пользовательский недельный лимит.
+
+Для MVP валюта RUB, деньги — целые копейки. При цене за массу количество приводится к целым миллиграммам (ввод до 0.001 г): `totalMinor = roundHalfUp(unitPriceMinor * quantityMilligrams / priceBasisMilligrams)`. Проверяются диапазоны и переполнение; используются точные целочисленные/десятичные операции, не бинарный Double для денег. Округляется один раз итог каждой записи, недельный расход — сумма уже округлённых итогов. Цена за 100 г имеет базу 100000 мг. Ручная итоговая сумма допустима без исходной цены.
+
+В одной транзакции Room сохраняются UUID записи, один `IdempotencyKey`, количество, рассчитанные нутриенты, время, снимок стоимости и `PENDING`. Неизвестная стоимость — null, не 0. Конкретные поля и API определены в [Diary README](../../backend/diary-service/README.md). Цена и итог замораживаются до подтверждения: retry не пересчитывает их по свежему каталогу и не меняет ключ.
+
+`SyncDiaryWorker` отправляет сохранённый payload в `DiaryService.AddEntry`. Сервер хранит сумму, а не вычисляет её повторно. При подтверждении — `SYNCED`; при временной ошибке запись остаётся `PENDING`, применяется ограниченный backoff. При постоянной ошибке/исчерпании попыток — `FAILED` с сохранённым payload для явного повтора. Отмена корутины пробрасывается. Политика попыток и авторизации аналогична §3.4; `FAILED` не должен исчезать из UI или считаться отправленным. Периодический worker не должен бесконечно сбрасывать счётчик попыток.
+
+После восстановления с сервера Room объединяет записи по `entry_id`, включая локальные PENDING ровно один раз. Для недельного остатка нужна вся неделя в выбранном IANA часовом поясе. Неполная история/неизвестная стоимость явно показываются как неполная оценка. Recipe AI получает уже вычисленные ограничения на конкретную генерацию, без ожидания синхронизации дневника.
+
+### 3.2 Единый контракт избранного
+
+Канонический проект RPC — [Catalog README](../../backend/catalog-price-service/README.md): `SetFavorite(target, is_favorite)`. Типы: `FOOD_ITEM`, `RECIPE`, `DAILY_MEAL_PLAN`; все цели должны иметь постоянный ID каталога. Идентичность пользователя задаётся авторизацией. Один ключ на операцию передаётся в `idempotency-key`; повтор отправляет тот же payload и ключ.
+
+### 3.3 Устойчивая очередь Room
+
+Выбрана небольшая локальная очередь, а не физическое удаление единственной записи. Это две таблицы в той же Room БД, без нового сервиса:
+
+| Таблица | Поля и ограничения |
+|---|---|
+| `favorite_items` | PK `(userId, targetType, targetId)`, `isFavorite` (желаемое состояние), `lastOperationId` nullable, необязательные данные отображения |
+| `favorite_operations` | `operationId` UUID PK (= idempotency-key), `userId`, монотонный `sequence`, `targetType`, `targetId`, неизменяемое `isFavorite`, `status`, `attempts`, `lastErrorCode` nullable; UNIQUE(userId, sequence), индекс (userId, sequence) |
+
+Статусы очереди: `PENDING`, `BLOCKED_AUTH`, `BLOCKED_ERROR`, `EXHAUSTED`. ID в domain оборачиваются в value classes; строковое представление допустимо только в хранении/транспорте.
+
+1. Каждое изменение атомарно обновляет `favorite_items` и вставляет новую операцию с новым UUID и attempts=0. Удаление — `isFavorite=false`; строка остаётся как tombstone и скрывается из списка UI. Без сети всё сохраняется на диске.
+2. Worker обрабатывает только голову FIFO конкретного пользователя, включая заблокированные строки; нельзя выбирать только PENDING и обходить заблокированную голову. На пользователя допускается один отправитель. Операции не объединяются и их payload не изменяется.
+3. `добавить A → удалить B → добавить C` сохраняет три операции с разными ключами; UI сразу показывает состояние C. Пока A не подтверждена, B и C не отправляются.
+4. `acknowledge(operationId)` в транзакции удаляет только подтверждённую голову. `favorite_items` меняется лишь при `lastOperationId == operationId`: для true очищается lastOperationId; для false удаляется tombstone. При более новой операции состояние UI сохраняется. Повторный локальный ACK уже удалённой операции — no-op.
+5. Сбой после серверного commit до локального ACK оставляет голову в очереди. Повтор с прежним ключом получает прежний ответ; сервер не применяет старую мутацию второй раз. ACK всегда привязан к отправленному operationId, а не только targetId.
+6. При рестарте остаются и намерения, и attempts. Новое нажатие не обнуляет попытки предыдущей головы. Заблокированная голова не удаляется автоматически. После входа снимается BLOCKED_AUTH; для EXHAUSTED нужен явный повтор с тем же payload/ключом и новым ограниченным бюджетом попыток.
+7. Окончательно отклонённую сервером операцию (без изменения серверного состояния) пользователь может отменить или исправить: в транзакции удалить отклонённую голову, сохранить более новые намерения, для исправленного payload создать новый ключ. При неизвестном исходе временной ошибки сначала нужно разрешить прежнюю операцию с тем же ключом; её нельзя просто удалить и отправить следующую.
+8. Очередь привязана к аккаунту. На выходе отправитель останавливается, данные другого аккаунта не отправляются с новым токеном. Gateway перед каждым RPC проверяет совпадение субъекта токена с владельцем операции. На смене аккаунта локальная очередь не переименовывается и не переносится.
+9. После опустошения очереди `ListFavorites` обновляет снимок. Применение списка защищается поколением локальных изменений: если за время загрузки была мутация, старый список не заменяет UI. Между устройствами применяется порядок commit сервера, без обещания глобального порядка офлайн-нажатий.
+
+### 3.4 SyncFavoritesWorker: ограниченные попытки
+
+Одноразовая работа с NetworkType.CONNECTED и экспоненциальным backoff от 30 секунд. Счётчик attempts хранится в Room на операции и увеличивается **до** RPC: перезапуск приложения, новый WorkRequest или отмена не дают бесконечных попыток. Максимум 6 автоматических отправок на операцию, после чего требуется действие пользователя.
+
+| Результат адаптера | Действие |
+|---|---|
+| Подтверждённый ACK | Удалить только подтверждённую операцию, продолжить FIFO |
+| UNAVAILABLE, DEADLINE_EXCEEDED, ABORTED, временный RESOURCE_EXHAUSTED | Сохранить голову; retry с тем же ключом, при исчерпании — EXHAUSTED и failure |
+| UNAUTHENTICATED после неудачного refresh | BLOCKED_AUTH, failure; возобновить после входа |
+| INVALID_ARGUMENT, PERMISSION_DENIED, NOT_FOUND при добавлении | BLOCKED_ERROR, failure; показать причину, без автоматического повтора |
+| CancellationException | Пробросить; ничего не подтверждать и не удалять |
+| Неожиданная ошибка адаптера/локального хранилища | failure, очередь сохраняется; диагностика через WorkInfo, повтор после устранения причины |
+
+Адаптер `FavoritesSyncGateway` использует интерфейс RemoteDataSource согласно ADR-003, возвращает классифицированный результат только после завершения RPC и никогда не преобразует CancellationException в ошибку сети. Успех RPC валидируется: target/state ответа соответствуют отправленной операции. Ошибка протокола блокирует голову как постоянная.
+
+Контракты вспомогательных типов примера: `FavoriteOperation` содержит типизированные `id`, `ownerId`, `target`, `isFavorite`, `status`, `attempts`; `FavoriteSyncRepository.head()` возвращает голову текущего аккаунта независимо от статуса; `recordAttempt`, `block`, `acknowledge` атомарны и адресуют operationId. `session.isCurrentOwner()` проверяет владельца worker; gateway дополнительно проверяет токен перед RPC. Это интерфейсы будущей реализации, не существующие классы проекта.
+
 ```kotlin
 // androidMain
-class SyncDiaryWorker(
+class SyncFavoritesWorker(
     context: Context,
     params: WorkerParameters,
-    private val diaryRepository: DiaryRepository,
-    private val diaryGrpcDataSource: DiaryGrpcDataSource,
+    private val repository: FavoriteSyncRepository,
+    private val gateway: FavoritesSyncGateway,
+    private val session: SyncSession,
 ) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = try {
+        sendBatch()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Exception) {
+        Result.failure()
+    }
 
-    override suspend fun doWork(): Result {
-        val pendingEntries = diaryRepository.getPendingEntries()
-        if (pendingEntries.isEmpty()) return Result.success()
-
-        pendingEntries.forEach { entry ->
-            runCatching {
-                val metadata = Metadata().apply {
-                    put(
-                        Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER),
-                        entry.idempotencyKey.raw, // ВСЕГДА тот же ключ, что при создании
-                    )
+    private suspend fun sendBatch(): Result {
+        repeat(MAX_BATCH_SIZE) {
+            if (!session.isCurrentOwner()) return Result.failure()
+            val operation = repository.head() ?: return Result.success()
+            if (operation.status != FavoriteSyncStatus.PENDING) return Result.failure()
+            if (operation.attempts >= MAX_ATTEMPTS) {
+                repository.block(operation.id, FavoriteSyncStatus.EXHAUSTED)
+                return Result.failure()
+            }
+            repository.recordAttempt(operation.id)
+            when (gateway.send(operation)) {
+                FavoriteSendResult.Acknowledged -> repository.acknowledge(operation.id)
+                FavoriteSendResult.TransientFailure -> {
+                    if (operation.attempts + 1 < MAX_ATTEMPTS) return Result.retry()
+                    repository.block(operation.id, FavoriteSyncStatus.EXHAUSTED)
+                    return Result.failure()
                 }
-                diaryGrpcDataSource.addEntry(entry, metadata)
-                diaryRepository.updateSyncStatus(entry.id, SyncStatus.SYNCED)
-            }.onFailure { ex ->
-                diaryRepository.updateSyncStatus(entry.id, SyncStatus.FAILED)
-                if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
-                    return Result.retry() // WorkManager применит BackoffPolicy.EXPONENTIAL
+                FavoriteSendResult.AuthenticationRequired -> {
+                    repository.block(operation.id, FavoriteSyncStatus.BLOCKED_AUTH)
+                    return Result.failure()
+                }
+                FavoriteSendResult.Rejected -> {
+                    repository.block(operation.id, FavoriteSyncStatus.BLOCKED_ERROR)
+                    return Result.failure()
                 }
             }
         }
-        return Result.success()
+        return if (repository.head() == null) Result.success() else Result.retry()
     }
 
     companion object {
-        const val MAX_RETRY_ATTEMPTS = 5
-        const val WORK_NAME = "sync_diary_worker"
-
-        fun buildRequest(): PeriodicWorkRequest =
-            PeriodicWorkRequestBuilder<SyncDiaryWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
-                .build()
+        const val MAX_ATTEMPTS = 6
+        const val MAX_BATCH_SIZE = 50
     }
 }
 ```
+
+`FavoriteSendResult` — sealed interface с четырьмя data object, указанными в when; `FavoriteSyncStatus` — enum со статусами таблицы. WorkManager.Result — результат планировщика, не доменный Result<T>. В реальной реализации репозиторий дополнительно сохраняет диагностический код блокировки; пример показывает только управление потоком.
+
+После фиксации Room-транзакции планируется уникальная цепочка `favorites-sync:<userId>` с `ExistingWorkPolicy.APPEND_OR_REPLACE`: новая работа не запускается параллельно текущей и не теряет нажатие между последним чтением очереди и завершением worker. Не использовать REPLACE с отменой in-flight RPC. После сбоя между записью Room и enqueue незавершённая очередь подхватывается при старте приложения/входе. Работа с заблокированной головой завершается без сети; enqueue сам по себе не сбрасывает status/attempts. После входа или явного повтора сначала атомарно разблокируется нужная голова, затем добавляется работа.
+
+### 3.5 Обязательные сценарии будущих тестов
+
+Офлайн-удаление и рестарт; A→B→C с поздним ACK A; commit сервера и потеря ответа; конкурентный дубль одного ключа; другой payload со старым ключом; 6 временных ошибок; отмена во время RPC/ACK; истёкшая авторизация; постоянный отказ; смена аккаунта; enqueue одновременно с завершением worker; старая загрузка списка после нового нажатия. Для денег: округление, неизвестная/нулевая цена, изменение каталога после записи, повтор без пересчёта, восстановление без двойного расхода.
 
 ---
 

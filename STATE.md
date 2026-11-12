@@ -3,7 +3,7 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-08T05:00
+Обновлено: 2026-11-11
 
 ---
 
@@ -157,6 +157,7 @@
 - 📌 2026-10-19: **Инфраструктура и контракты (Шаг 3)** — создана корневая папка `proto/` с `buf.yaml`, `buf.gen.yaml` и пакетами сервисов; настроен `infrastructure/docker-compose.local.yml` (PostgreSQL 17, Redis 7, Kafka 3.9 KRaft, Schema Registry 7.7, Keycloak 26.0), заготовки Dockerfile, Helmfile и CI workflows.
 - 📌 2026-10-20: **Верификация сборки** — локальная инфраструктура Docker запущена без предупреждений; в `mobile/androidApp` добавлены прямые зависимости Compose Multiplatform (`runtime`, `foundation`, `material3`, `ui`), сборка и unit-тесты KMP shared и AndroidApp успешно верифицированы.
 - 📌 2026-10-22: **Project Boundary & Онлайн-исследование Git** — в `AGENTS.md`, `implementer.md`, `test-reviewer.md` зафиксирован строгий запрет на выход за пределы директории проекта без явного согласия пользователя. В `legacy-migration/SKILL.md` закреплено правило: исследование репозиториев (VKEducation, FitAssistentAndroid, ai-calorie-tracker-backend) производится **только онлайн** через GitHub без клонирования, скачивания и сохранения файлов на диск.
+- 📌 2026-11-11: **Архитектура подсистемы «Избранное» (Favorites)** — отвергнуто хранение избранного в `profile-service` (нарушение Bounded Contexts DDD) и прямая запись с мобильного клиента в Kafka (нарушение безопасности периметра). Избранное (продукты, рецепты, меню на день) локализовано в `catalog-price-service`. Синхронизация с мобильного клиента: Room KMP (0 мс) $\to$ `SyncFavoritesWorker` (gRPC + `idempotency-key`) $\to$ Transactional Outbox в `catalog_db` $\to$ Kafka топик `user.favorite.changed` $\to$ `recipe-ai-service` (обновление матрицы предпочтений пользователя в Redis для персонализации генерации рациона).
 
 ---
 
@@ -424,6 +425,50 @@
   - Написаны переносимые скрипты автоматического развертывания и тестирования спайка через `grpcurl`:
     - Bash: [`scripts/verify-envoy-gateway.sh`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.sh);
     - PowerShell: [`scripts/verify-envoy-gateway.ps1`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/scripts/verify-envoy-gateway.ps1).
+
+## Checkpoint 2026-11-11 — Исправление архитектурного аудита 83f9352
+
+- Ветка: `feature/KAN-36-liquibase`; исходный HEAD: `83f935266f4d7f4228fb34d19c57747a4578139e`; рабочее дерево перед началом чистое.
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роли: `implementer`, затем `test-reviewer`.
+- В работе: согласование избранного, устойчивой очереди операций, worker, событий и клиентского расчёта стоимости (пункты 2–5 и 7 аудита).
+- Решение: стоимость и остатки рассчитывает мобильный доменный слой; сервер хранит снимок записи. Recipe AI получает ограничения запроса, без событийного денежного баланса.
+- Границы: новые функциональные модули не реализуются; действующие Proto/Avro сохраняются, целевые контракты уточняются в документации. Без commit/push.
+
+## Checkpoint 2026-11-11 — [T-017 / KAN-36] Выравнивание схемы profile-service под profile.proto и документация топологии БД
+- Активные Skills: `legacy-migration`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`.
+- Роли: `implementer` + `test-reviewer`.
+- **Реализация:**
+  1. **Ликвидация галлюцинированных сущностей и выравнивание под контракт:**
+     - Удалены сущности `AccumulatorEntity.kt`, `AccumulatorJpaRepository.kt`, `accumulator-changelog.xml` (шаги, вода, активные минуты — отсутствуют в `profile.proto`).
+     - Удалены `TargetEntity.kt`, `TargetJpaRepository.kt`, `V1-init-target-table.xml`.
+     - Создан `@Embeddable NutritionGoalEmbeddable` (`targetCalories`, `targetProteinsGrams`, `targetFatsGrams`, `targetCarbsGrams`, `targetWeightKg`).
+     - `ProfileEntity.kt` выровнен строго 1:1 под `profile.proto` и мобильную модель Room `ProfileEntity.kt`.
+     - `001-init-profile-table.xml`: единая таблица `profiles` со всеми полями КБЖУ, роста/веса, `goal_type` и `weekly_budget`.
+     - Исправлен `application.yml` (`management.endpoint.health.group.readiness.include` настроен на существующие contributors: `readinessState,db`).
+  2. **Документирование архитектуры баз данных и контрактов:**
+     - Детализированы `README.md` для всех 5 бэкенд-микросервисов (`profile-service`, `diary-service`, `catalog-price-service`, `recipe-ai-service`, `food-cv-service`) и мобильного приложения (`mobile/README.md`).
+     - Создан единый топологический документ [`docs/architecture/04-database-and-contracts-topology.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/docs/architecture/04-database-and-contracts-topology.md) с описанием всех БД, межсервисных взаимодействий, альтернатив и преимуществ выбранного решения.
+  3. **Верификация:**
+     - `./gradlew :backend:profile-service:test` — 6/6 tests GREEN (Testcontainers PostgreSQL 17 + Liquibase).
+     - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL.
+     - `./gradlew :mobile:shared:allTests` — 59/59 tests GREEN.
+
+## Checkpoint 2026-11-11 — Архитектурный анализ подсистемы «Избранное» (продукты, рецепты, меню на день) и обновление документации
+- Активные Skills: `contracts-proto-and-avro`, `spring-grpc-service`, `kmp-shared-feature`, `android-compose-feature`.
+- Роли: `implementer` + `test-reviewer`.
+- **Архитектурный анализ предложения пользователя:**
+  1. **Отказ от размещения избранного в `profile-service`:** `profile-service` отвечает за биометрию (рост, вес, цели КБЖУ, бюджет). Каталог продуктов, рецептов и дневных рационов — это зона ответственности `catalog-price-service`. Размещение избранного в профиле привело бы к антипаттерну God Service и N+1 распределенным запросам при рендеринге списков.
+  2. **Отказ от прямой записи мобильного клиента в Kafka:** мобильные клиенты не имеют прямого доступа к брокеру Kafka по соображениям безопасности (Zero-Trust, Envoy Gateway JWT-авторизация, отсутствие синхронного ACK/валидации).
+  3. **Утвержденная схема работы:**
+     - **Клиент (Offline-First):** мгновенное добавление в Room KMP (`favorite_items`) $\to$ `SyncFavoritesWorker` (WorkManager + `BackoffPolicy.EXPONENTIAL`) отправляет gRPC `AddFavorite`/`RemoveFavorite` с метаданными `idempotency-key`.
+     - **Бэкенд:** `catalog-price-service` атомарно сохраняет связь в PostgreSQL (`catalog_db`: таблицы `user_favorite_foods`, `user_favorite_recipes`, `user_favorite_meal_plans`) и пишет событие в локальный `outbox_messages`.
+     - **Событийная шина (Kafka):** Outbox Processor публикует Avro-событие `UserFavoriteChanged` в топик `user.favorite.changed`.
+     - **Потребитель:** `recipe-ai-service` слушает этот топик и обновляет матрицу предпочтений пользователя (User Affinity) в Redis, отдавая больший вес любимым продуктам и рецептам при генерации суточного меню.
+- **Обновлена документация:**
+  - `docs/architecture/04-database-and-contracts-topology.md`: обновлена схема топологии, таблицы `catalog_db` и Room, добавлен разбор «Альтернатива 4».
+  - `docs/architecture/02-backend-stack.md`: добавлен топик `user.favorite.changed` и Avro-схема `UserFavoriteChanged`.
+  - `docs/architecture/03-mobile-stack.md`: добавлен `SyncFavoritesWorker` и структура фичи `favorites`.
+
 
 
 
