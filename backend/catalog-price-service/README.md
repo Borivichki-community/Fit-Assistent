@@ -86,6 +86,66 @@ CREATE INDEX idx_user_favorite_user ON user_favorite_recipes(user_id);
 - **`RecipeIngredientEntity`**: ингредиент рецепта с граммовкой.
 - **`UserFavoriteRecipeEntity`**: закладка избранного блюда пользователя.
 
+### 2.1 Архитектурное правило JPA: Ленивые связи (LAZY), EntityGraph и защита от N+1
+
+#### 1. Теория: Что такое проблема N+1 и почему она возникает?
+Если сервис запрашивает список из $N$ рецептов (например, 20 рецептов для ленты рекомендаций):
+* **Без оптимизации:** Hibernate сначала делает **1 запрос** на получение списка рецептов:
+  ```sql
+  SELECT * FROM recipes LIMIT 20;
+  ```
+* Затем при обращении к ингредиентам каждого рецепта (`recipe.ingredients`) Hibernate отправляет в базу отдельный SQL-запрос на каждый рецепт:
+  ```sql
+  SELECT * FROM recipe_ingredients WHERE recipe_id = ?; -- выполняется 20 раз!
+  ```
+* **Итог:** База данных получает **$1 + N = 21$ запрос** вместо одного. При нагрузке это вызывает перегрузку пула соединений, высокие задержки (latency) и деградацию БД.
+
+#### 2. Правило: FetchType.LAZY — обязательно, FetchType.EAGER — строго запрещён
+* **`FetchType.EAGER` ЗАПРЕЩЁН:** Заставляет Hibernate неявно и всегда загружать связанные коллекции, даже когда они не нужны (например, при банальном поиске по названию). Это приводит к бесконтрольным скрытым запросам.
+* **`FetchType.LAZY` ОБЯЗАТЕЛЕН:** Все связи (`@OneToMany`, `@ManyToOne`, `@ManyToMany`) обязаны иметь `fetch = FetchType.LAZY`. Hibernate подставляет легковесный Proxy и не трогает диск без явной команды.
+
+#### 3. Решение: `@EntityGraph` или `JOIN FETCH`
+Когда бизнес-логике действительно нужны рецепты вместе с их ингредиентами, используется **EntityGraph** (или `JOIN FETCH` в JPQL), который приказывает Hibernate сделать **один SQL-запрос с `LEFT JOIN`**:
+
+```kotlin
+// Сущность объявляет граф загрузки
+@Entity
+@Table(name = "recipes")
+@NamedEntityGraph(
+    name = "Recipe.withIngredients",
+    attributeNodes = [NamedAttributeNode("ingredients")]
+)
+data class RecipeEntity(
+    @Id val id: UUID,
+    val name: String,
+    val caloriesPer100g: Double,
+    val pricePer100g: BigDecimal,
+
+    @OneToMany(mappedBy = "recipe", fetch = FetchType.LAZY) // СТРОГО LAZY
+    val ingredients: List<RecipeIngredientEntity> = emptyList(),
+)
+
+// Репозиторий применяет граф к конкретным методам выборки
+interface RecipeJpaRepository : JpaRepository<RecipeEntity, UUID> {
+
+    // Вариант А: декларативно через @EntityGraph
+    @EntityGraph(value = "Recipe.withIngredients", type = EntityGraph.EntityGraphType.LOAD)
+    fun findByCategoryId(categoryId: UUID): List<RecipeEntity>
+
+    // Вариант Б: явно через JOIN FETCH в JPQL
+    @Query("SELECT r FROM RecipeEntity r JOIN FETCH r.ingredients WHERE r.id = :id")
+    fun findByIdWithIngredients(@Param("id") id: UUID): RecipeEntity?
+}
+```
+
+*Результат в БД:* Выполняется **ровно 1 SQL-запрос**:
+```sql
+SELECT r.*, i.* 
+FROM recipes r 
+LEFT JOIN recipe_ingredients i ON r.id = i.recipe_id 
+WHERE r.category_id = ?;
+```
+
 ---
 
 ## 3. Protobuf Контракт
