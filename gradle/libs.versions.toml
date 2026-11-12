@@ -32,6 +32,7 @@ grpc = "1.69.0"
 grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
+uuid-creator = "6.1.1"
 
 grpc-java = "1.69.0"
 protobuf = "4.36.2"
@@ -72,6 +73,7 @@ compose-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", versi
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-slf4j = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-slf4j", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
@@ -102,6 +104,7 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref =
 spring-starter-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 spring-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
 postgresql-jdbc = { module = "org.postgresql:postgresql" }
+uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 
 spring-starter-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
 
