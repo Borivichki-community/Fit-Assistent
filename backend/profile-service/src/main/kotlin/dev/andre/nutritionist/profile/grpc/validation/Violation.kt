@@ -21,13 +21,20 @@ data class Violation(
 class Violations {
     private val items = mutableListOf<Violation>()
 
-    fun notBlank(field: String, value: String) {
+    fun notBlank(
+        field: String,
+        value: String,
+    ) {
         if (value.isBlank()) {
             items += Violation(field, ViolationCode.REQUIRED, "$field must not be blank")
         }
     }
 
-    fun intInRange(field: String, value: Int, range: IntRange) {
+    fun intInRange(
+        field: String,
+        value: Int,
+        range: IntRange,
+    ) {
         if (value !in range) {
             items +=
                 Violation(
@@ -44,9 +51,13 @@ class Violations {
      * NaN проходит стандартные проверки вида `<= 0.0` и `< 0.0` (они дают false),
      * поэтому конечность проверяется первой и отдельно.
      */
-    fun doubleInRange(field: String, value: Double, range: ClosedFloatingPointRange<Double>) {
+    fun doubleInRange(
+        field: String,
+        value: Double,
+        range: ClosedFloatingPointRange<Double>,
+    ) {
         when {
-            !value.isFinite() ->
+            !value.isFinite() -> {
                 items +=
                     Violation(
                         field,
@@ -54,8 +65,9 @@ class Violations {
                         "$field must be a finite number",
                         value,
                     )
+            }
 
-            value !in range ->
+            value !in range -> {
                 items +=
                     Violation(
                         field,
@@ -63,6 +75,7 @@ class Violations {
                         "$field must be in ${range.start}..${range.endInclusive}",
                         value,
                     )
+            }
         }
     }
 

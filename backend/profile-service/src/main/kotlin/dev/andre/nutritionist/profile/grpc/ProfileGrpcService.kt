@@ -5,17 +5,18 @@ import com.budgetntr.proto.profile.v1.ProfileProto
 import com.budgetntr.proto.profile.v1.ProfileServiceGrpcKt
 import com.budgetntr.proto.profile.v1.UpdateProfileRequest
 import dev.andre.nutritionist.profile.coroutines.CoroutineDispatchers
+import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toProto
+import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyServerInterceptor
+import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
 import dev.andre.nutritionist.profile.grpc.validation.ProfileRequestValidator
 import dev.andre.nutritionist.profile.service.ProfileService
-import io.grpc.Status
-import io.grpc.StatusException
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.grpc.server.service.GrpcService
 
-@GrpcService
+@GrpcService(interceptors = [GrpcExceptionInterceptor::class, IdempotencyServerInterceptor::class])
 class ProfileGrpcService(
     private val profileService: ProfileService,
     private val validator: ProfileRequestValidator,
@@ -31,9 +32,7 @@ class ProfileGrpcService(
 
             val profile =
                 profileService.getProfileByUserId(request.userId)
-                    ?: throw StatusException(
-                        Status.NOT_FOUND.withDescription("Profile for user_id '${request.userId}' not found"),
-                    )
+                    ?: throw NoSuchElementException("Profile not found")
 
             logger.info("getProfile returning profile: id={}, userId={}", profile.id, profile.userId)
             profile.toProto()
@@ -52,7 +51,8 @@ class ProfileGrpcService(
                 request.weeklyBudget,
             )
 
-            val profile = profileService.upsertProfile(request)
+            val command = request.toCommand()
+            val profile = profileService.upsertProfile(command)
 
             logger.info("updateProfile completed successfully: id={}, userId={}", profile.id, profile.userId)
             profile.toProto()

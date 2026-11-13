@@ -6,5 +6,6 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <include file="v1/001-init-profile-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1/002-add-version-column.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

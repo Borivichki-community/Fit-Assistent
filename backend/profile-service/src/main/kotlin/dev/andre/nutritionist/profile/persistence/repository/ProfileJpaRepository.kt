@@ -8,5 +8,6 @@ import java.util.UUID
 @Repository
 interface ProfileJpaRepository : JpaRepository<ProfileEntity, UUID> {
     fun findByUserId(userId: String): ProfileEntity?
+
     fun existsByUserId(userId: String): Boolean
 }

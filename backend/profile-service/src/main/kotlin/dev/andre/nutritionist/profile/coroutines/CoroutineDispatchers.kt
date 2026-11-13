@@ -7,6 +7,9 @@ import org.springframework.stereotype.Component
 /**
  * Интерфейс для инжекции диспетчеров корутин в сервисы и gRPC-слой бэкенда.
  * Полностью соответствует AGENTS.md §1.5 и паттерну из Android/KMP.
+ *
+ * Примечание: на серверной JVM отсутствует UI Main loop (Android Looper / JavaFX Application thread),
+ * поэтому для диспетчера `main` используется `Dispatchers.Default`, предотвращая сбой при обращении.
  * В тестах заменяется на TestCoroutineDispatchers.
  */
 interface CoroutineDispatchers {
@@ -18,7 +21,7 @@ interface CoroutineDispatchers {
 
 @Component
 class DefaultCoroutineDispatchers(
-    override val main: CoroutineDispatcher = Dispatchers.Main,
+    override val main: CoroutineDispatcher = Dispatchers.Default,
     override val io: CoroutineDispatcher = Dispatchers.IO,
     override val default: CoroutineDispatcher = Dispatchers.Default,
     override val unconfined: CoroutineDispatcher = Dispatchers.Unconfined,

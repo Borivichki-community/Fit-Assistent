@@ -515,6 +515,42 @@
   - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
   - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
 
+## Checkpoint 2026-11-13 — [T-019 / T-020 / KAN-38] Доменная логика расчёта целей питания (NutritionGoalCalculator) и серверный интерцептор gRPC (GrpcExceptionInterceptor)
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`, `diagnose-build-failure`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-38-logic-add-target` (задачи T-019, T-020, KAN-38).
+- **Реализация:**
+  1. **[T-019] Доменный калькулятор целей питания NutritionGoalCalculator:**
+     - Пакет: `dev.andre.nutritionist.profile.domain.calculator.NutritionGoalCalculator`.
+     - Чистые функции без сайд-эффектов и без зависимостей от Spring/JPA/Android.
+     - Формула BMR Миффлина — Сан-Жеора для мужчин (`10*w + 6.25*h - 5*a + 5`), женщин (`10*w + 6.25*h - 5*a - 161`) и unknown (`10*w + 6.25*h - 5*a - 78`).
+     - Коэффициенты активности PAL (`SEDENTARY`: 1.2, `LIGHT`: 1.375, `MODERATE`: 1.55, `VERY_ACTIVE`: 1.725).
+     - Корректировка калоража под цель (`LOSE_WEIGHT`: дефицит 18% * 0.82, `MAINTAIN`: * 1.0, `GAIN_WEIGHT`: профицит 12% * 1.12).
+     - Макронутриенты: белки (2.0 г/кг или 1.5 г/кг при поддержании), жиры (не менее 1.0 г/кг и не менее 25% калоража), углеводы (остаток суточного калоража).
+     - Защита от деления на ноль, отрицательных значений и округление `BigDecimal` с `RoundingMode.HALF_UP`.
+     - Интеграция в `ProfileService.upsertProfile`: если в `UpdateProfileRequest` отсутствует `nutrition_goal` или `target_calories == 0`, цели автоматически вычисляются через калькулятор и сохраняются в PostgreSQL.
+  2. **[T-020] Глобальный серверный интерцептор GrpcExceptionInterceptor:**
+     - Пакет: `dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor`.
+     - Аннотации `@Component`, `@GlobalServerInterceptor`, `@Order(Ordered.HIGHEST_PRECEDENCE)`.
+     - Реализация `ForwardingServerCallListener` и `ForwardingServerCall` для надёжного перехвата синхронных и асинхронных корутинных исключений gRPC Kotlin.
+     - Трансляция статус-кодов:
+       * `NoSuchElementException` / `EntityNotFoundException` $\to$ `Status.NOT_FOUND`
+       * `IllegalArgumentException` / `IllegalStateException` $\to$ `Status.INVALID_ARGUMENT`
+       * `DataIntegrityViolationException` $\to$ `Status.ALREADY_EXISTS`
+       * `StatusException` / `StatusRuntimeException` $\to$ пропуск без искажений с сохранением rich error `StatusProto` (`BadRequest`)
+       * Прочие непредвиденные `Throwable` $\to$ `Status.INTERNAL` с сокрытием внутренних деталей SQL/стектрейса и логированием ошибки с `userId` в MDC.
+  3. **Тестирование и верификация:**
+     - `NutritionGoalCalculatorTest.kt`: 8 unit-тестов (формулы для мужчин/женщин, проверка баланса калорий $(белки \times 4) + (жиры \times 9) + (углеводы \times 4) \approx калории$ для всех уровней активности и целей питания, целевой вес, граничные значения).
+     - `GrpcExceptionInterceptorTest.kt`: 8 unit-тестов (проверка трансляции всех типов исключений, сохранение `StatusProto`, сокрытие SQL в `Status.INTERNAL`, разворачивание вложенных исключений).
+     - `ProfileGrpcServiceIntegrationTest.kt`: интеграционные тесты с реальным Testcontainers PostgreSQL 17 (проверка авторасчёта КБЖУ при отсутствии `nutrition_goal` и при `target_calories == 0`, трансляция `NoSuchElementException` $\to$ `Status.NOT_FOUND`).
+- **Верификация сборки и линтеров:**
+  - `./gradlew :backend:profile-service:test` — 67/67 tests GREEN (BUILD SUCCESSFUL).
+  - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:shared:allTests` — 59/59 tests GREEN.
+
+
 
 
 

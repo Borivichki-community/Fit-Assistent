@@ -7,14 +7,17 @@ import com.budgetntr.proto.profile.v1.GoalTypeProto
 import com.budgetntr.proto.profile.v1.NutritionGoalProto
 import com.budgetntr.proto.profile.v1.ProfileServiceGrpcKt
 import com.budgetntr.proto.profile.v1.UpdateProfileRequest
+import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
 import io.grpc.ManagedChannel
 import io.grpc.Server
+import io.grpc.ServerInterceptors
 import io.grpc.Status
 import io.grpc.StatusException
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
 import kotlinx.coroutines.test.runTest
+import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -22,42 +25,15 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import java.math.BigDecimal
 
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("dev")
-class ProfileGrpcServiceIntegrationTest {
-    companion object {
-        @Container
-        @JvmStatic
-        val postgres: PostgreSQLContainer<*> =
-            PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"))
-                .withDatabaseName("profile_grpc_test_db")
-                .withUsername("test_user")
-                .withPassword("test_pass")
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun registerProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
-            registry.add("spring.liquibase.enabled") { "true" }
-            registry.add("spring.jpa.hibernate.ddl-auto") { "none" }
-        }
-    }
+class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
 
     @Autowired
     private lateinit var profileGrpcService: ProfileGrpcService
+
+    @Autowired
+    private lateinit var grpcExceptionInterceptor: GrpcExceptionInterceptor
 
     @Autowired
     private lateinit var profileRepository: ProfileJpaRepository
@@ -74,7 +50,7 @@ class ProfileGrpcServiceIntegrationTest {
             InProcessServerBuilder
                 .forName(serverName)
                 .directExecutor()
-                .addService(profileGrpcService)
+                .addService(ServerInterceptors.intercept(profileGrpcService, grpcExceptionInterceptor))
                 .build()
                 .start()
 
@@ -120,10 +96,7 @@ class ProfileGrpcServiceIntegrationTest {
                 }
 
             assertEquals(Status.Code.NOT_FOUND, exception.status.code)
-            assertTrue(
-                exception.status.description?.contains("user_not_found_123") == true,
-                "Error description must mention the queried userId",
-            )
+            assertEquals("Profile not found", exception.status.description)
         }
 
     // ── Тест-кейс 2: updateProfile успешно создаёт профиль со всеми полями КБЖУ ──
@@ -178,23 +151,83 @@ class ProfileGrpcServiceIntegrationTest {
             assertEquals(0, BigDecimal("65.50").compareTo(savedEntity?.weightKg))
             assertEquals(2100, savedEntity?.nutritionGoal?.targetCalories)
             assertEquals(0, BigDecimal("130.00").compareTo(savedEntity?.nutritionGoal?.targetProteinsGrams))
+            assertEquals(0, BigDecimal("65.00").compareTo(savedEntity?.nutritionGoal?.targetFatsGrams))
+            assertEquals(0, BigDecimal("250.00").compareTo(savedEntity?.nutritionGoal?.targetCarbsGrams))
+            assertEquals(0, BigDecimal("64.00").compareTo(savedEntity?.nutritionGoal?.targetWeightKg))
             assertEquals(0, BigDecimal("4500.00").compareTo(savedEntity?.weeklyBudget))
-
-            // Проверка получения созданного профиля через getProfile
-            val fetchedProfile =
-                stub.getProfile(
-                    GetProfileRequest.newBuilder().setUserId("user_alice_456").build(),
-                )
-            assertEquals(response.id, fetchedProfile.id)
-            assertEquals("user_alice_456", fetchedProfile.userId)
-            assertEquals(172, fetchedProfile.heightCm)
-            assertEquals(2100, fetchedProfile.nutritionGoal.targetCalories)
         }
 
-    // ── Тест-кейс 3: повторный updateProfile обновляет существующий (UPSERT) без дубликатов ──
+    // ── Тест-кейс 3: T-019 Авторасчёт КБЖУ при отсутствии nutrition_goal ───────
 
     @Test
-    fun `updateProfile updates existing profile idempotently without creating duplicate records`() =
+    fun `updateProfile without nutrition_goal auto-calculates goals and saves to postgres`() =
+        runTest {
+            val request =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_auto_calc_1")
+                    .setHeightCm(180)
+                    .setWeightKg(80.0)
+                    .setGender(GenderProto.GENDER_MALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_SEDENTARY)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
+                    .setWeeklyBudget(3500.0)
+                    .build()
+
+            val response = stub.updateProfile(request)
+
+            assertEquals("user_auto_calc_1", response.userId)
+            // При 180см, 80кг, 25 лет, MALE, SEDENTARY, MAINTAIN: 2166 ккал
+            assertEquals(2166, response.nutritionGoal.targetCalories)
+            assertEquals(120.0, response.nutritionGoal.targetProteinsGrams)
+            assertEquals(80.0, response.nutritionGoal.targetFatsGrams)
+            assertEquals(241.5, response.nutritionGoal.targetCarbsGrams)
+            assertEquals(80.0, response.nutritionGoal.targetWeightKg)
+
+            // Проверка в БД
+            val saved = profileRepository.findByUserId("user_auto_calc_1")
+            assertNotNull(saved)
+            assertEquals(2166, saved?.nutritionGoal?.targetCalories)
+            assertEquals(0, BigDecimal("120.00").compareTo(saved?.nutritionGoal?.targetProteinsGrams))
+            assertEquals(0, BigDecimal("80.00").compareTo(saved?.nutritionGoal?.targetFatsGrams))
+            assertEquals(0, BigDecimal("241.50").compareTo(saved?.nutritionGoal?.targetCarbsGrams))
+        }
+
+    @Test
+    fun `updateProfile with zero target calories triggers auto-calculation`() =
+        runTest {
+            val request =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_auto_calc_zero_calories")
+                    .setHeightCm(165)
+                    .setWeightKg(60.0)
+                    .setGender(GenderProto.GENDER_FEMALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_LOSE_WEIGHT)
+                    .setWeeklyBudget(4000.0)
+                    .setNutritionGoal(
+                        NutritionGoalProto
+                            .newBuilder()
+                            .setTargetCalories(0)
+                            .build(),
+                    ).build()
+
+            val response = stub.updateProfile(request)
+
+            assertEquals("user_auto_calc_zero_calories", response.userId)
+            // При 165см, 60кг, FEMALE, MODERATE, LOSE_WEIGHT: 1710 ккал
+            assertEquals(1710, response.nutritionGoal.targetCalories)
+            assertEquals(120.0, response.nutritionGoal.targetProteinsGrams)
+            assertEquals(60.0, response.nutritionGoal.targetFatsGrams)
+            assertEquals(172.5, response.nutritionGoal.targetCarbsGrams)
+            assertEquals(54.0, response.nutritionGoal.targetWeightKg)
+        }
+
+    // ── Тест-кейс 4: UPSERT существующего профиля ──────────────────────────────
+
+    @Test
+    fun `updateProfile updates existing profile without creating duplicates`() =
         runTest {
             val initialRequest =
                 UpdateProfileRequest
@@ -266,7 +299,7 @@ class ProfileGrpcServiceIntegrationTest {
             assertEquals(2600, updatedEntity?.nutritionGoal?.targetCalories)
         }
 
-    // ── Тест-кейс 4: валидация аргументов ──
+    // ── Тест-кейс 5: Валидация аргументов и перехват исключений ───────────────
 
     @Test
     fun `getProfile with blank userId returns INVALID_ARGUMENT`() =

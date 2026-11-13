@@ -25,37 +25,27 @@ class ProfileEntity(
     @Id
     @Column(name = "id", nullable = false)
     val id: UUID,
-
     @Column(name = "user_id", nullable = false, length = 64, unique = true)
     val userId: String,
-
     @Column(name = "height_cm", nullable = false)
     var heightCm: Int,
-
     @Column(name = "weight_kg", nullable = false, precision = 5, scale = 2)
     var weightKg: BigDecimal,
-
     @Enumerated(EnumType.STRING)
     @Column(name = "gender", nullable = false, length = 20)
     var gender: Gender,
-
     @Enumerated(EnumType.STRING)
     @Column(name = "activity_level", nullable = false, length = 30)
     var activityLevel: ActivityLevel,
-
     @Enumerated(EnumType.STRING)
     @Column(name = "goal_type", nullable = false, length = 30)
     var goalType: GoalType,
-
     @Embedded
     var nutritionGoal: NutritionGoalEmbeddable,
-
     @Column(name = "weekly_budget", nullable = false, precision = 10, scale = 2)
     var weeklyBudget: BigDecimal,
-
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
-
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 )

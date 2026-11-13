@@ -105,12 +105,19 @@ val ktlintEngineVersion =
         .get()
         .requiredVersion
 
-ktlint {
-    version.set(ktlintEngineVersion)
-}
-
-tasks.named("ktlintMainSourceSetCheck").configure {
-    enabled = false
+tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
+    exclude { element ->
+        element
+            .file
+            .toPath()
+            .startsWith(
+                layout
+                    .buildDirectory
+                    .asFile
+                    .get()
+                    .toPath(),
+            )
+    }
 }
 
 tasks.withType<Test>().configureEach {
