@@ -3,7 +3,17 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-12
+Обновлено: 2026-11-13
+
+### Генерация Profile и исправление зависимости (2026-11-13)
+
+- Активированы Skills: `diagnose-build-failure`, `contracts-proto-and-avro`.
+- Проверка с зависимостью `profile-service` от `:mobile:shared` остановилась на несовместимых Android-вариантах. По разрешению пользователя строка зависимости закомментирована.
+- Скачаны необходимые инструменты генерации через Gradle. Buf не найден в PATH; для Gradle-генерации он не требуется.
+- `./gradlew :backend:profile-service:generateProto :backend:profile-service:compileKotlin :backend:profile-service:compileTestKotlin --console=plain` — BUILD SUCCESSFUL.
+- Синхронизация Android Studio — `Sync finished successfully`.
+- Protobuf и gRPC классы сгенерированы в `backend/profile-service/build/generated/sources/proto/`. Основной и тестовый код скомпилированы; тесты и запуск сервиса не выполнялись.
+
 
 ---
 
