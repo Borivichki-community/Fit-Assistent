@@ -74,6 +74,7 @@ dependencies {
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.spring.starter.redis)
     implementation(libs.uuid.creator)
     runtimeOnly(libs.postgresql.jdbc)
 
@@ -105,12 +106,19 @@ val ktlintEngineVersion =
         .get()
         .requiredVersion
 
-ktlint {
-    version.set(ktlintEngineVersion)
-}
-
-tasks.named("ktlintMainSourceSetCheck").configure {
-    enabled = false
+tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
+    exclude { element ->
+        element
+            .file
+            .toPath()
+            .startsWith(
+                layout
+                    .buildDirectory
+                    .asFile
+                    .get()
+                    .toPath(),
+            )
+    }
 }
 
 tasks.withType<Test>().configureEach {

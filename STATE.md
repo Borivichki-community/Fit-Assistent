@@ -138,6 +138,40 @@
   - Юридическое оформление лицензии Apache License 2.0: созданы `LICENSE` и `NOTICE` в корне проекта с атрибуцией Tinkoff Bank (KoTEA: Kotlin The Elm Architecture);
   - Верификация сборки и тестов: `./gradlew :mobile:shared:allTests` (53/53 GREEN).
 
+- [x] **Шаг 5 (T-016 / KAN-35 / KAN-37 / KAN-38): profile-service ревью и устранение замечаний (Clean Architecture, @Version, Idempotency, Testcontainers):**
+  - **Clean Architecture & Domain Model (Замечания 8 и 9):**
+    - Создана чистая доменная модель `NutritionGoal` в `domain.model`;
+    - `NutritionGoalCalculator` отвязан от JPA-сущностей, переведен на чистые доменные типы, оформлен как stateless `object` с подробным KDoc;
+  - **Декомпозиция сервисного слоя (Замечания 1 и 2):**
+    - Создана команда `UpsertProfileCommand`, исключающая протекание Protobuf DTO в сервисный слой;
+    - Обновлен `ProfileDtoMapper` для двустороннего маппинга Domain <-> Proto <-> Embeddable;
+    - Выделен метод `resolveNutritionGoal` в `ProfileService`;
+  - **Оптимистические блокировки @Version (Замечание 3):**
+    - Добавлено поле `@Version @Column(name = "version") var version: Long = 0` в `ProfileEntity`;
+    - Подготовлена Liquibase-миграция `002-add-version-column.xml` и включена в `db.changelog-master.xml`;
+    - В `GrpcExceptionInterceptor` добавлена трансляция `OptimisticLockException` и `OptimisticLockingFailureException` в gRPC статус `Status.ABORTED`;
+  - **Предотвращение утечки информации (Замечание 7):**
+    - В `ProfileGrpcService` заменено информативное сообщение об ошибке на нейтральное `"Profile not found"`;
+  - **Серверный интерцептор идемпотентности и RedisIdempotencyStore (Замечание 6):**
+    - Реализован боевой интерфейс `IdempotencyStore` и `RedisIdempotencyStore` с TTL 24 часа через `RedisTemplate<String, ByteArray>`;
+    - Удалена временная in-memory реализация `InMemoryIdempotencyStore`;
+    - Подключена зависимость `spring-boot-starter-data-redis` и настроен `RedisConfig`;
+    - `AbstractPostgresIntegrationTest` расширен контейнером Redis 7 (Testcontainers singleton);
+    - Создан `IdempotencyServerInterceptor`, корректно отправляющий `sendHeaders(Metadata())` перед повторной отправкой закешированного ответа;
+    - Написан интеграционный тест идемпотентных запросов с заголовком `idempotency-key` в `ProfileGrpcServiceIntegrationTest` с проверкой кэша в Redis;
+  - **Typed Value Class UserId (AGENTS.md §1.3):**
+    - Создан `@JvmInline value class UserId(val raw: String)`;
+    - `UpsertProfileCommand`, `ProfileService.getProfileByUserId`, `ProfileService.upsertProfile`, `ProfileGrpcService` и `ProfileDtoMapper` переведены на строгий `UserId` вместо сырого `String`;
+  - **Удаление мертвого кода в ProfileDtoMapper и ProfileJpaRepository:**
+    - Удалены неиспользуемые методы `UpdateProfileRequest.toNewEntity()`, `ProfileEntity.applyUpdates()`, `NutritionGoalEmbeddable.toProto()`, `NutritionGoalProto.toEmbeddable()`;
+    - Удален неиспользуемый метод `existsByUserId` из `ProfileJpaRepository`;
+  - **Паттерн Singleton Container для Testcontainers (Замечание 10):**
+    - В базовом абстрактном классе `AbstractPostgresIntegrationTest` настроен совместный запуск singleton PostgreSQL 17 и Redis 7 контейнеров;
+  - **Полная верификация качества кода:**
+    - `ktlintCheck`: 0 ошибок;
+    - `detekt`: 0 ошибок;
+    - `:backend:profile-service:check`: 68 passed, 0 skipped, 0 failed.
+
 - [x] **Шаг 4 (T-041 / KAN-59): Миграция экранов Авторизации, Регистрации (1.png), Онбординг-визарда (2–6.png) и удаление тестовой кнопки Add Meal:**
   - Удалена тестовая кнопка «Add meal» (`btn_add_meal_test`) и сопутствующий счётчик из `MainScreen.kt`, а тесты `MainScreenTest.kt` переведены на проверку реальных блоков экрана (`FitApp` top bar, «Мои планы», «Завтрак»).
   - Реализован экран авторизации [`LoginScreen.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginScreen.kt) и [`LoginRoute.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/auth/LoginRoute.kt) в точности по `screenshots/экран авторизации.jpg`:
@@ -551,6 +585,95 @@
   - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
   - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
   - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
+
+## Checkpoint 2026-11-13 — [T-019 / T-020 / KAN-38] Доменная логика расчёта целей питания (NutritionGoalCalculator) и серверный интерцептор gRPC (GrpcExceptionInterceptor)
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`, `diagnose-build-failure`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-38-logic-add-target` (задачи T-019, T-020, KAN-38).
+- **Реализация:**
+  1. **[T-019] Доменный калькулятор целей питания NutritionGoalCalculator:**
+     - Пакет: `dev.andre.nutritionist.profile.domain.calculator.NutritionGoalCalculator`.
+     - Чистые функции без сайд-эффектов и без зависимостей от Spring/JPA/Android.
+     - Формула BMR Миффлина — Сан-Жеора для мужчин (`10*w + 6.25*h - 5*a + 5`), женщин (`10*w + 6.25*h - 5*a - 161`) и unknown (`10*w + 6.25*h - 5*a - 78`).
+     - Коэффициенты активности PAL (`SEDENTARY`: 1.2, `LIGHT`: 1.375, `MODERATE`: 1.55, `VERY_ACTIVE`: 1.725).
+     - Корректировка калоража под цель (`LOSE_WEIGHT`: дефицит 18% * 0.82, `MAINTAIN`: * 1.0, `GAIN_WEIGHT`: профицит 12% * 1.12).
+     - Макронутриенты: белки (2.0 г/кг или 1.5 г/кг при поддержании), жиры (не менее 1.0 г/кг и не менее 25% калоража), углеводы (остаток суточного калоража).
+     - Защита от деления на ноль, отрицательных значений и округление `BigDecimal` с `RoundingMode.HALF_UP`.
+     - Интеграция в `ProfileService.upsertProfile`: если в `UpdateProfileRequest` отсутствует `nutrition_goal` или `target_calories == 0`, цели автоматически вычисляются через калькулятор и сохраняются в PostgreSQL.
+  2. **[T-020] Глобальный серверный интерцептор GrpcExceptionInterceptor:**
+     - Пакет: `dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor`.
+     - Аннотации `@Component`, `@GlobalServerInterceptor`, `@Order(Ordered.HIGHEST_PRECEDENCE)`.
+     - Реализация `ForwardingServerCallListener` и `ForwardingServerCall` для надёжного перехвата синхронных и асинхронных корутинных исключений gRPC Kotlin.
+     - Трансляция статус-кодов:
+       * `NoSuchElementException` / `EntityNotFoundException` $\to$ `Status.NOT_FOUND`
+       * `IllegalArgumentException` / `IllegalStateException` $\to$ `Status.INVALID_ARGUMENT`
+       * `DataIntegrityViolationException` $\to$ `Status.ALREADY_EXISTS`
+       * `StatusException` / `StatusRuntimeException` $\to$ пропуск без искажений с сохранением rich error `StatusProto` (`BadRequest`)
+       * Прочие непредвиденные `Throwable` $\to$ `Status.INTERNAL` с сокрытием внутренних деталей SQL/стектрейса и логированием ошибки с `userId` в MDC.
+  3. **Тестирование и верификация:**
+     - `NutritionGoalCalculatorTest.kt`: 8 unit-тестов (формулы для мужчин/женщин, проверка баланса калорий $(белки \times 4) + (жиры \times 9) + (углеводы \times 4) \approx калории$ для всех уровней активности и целей питания, целевой вес, граничные значения).
+     - `GrpcExceptionInterceptorTest.kt`: 8 unit-тестов (проверка трансляции всех типов исключений, сохранение `StatusProto`, сокрытие SQL в `Status.INTERNAL`, разворачивание вложенных исключений).
+     - `ProfileGrpcServiceIntegrationTest.kt`: интеграционные тесты с реальным Testcontainers PostgreSQL 17 (проверка авторасчёта КБЖУ при отсутствии `nutrition_goal` и при `target_calories == 0`, трансляция `NoSuchElementException` $\to$ `Status.NOT_FOUND`).
+- **Верификация сборки и линтеров:**
+  - `./gradlew :backend:profile-service:test` — 67/67 tests GREEN (BUILD SUCCESSFUL).
+  - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:shared:allTests` — 59/59 tests GREEN.
+
+## Checkpoint 2026-11-13 — Комплексное архитектурное ревью profile-service
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`.
+- Роль: `test-reviewer`.
+- Создан подробный отчёт: `backend/profile-service/profile-service-review.md`.
+- **Ключевые выводы ревью:**
+  1. Выявлены и локализованы 2 критических бага:
+     - `IdempotencyServerInterceptor`: `IllegalStateException: sendHeaders has not been called` при отдаче закешированного ответа.
+     - `AbstractPostgresIntegrationTest`: конфликт кеширования `ApplicationContext` Spring и закрытия контейнера `@Testcontainers` (требуется Singleton pattern).
+  2. Выявлены архитектурные несоответствия:
+     - Нарушение AGENTS.md §1.3 (отсутствие `UserId` value class, использование сырых `String`).
+     - В миграции `002-add-version-column.xml` колонка `version` добавлена, но поле `@Version` отсутствует в `ProfileEntity` (оптимистическая блокировка не работает).
+     - Дублирование регистрации перехватчиков в `@GrpcService(interceptors = [...])` при наличии `@GlobalServerInterceptor`.
+  3. Выявлен мёртвый код:
+     - `ProfileDtoMapper`: неиспользуемые методы `toNewEntity`, `applyUpdates`, `toProto`, `toEmbeddable`.
+     - `ProfileJpaRepository`: неиспользуемый метод `existsByUserId`.
+     - Избыточные зависимости `spring-kafka`, `avro-runtime` и фиктивный тест `AvroCompatibilityTest.kt`.
+
+## Checkpoint 2026-11-13 — [T-021 / T-022 / T-023 / KAN-39] Безопасность gRPC (SecurityInterceptor), регистрация пользователей (KeycloakClient / UserRegistrationService) и Testcontainers интеграционные тесты
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`, `diagnose-build-failure`.
+- Роли: `implementer` + `test-reviewer`.
+- Ветка: `feature/KAN-38-logic-add-target` (задачи T-021, T-022, T-023).
+- **Реализация:**
+  1. **[T-021] Безопасность и разграничение доступа (Auth & Access Control):**
+     - `AuthContext.kt`: модель контекста безопасности с `userId`, `roles`, `isAuthenticated`, `isAdmin` / `isService` проверками, `AUTH_CONTEXT_KEY` для gRPC Context и CoroutineContext extension.
+     - `SecurityGrpcInterceptor.kt`: глобальный перехватчик `@Component @GlobalServerInterceptor @Order(100)`. Извлечение метаданных `x-user-id`, `x-user-roles` (CSV / JSON array) с fallback на парсинг Bearer JWT (`sub`, `realm_access.roles`). Передача `AuthContext` в gRPC `Contexts.interceptCall` и автоматическая привязка `userId` в MDC.
+     - `ProfileGrpcService.kt`: проверка прав доступа `checkAccess(targetUserId)`:
+       * Неавторизованный запрос $\to$ `Status.UNAUTHENTICATED`;
+       * Обычный пользователь (`ROLE_USER`) с несовпадающим `targetUserId` $\to$ `Status.PERMISSION_DENIED`;
+       * Владелец (`userId == targetUserId`) или администратор (`ROLE_ADMIN` / `ROLE_SERVICE`) $\to$ успешный доступ к операциям `getProfile` и `updateProfile`.
+  2. **[T-023] Регистрация пользователя (Keycloak Admin / Синхронизация профиля):**
+     - `KeycloakClient.kt` (`KeycloakClientImpl` на Spring `RestClient`): создание пользователя в Keycloak Admin REST API (`POST /admin/realms/{realm}/users`).
+     - Сетевой вызов Keycloak выполняется **строго вне `@Transactional`** (`AGENTS.md §4.1`). Конфликт (409 Conflict) транслируется в `Status.ALREADY_EXISTS` без создания осиротевших записей в `profile_db`.
+     - `UserRegistrationService.kt`: оркестрация создания пользователя в Keycloak, расчёт стартовых целей КБЖУ через `NutritionGoalCalculator` и атомарный UPSERT в PostgreSQL.
+     - Поддержка идемпотентности с кешированием в `IdempotencyStore`.
+     - Исправлен `IdempotencyServerInterceptor`: добавлен обязательный вызов `call.sendHeaders(Metadata())` перед отправкой кешированного gRPC-ответа.
+  3. **[T-022] Тестирование и верификация (Testcontainers PostgreSQL 17):**
+     - `AbstractPostgresIntegrationTest.kt`: контейнер PostgreSQL 17 переведён на singleton pattern (`.apply { start() }`) для предотвращения остановки между тест-классами.
+     - `FakeKeycloakClient.kt` и `TestKeycloakConfig.kt`: чистый in-memory фейк (`AGENTS.md §5.1`) без использования MockK.
+     - `ProfileGrpcServiceIntegrationTest.kt` расширен до 19 интеграционных тестов:
+       * Проверка `Status.UNAUTHENTICATED` при отсутствии заголовков авторизации;
+       * Проверка `Status.PERMISSION_DENIED` при попытке доступа к чужому профилю с ролью `ROLE_USER`;
+       * Проверка успешного доступа владельца профиля (`authenticatedUserId == targetUserId`);
+       * Проверка обхода ограничений владельца для `ROLE_ADMIN` и `ROLE_SERVICE`;
+       * Проверка аутентификации через Bearer JWT токен с корректным извлечением roles и sub;
+       * Проверка идемпотентности и авторасчёта КБЖУ.
+- **Верификация сборки, тестов и линтеров:**
+  - `./gradlew :backend:profile-service:test` — 82/82 tests GREEN (100% успех на Testcontainers PostgreSQL 17).
+  - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
+  - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
+
+
+
 
 
 
