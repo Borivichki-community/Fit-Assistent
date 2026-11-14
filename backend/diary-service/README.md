@@ -69,6 +69,55 @@ CREATE INDEX idx_outbox_pending ON outbox_messages(status, created_at);
 - **`DiaryEntryEntity`**: запись в журнале приёма пищи (КБЖУ, граммовка, цена, идемпотентный ключ).
 - **`OutboxMessageEntity`**: сущность Transactional Outbox для надёжной публикации в Kafka вне транзакции БД.
 
+### 2.1 Архитектурное правило JPA: Ленивые связи (LAZY), EntityGraph и защита от N+1
+
+#### 1. Теория: Проблема N+1 при выборке приёмов пищи
+При запросе суточного рациона (`GetDailyEntries`):
+* Пользователь съедает за день 15–20 продуктов (`food_items`), разделенных по типам приёма пищи (`BREAKFAST`, `LUNCH`, `DINNER`, `SNACK`).
+* Если сущность записи дневника (`DiaryEntryEntity`) имеет связи на справочные сущности (категории, теги, составные рецепты) со стратегией по умолчанию или `FetchType.EAGER`:
+  Hibernate сначала выполнит **1 запрос** на получение записей дня:
+  ```sql
+  SELECT * FROM diary_entries WHERE user_id = ? AND recorded_at BETWEEN ? AND ?;
+  ```
+  А затем для каждой из 20 записей пошлёт отдельный запрос на связанные данные:
+  ```sql
+  SELECT * FROM related_entities WHERE id = ?; -- 20 отдельных запросов!
+  ```
+* Это и есть проблема **N+1**: вместо одного сетевого раундтрипа база нагружается десятками мелких запросов.
+
+#### 2. Правило проекта:
+* **СТРОГИЙ ЗАПРЕТ НА `FetchType.EAGER`:** Любые ассоциации в JPA (`@ManyToOne`, `@OneToMany`, `@ManyToMany`) обязаны объявляться исключительно как `fetch = FetchType.LAZY`.
+* **Всегда обособленная выборка через `@EntityGraph` или `JOIN FETCH`:** Если бизнес-метод требует сущность вместе с её связями, этот граф объявляется явно в репозитории:
+
+```kotlin
+@Entity
+@Table(name = "diary_entries")
+@NamedEntityGraph(
+    name = "DiaryEntry.withDetails",
+    attributeNodes = [
+        NamedAttributeNode("tags"),
+    ]
+)
+class DiaryEntryEntity(
+    @Id val id: UUID,
+    val userId: String,
+    // ...
+    @OneToMany(mappedBy = "entry", fetch = FetchType.LAZY) // СТРОГО LAZY
+    val tags: List<DiaryEntryTagEntity> = emptyList(),
+)
+
+interface DiaryJpaRepository : JpaRepository<DiaryEntryEntity, UUID> {
+
+    // Загрузка дневника за день за 1 SQL-запрос с JOIN вместо N+1
+    @EntityGraph(value = "DiaryEntry.withDetails", type = EntityGraph.EntityGraphType.LOAD)
+    fun findByUserIdAndRecordedAtBetween(
+        userId: String,
+        from: Instant,
+        to: Instant,
+    ): List<DiaryEntryEntity>
+}
+```
+
 ---
 
 ## 3. Protobuf Контракт

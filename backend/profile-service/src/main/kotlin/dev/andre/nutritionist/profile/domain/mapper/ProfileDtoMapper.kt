@@ -5,14 +5,18 @@ import com.budgetntr.proto.profile.v1.ProfileProto
 import com.budgetntr.proto.profile.v1.UpdateProfileRequest
 import com.github.f4b6a3.uuid.UuidCreator
 import com.google.protobuf.Timestamp
+import dev.andre.nutritionist.profile.domain.model.NutritionGoal
+import dev.andre.nutritionist.profile.domain.model.UpsertProfileCommand
+import dev.andre.nutritionist.profile.domain.model.UserId
 import dev.andre.nutritionist.profile.persistence.entity.NutritionGoalEmbeddable
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 
-fun NutritionGoalEmbeddable.toProto(): NutritionGoalProto =
-    NutritionGoalProto.newBuilder()
+fun NutritionGoal.toProto(): NutritionGoalProto =
+    NutritionGoalProto
+        .newBuilder()
         .setTargetCalories(targetCalories)
         .setTargetProteinsGrams(targetProteinsGrams.toDouble())
         .setTargetFatsGrams(targetFatsGrams.toDouble())
@@ -20,8 +24,8 @@ fun NutritionGoalEmbeddable.toProto(): NutritionGoalProto =
         .setTargetWeightKg(targetWeightKg.toDouble())
         .build()
 
-fun NutritionGoalProto.toEmbeddable(): NutritionGoalEmbeddable =
-    NutritionGoalEmbeddable(
+fun NutritionGoalProto.toDomain(): NutritionGoal =
+    NutritionGoal(
         targetCalories = targetCalories,
         targetProteinsGrams = BigDecimal.valueOf(targetProteinsGrams).setScale(2, RoundingMode.HALF_UP),
         targetFatsGrams = BigDecimal.valueOf(targetFatsGrams).setScale(2, RoundingMode.HALF_UP),
@@ -29,8 +33,27 @@ fun NutritionGoalProto.toEmbeddable(): NutritionGoalEmbeddable =
         targetWeightKg = BigDecimal.valueOf(targetWeightKg).setScale(2, RoundingMode.HALF_UP),
     )
 
+fun NutritionGoal.toEmbeddable(): NutritionGoalEmbeddable =
+    NutritionGoalEmbeddable(
+        targetCalories = targetCalories,
+        targetProteinsGrams = targetProteinsGrams,
+        targetFatsGrams = targetFatsGrams,
+        targetCarbsGrams = targetCarbsGrams,
+        targetWeightKg = targetWeightKg,
+    )
+
+fun NutritionGoalEmbeddable.toDomain(): NutritionGoal =
+    NutritionGoal(
+        targetCalories = targetCalories,
+        targetProteinsGrams = targetProteinsGrams,
+        targetFatsGrams = targetFatsGrams,
+        targetCarbsGrams = targetCarbsGrams,
+        targetWeightKg = targetWeightKg,
+    )
+
 fun ProfileEntity.toProto(): ProfileProto =
-    ProfileProto.newBuilder()
+    ProfileProto
+        .newBuilder()
         .setId(id.toString())
         .setUserId(userId)
         .setHeightCm(heightCm)
@@ -38,43 +61,64 @@ fun ProfileEntity.toProto(): ProfileProto =
         .setGender(gender.toProto())
         .setActivityLevel(activityLevel.toProto())
         .setGoalType(goalType.toProto())
-        .setNutritionGoal(nutritionGoal.toProto())
+        .setNutritionGoal(nutritionGoal.toDomain().toProto())
         .setWeeklyBudget(weeklyBudget.toDouble())
         .setUpdatedAt(
-            Timestamp.newBuilder()
+            Timestamp
+                .newBuilder()
                 .setSeconds(updatedAt.epochSecond)
                 .setNanos(updatedAt.nano)
                 .build(),
-        )
-        .build()
+        ).build()
 
-fun UpdateProfileRequest.toNewEntity(): ProfileEntity {
-    val now = Instant.now()
-    return ProfileEntity(
-        id = UuidCreator.getTimeOrderedEpoch(),
-        userId = userId,
+fun UpdateProfileRequest.toCommand(): UpsertProfileCommand {
+    val domainGoal =
+        if (hasNutritionGoal() && nutritionGoal.targetCalories > 0) {
+            nutritionGoal.toDomain()
+        } else {
+            null
+        }
+
+    return UpsertProfileCommand(
+        userId = UserId(userId),
         heightCm = heightCm,
         weightKg = BigDecimal.valueOf(weightKg).setScale(2, RoundingMode.HALF_UP),
         gender = gender.toDomain(),
         activityLevel = activityLevel.toDomain(),
         goalType = goalType.toDomain(),
-        nutritionGoal = if (hasNutritionGoal()) nutritionGoal.toEmbeddable() else NutritionGoalEmbeddable(),
+        nutritionGoal = domainGoal,
         weeklyBudget = BigDecimal.valueOf(weeklyBudget).setScale(2, RoundingMode.HALF_UP),
-        createdAt = now,
-        updatedAt = now,
     )
 }
 
-fun ProfileEntity.applyUpdates(request: UpdateProfileRequest): ProfileEntity {
-    heightCm = request.heightCm
-    weightKg = BigDecimal.valueOf(request.weightKg).setScale(2, RoundingMode.HALF_UP)
-    gender = request.gender.toDomain()
-    activityLevel = request.activityLevel.toDomain()
-    goalType = request.goalType.toDomain()
-    if (request.hasNutritionGoal()) {
-        nutritionGoal = request.nutritionGoal.toEmbeddable()
-    }
-    weeklyBudget = BigDecimal.valueOf(request.weeklyBudget).setScale(2, RoundingMode.HALF_UP)
+fun ProfileEntity.updateFrom(
+    command: UpsertProfileCommand,
+    finalGoal: NutritionGoal,
+): ProfileEntity {
+    heightCm = command.heightCm
+    weightKg = command.weightKg
+    gender = command.gender
+    activityLevel = command.activityLevel
+    goalType = command.goalType
+    nutritionGoal = finalGoal.toEmbeddable()
+    weeklyBudget = command.weeklyBudget
     updatedAt = Instant.now()
     return this
+}
+
+fun UpsertProfileCommand.toNewEntity(finalGoal: NutritionGoal): ProfileEntity {
+    val now = Instant.now()
+    return ProfileEntity(
+        id = UuidCreator.getTimeOrderedEpoch(),
+        userId = userId.raw,
+        heightCm = heightCm,
+        weightKg = weightKg,
+        gender = gender,
+        activityLevel = activityLevel,
+        goalType = goalType,
+        nutritionGoal = finalGoal.toEmbeddable(),
+        weeklyBudget = weeklyBudget,
+        createdAt = now,
+        updatedAt = now,
+    )
 }

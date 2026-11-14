@@ -5,18 +5,24 @@ import com.budgetntr.proto.profile.v1.GenderProto
 import com.budgetntr.proto.profile.v1.GoalTypeProto
 import com.budgetntr.proto.profile.v1.NutritionGoalProto
 import com.budgetntr.proto.profile.v1.UpdateProfileRequest
-import dev.andre.nutritionist.profile.domain.mapper.applyUpdates
+import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toDomain
 import dev.andre.nutritionist.profile.domain.mapper.toEmbeddable
 import dev.andre.nutritionist.profile.domain.mapper.toNewEntity
 import dev.andre.nutritionist.profile.domain.mapper.toProto
+import dev.andre.nutritionist.profile.domain.mapper.updateFrom
 import dev.andre.nutritionist.profile.domain.model.ActivityLevel
 import dev.andre.nutritionist.profile.domain.model.Gender
 import dev.andre.nutritionist.profile.domain.model.GoalType
+import dev.andre.nutritionist.profile.domain.model.NutritionGoal
+import dev.andre.nutritionist.profile.domain.model.UpsertProfileCommand
+import dev.andre.nutritionist.profile.domain.model.UserId
 import dev.andre.nutritionist.profile.persistence.entity.NutritionGoalEmbeddable
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.Instant
@@ -80,47 +86,6 @@ class ProfileDtoMapperTest {
         assertEquals(GoalTypeProto.GOAL_TYPE_UNSPECIFIED, GoalType.UNKNOWN.toProto())
     }
 
-    // ── NutritionGoalEmbeddable <-> NutritionGoalProto ────────────────────────
-
-    @Test
-    fun `nutrition goal embeddable maps to proto correctly`() {
-        val embeddable =
-            NutritionGoalEmbeddable(
-                targetCalories = 2300,
-                targetProteinsGrams = BigDecimal("155.50"),
-                targetFatsGrams = BigDecimal("72.25"),
-                targetCarbsGrams = BigDecimal("260.00"),
-                targetWeightKg = BigDecimal("73.50"),
-            )
-        val proto = embeddable.toProto()
-
-        assertEquals(2300, proto.targetCalories)
-        assertEquals(155.50, proto.targetProteinsGrams)
-        assertEquals(72.25, proto.targetFatsGrams)
-        assertEquals(260.00, proto.targetCarbsGrams)
-        assertEquals(73.50, proto.targetWeightKg)
-    }
-
-    @Test
-    fun `nutrition goal proto maps to embeddable correctly`() {
-        val proto =
-            NutritionGoalProto
-                .newBuilder()
-                .setTargetCalories(2500)
-                .setTargetProteinsGrams(160.0)
-                .setTargetFatsGrams(75.5)
-                .setTargetCarbsGrams(280.25)
-                .setTargetWeightKg(78.0)
-                .build()
-        val embeddable = proto.toEmbeddable()
-
-        assertEquals(2500, embeddable.targetCalories)
-        assertEquals(0, BigDecimal("160.00").compareTo(embeddable.targetProteinsGrams))
-        assertEquals(0, BigDecimal("75.50").compareTo(embeddable.targetFatsGrams))
-        assertEquals(0, BigDecimal("280.25").compareTo(embeddable.targetCarbsGrams))
-        assertEquals(0, BigDecimal("78.00").compareTo(embeddable.targetWeightKg))
-    }
-
     // ── ProfileEntity -> ProfileProto ─────────────────────────────────────────
 
     @Test
@@ -162,92 +127,201 @@ class ProfileDtoMapperTest {
         assertEquals(now.epochSecond, proto.updatedAt.seconds)
     }
 
-    // ── UpdateProfileRequest -> toNewEntity & applyUpdates ───────────────────
+    // ── Domain NutritionGoal <-> Proto & Embeddable ──────────────────────────
 
     @Test
-    fun `update request converts to new entity with fresh UUID and timestamps`() {
-        val request =
-            UpdateProfileRequest
-                .newBuilder()
-                .setUserId("user_new_entity")
-                .setHeightCm(170)
-                .setWeightKg(68.0)
-                .setGender(GenderProto.GENDER_FEMALE)
-                .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_SEDENTARY)
-                .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
-                .setWeeklyBudget(3500.0)
-                .setNutritionGoal(
-                    NutritionGoalProto
-                        .newBuilder()
-                        .setTargetCalories(1800)
-                        .setTargetProteinsGrams(110.0)
-                        .setTargetFatsGrams(55.0)
-                        .setTargetCarbsGrams(200.0)
-                        .setTargetWeightKg(68.0)
-                        .build(),
-                ).build()
+    fun `domain nutrition goal maps to proto and back correctly`() {
+        val domain =
+            NutritionGoal(
+                targetCalories = 2400,
+                targetProteinsGrams = BigDecimal("160.00"),
+                targetFatsGrams = BigDecimal("70.00"),
+                targetCarbsGrams = BigDecimal("280.00"),
+                targetWeightKg = BigDecimal("75.00"),
+            )
 
-        val entity = request.toNewEntity()
-        assertNotNull(entity.id)
-        assertEquals(7, entity.id.version())
-        assertEquals("user_new_entity", entity.userId)
-        assertEquals(170, entity.heightCm)
-        assertEquals(0, BigDecimal("68.00").compareTo(entity.weightKg))
-        assertEquals(Gender.FEMALE, entity.gender)
-        assertEquals(ActivityLevel.SEDENTARY, entity.activityLevel)
-        assertEquals(GoalType.MAINTAIN, entity.goalType)
-        assertEquals(0, BigDecimal("3500.00").compareTo(entity.weeklyBudget))
-        assertEquals(1800, entity.nutritionGoal.targetCalories)
+        val proto = domain.toProto()
+        assertEquals(2400, proto.targetCalories)
+        assertEquals(160.0, proto.targetProteinsGrams)
+        assertEquals(70.0, proto.targetFatsGrams)
+        assertEquals(280.0, proto.targetCarbsGrams)
+        assertEquals(75.0, proto.targetWeightKg)
+
+        val mappedBack = proto.toDomain()
+        assertEquals(domain.targetCalories, mappedBack.targetCalories)
+        assertEquals(0, domain.targetProteinsGrams.compareTo(mappedBack.targetProteinsGrams))
+        assertEquals(0, domain.targetFatsGrams.compareTo(mappedBack.targetFatsGrams))
+        assertEquals(0, domain.targetCarbsGrams.compareTo(mappedBack.targetCarbsGrams))
+        assertEquals(0, domain.targetWeightKg.compareTo(mappedBack.targetWeightKg))
     }
 
     @Test
-    fun `existing profile entity updates in-place via applyUpdates`() {
-        val originalId = UUID.randomUUID()
-        val originalCreated = Instant.parse("2026-11-01T00:00:00Z")
-        val entity =
-            ProfileEntity(
-                id = originalId,
-                userId = "user_in_place",
-                heightCm = 175,
-                weightKg = BigDecimal("75.00"),
+    fun `domain nutrition goal maps to embeddable and back correctly`() {
+        val domain =
+            NutritionGoal(
+                targetCalories = 2100,
+                targetProteinsGrams = BigDecimal("145.00"),
+                targetFatsGrams = BigDecimal("65.00"),
+                targetCarbsGrams = BigDecimal("230.00"),
+                targetWeightKg = BigDecimal("72.00"),
+            )
+
+        val embeddable = domain.toEmbeddable()
+        assertEquals(2100, embeddable.targetCalories)
+        assertEquals(domain.targetProteinsGrams, embeddable.targetProteinsGrams)
+        assertEquals(domain.targetFatsGrams, embeddable.targetFatsGrams)
+        assertEquals(domain.targetCarbsGrams, embeddable.targetCarbsGrams)
+        assertEquals(domain.targetWeightKg, embeddable.targetWeightKg)
+
+        val mappedBack = embeddable.toDomain()
+        assertEquals(domain, mappedBack)
+    }
+
+    // ── UpdateProfileRequest.toCommand ───────────────────────────────────────
+
+    @Test
+    fun `toCommand maps UpdateProfileRequest with explicit goal to UpsertProfileCommand`() {
+        val request =
+            UpdateProfileRequest
+                .newBuilder()
+                .setUserId("user_cmd_1")
+                .setHeightCm(180)
+                .setWeightKg(80.0)
+                .setGender(GenderProto.GENDER_MALE)
+                .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_SEDENTARY)
+                .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
+                .setWeeklyBudget(5000.0)
+                .setNutritionGoal(
+                    NutritionGoalProto
+                        .newBuilder()
+                        .setTargetCalories(2500)
+                        .setTargetProteinsGrams(150.0)
+                        .setTargetFatsGrams(70.0)
+                        .setTargetCarbsGrams(300.0)
+                        .setTargetWeightKg(80.0)
+                        .build(),
+                ).build()
+
+        val command = request.toCommand()
+        assertEquals(UserId("user_cmd_1"), command.userId)
+        assertEquals(180, command.heightCm)
+        assertEquals(0, BigDecimal("80.00").compareTo(command.weightKg))
+        assertEquals(Gender.MALE, command.gender)
+        assertEquals(ActivityLevel.SEDENTARY, command.activityLevel)
+        assertEquals(GoalType.MAINTAIN, command.goalType)
+        assertEquals(0, BigDecimal("5000.00").compareTo(command.weeklyBudget))
+        assertNotNull(command.nutritionGoal)
+        assertEquals(2500, command.nutritionGoal?.targetCalories)
+    }
+
+    @Test
+    fun `toCommand maps UpdateProfileRequest without goal to UpsertProfileCommand with null goal`() {
+        val request =
+            UpdateProfileRequest
+                .newBuilder()
+                .setUserId("user_cmd_2")
+                .setHeightCm(175)
+                .setWeightKg(70.0)
+                .setGender(GenderProto.GENDER_FEMALE)
+                .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
+                .setGoalType(GoalTypeProto.GOAL_TYPE_LOSE_WEIGHT)
+                .setWeeklyBudget(3500.0)
+                .build()
+
+        val command = request.toCommand()
+        assertEquals(UserId("user_cmd_2"), command.userId)
+        assertNull(command.nutritionGoal)
+    }
+
+    // ── UpsertProfileCommand.toNewEntity & ProfileEntity.updateFrom ──────────
+
+    @Test
+    fun `toNewEntity creates ProfileEntity from command and finalGoal with UUIDv7`() {
+        val command =
+            UpsertProfileCommand(
+                userId = UserId("user_new_entity_test"),
+                heightCm = 178,
+                weightKg = BigDecimal("76.00"),
                 gender = Gender.MALE,
+                activityLevel = ActivityLevel.MODERATE,
+                goalType = GoalType.MAINTAIN,
+                nutritionGoal = null,
+                weeklyBudget = BigDecimal("4000.00"),
+            )
+        val finalGoal =
+            NutritionGoal(
+                targetCalories = 2300,
+                targetProteinsGrams = BigDecimal("150.00"),
+                targetFatsGrams = BigDecimal("70.00"),
+                targetCarbsGrams = BigDecimal("260.00"),
+                targetWeightKg = BigDecimal("76.00"),
+            )
+
+        val entity = command.toNewEntity(finalGoal)
+
+        assertNotNull(entity.id)
+        assertEquals(7, entity.id.version())
+        assertEquals("user_new_entity_test", entity.userId)
+        assertEquals(178, entity.heightCm)
+        assertEquals(BigDecimal("76.00"), entity.weightKg)
+        assertEquals(Gender.MALE, entity.gender)
+        assertEquals(ActivityLevel.MODERATE, entity.activityLevel)
+        assertEquals(GoalType.MAINTAIN, entity.goalType)
+        assertEquals(2300, entity.nutritionGoal.targetCalories)
+        assertEquals(BigDecimal("4000.00"), entity.weeklyBudget)
+        assertNotNull(entity.createdAt)
+        assertNotNull(entity.updatedAt)
+    }
+
+    @Test
+    fun `updateFrom updates existing ProfileEntity in-place preserving id and createdAt`() {
+        val id = UUID.randomUUID()
+        val originalCreated = Instant.parse("2026-11-01T10:00:00Z")
+        val existing =
+            ProfileEntity(
+                id = id,
+                userId = "user_update_test",
+                heightCm = 170,
+                weightKg = BigDecimal("70.00"),
+                gender = Gender.FEMALE,
                 activityLevel = ActivityLevel.LIGHT,
                 goalType = GoalType.LOSE_WEIGHT,
-                nutritionGoal = NutritionGoalEmbeddable(targetCalories = 2000),
+                nutritionGoal = NutritionGoalEmbeddable(targetCalories = 1900),
                 weeklyBudget = BigDecimal("3000.00"),
                 createdAt = originalCreated,
                 updatedAt = originalCreated,
             )
 
-        val request =
-            UpdateProfileRequest
-                .newBuilder()
-                .setUserId("user_in_place")
-                .setHeightCm(176)
-                .setWeightKg(73.5)
-                .setGender(GenderProto.GENDER_MALE)
-                .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
-                .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
-                .setWeeklyBudget(4000.0)
-                .setNutritionGoal(
-                    NutritionGoalProto
-                        .newBuilder()
-                        .setTargetCalories(2200)
-                        .setTargetProteinsGrams(140.0)
-                        .setTargetFatsGrams(65.0)
-                        .setTargetCarbsGrams(240.0)
-                        .setTargetWeightKg(73.0)
-                        .build(),
-                ).build()
+        val command =
+            UpsertProfileCommand(
+                userId = UserId("user_update_test"),
+                heightCm = 172,
+                weightKg = BigDecimal("68.50"),
+                gender = Gender.FEMALE,
+                activityLevel = ActivityLevel.MODERATE,
+                goalType = GoalType.MAINTAIN,
+                nutritionGoal = null,
+                weeklyBudget = BigDecimal("3500.00"),
+            )
+        val finalGoal =
+            NutritionGoal(
+                targetCalories = 2100,
+                targetProteinsGrams = BigDecimal("130.00"),
+                targetFatsGrams = BigDecimal("60.00"),
+                targetCarbsGrams = BigDecimal("240.00"),
+                targetWeightKg = BigDecimal("68.00"),
+            )
 
-        val updated = entity.applyUpdates(request)
-        assertEquals(originalId, updated.id)
+        val updated = existing.updateFrom(command, finalGoal)
+
+        assertEquals(id, updated.id)
         assertEquals(originalCreated, updated.createdAt)
-        assertEquals(176, updated.heightCm)
-        assertEquals(0, BigDecimal("73.50").compareTo(updated.weightKg))
+        assertEquals(172, updated.heightCm)
+        assertEquals(BigDecimal("68.50"), updated.weightKg)
         assertEquals(ActivityLevel.MODERATE, updated.activityLevel)
         assertEquals(GoalType.MAINTAIN, updated.goalType)
-        assertEquals(0, BigDecimal("4000.00").compareTo(updated.weeklyBudget))
-        assertEquals(2200, updated.nutritionGoal.targetCalories)
+        assertEquals(2100, updated.nutritionGoal.targetCalories)
+        assertEquals(BigDecimal("3500.00"), updated.weeklyBudget)
+        assertTrue(updated.updatedAt.isAfter(originalCreated))
     }
 }

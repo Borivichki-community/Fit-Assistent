@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.profile.persistence
 
+import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import dev.andre.nutritionist.profile.domain.model.ActivityLevel
 import dev.andre.nutritionist.profile.domain.model.Gender
 import dev.andre.nutritionist.profile.domain.model.GoalType
@@ -12,42 +13,11 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.dao.DataIntegrityViolationException
-import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
-import org.testcontainers.utility.DockerImageName
 import java.math.BigDecimal
 import java.util.UUID
 
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("dev")
-class ProfilePersistenceTests {
-    companion object {
-        @Container
-        @JvmStatic
-        val postgres: PostgreSQLContainer<*> =
-            PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine"))
-                .withDatabaseName("profile_db_test")
-                .withUsername("test_user")
-                .withPassword("test_pass")
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun registerProperties(registry: DynamicPropertyRegistry) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl)
-            registry.add("spring.datasource.username", postgres::getUsername)
-            registry.add("spring.datasource.password", postgres::getPassword)
-            registry.add("spring.liquibase.enabled") { "true" }
-            registry.add("spring.jpa.hibernate.ddl-auto") { "none" }
-        }
-    }
-
+class ProfilePersistenceTests : AbstractPostgresIntegrationTest() {
     @Autowired private lateinit var profileRepository: ProfileJpaRepository
 
     @BeforeEach
