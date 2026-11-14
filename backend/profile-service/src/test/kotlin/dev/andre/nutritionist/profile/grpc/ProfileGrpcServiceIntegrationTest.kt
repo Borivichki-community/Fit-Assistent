@@ -11,6 +11,7 @@ import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyServerInterceptor
 import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyStore
 import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
+import dev.andre.nutritionist.profile.grpc.security.SecurityGrpcInterceptor
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
 import io.grpc.ManagedChannel
 import io.grpc.Metadata
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import java.math.BigDecimal
+import java.util.Base64
 
 class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
     @Autowired
@@ -40,6 +42,9 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
 
     @Autowired
     private lateinit var idempotencyServerInterceptor: IdempotencyServerInterceptor
+
+    @Autowired
+    private lateinit var securityGrpcInterceptor: SecurityGrpcInterceptor
 
     @Autowired
     private lateinit var idempotencyStore: IdempotencyStore
@@ -65,6 +70,7 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                         profileGrpcService,
                         grpcExceptionInterceptor,
                         idempotencyServerInterceptor,
+                        securityGrpcInterceptor,
                     ),
                 ).build()
                 .start()
@@ -84,12 +90,24 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
         server.shutdownNow()
     }
 
-    private fun stubWithIdempotency(idempotencyKey: String? = null): ProfileServiceGrpcKt.ProfileServiceCoroutineStub {
-        if (idempotencyKey == null) return stub
+    private fun stubWithAuth(
+        userId: String? = null,
+        roles: String? = null,
+        bearerToken: String? = null,
+        idempotencyKey: String? = null,
+    ): ProfileServiceGrpcKt.ProfileServiceCoroutineStub {
         val headers = Metadata()
-        headers.put(IdempotencyServerInterceptor.IDEMPOTENCY_KEY_HEADER, idempotencyKey)
+        userId?.let { headers.put(SecurityGrpcInterceptor.X_USER_ID_HEADER, it) }
+        roles?.let { headers.put(SecurityGrpcInterceptor.X_USER_ROLES_HEADER, it) }
+        bearerToken?.let { headers.put(SecurityGrpcInterceptor.AUTHORIZATION_HEADER, "Bearer $it") }
+        idempotencyKey?.let { headers.put(IdempotencyServerInterceptor.IDEMPOTENCY_KEY_HEADER, it) }
         return stub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
     }
+
+    private fun stubWithIdempotency(
+        idempotencyKey: String? = null,
+        userId: String = "user_idemp_1",
+    ): ProfileServiceGrpcKt.ProfileServiceCoroutineStub = stubWithAuth(userId = userId, idempotencyKey = idempotencyKey)
 
     private suspend inline fun <reified T : Throwable> assertThrowsSuspend(crossinline block: suspend () -> Unit): T {
         try {
@@ -112,9 +130,10 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                     .setUserId("user_not_found_123")
                     .build()
 
+            val userStub = stubWithAuth(userId = "user_not_found_123")
             val exception =
                 assertThrowsSuspend<StatusException> {
-                    stub.getProfile(request)
+                    userStub.getProfile(request)
                 }
 
             assertEquals(Status.Code.NOT_FOUND, exception.status.code)
@@ -147,7 +166,8 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                             .build(),
                     ).build()
 
-            val response = stub.updateProfile(request)
+            val userStub = stubWithAuth(userId = "user_alice_456")
+            val response = userStub.updateProfile(request)
 
             assertEquals("user_alice_456", response.userId)
             assertEquals(172, response.heightCm)
@@ -192,7 +212,8 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                     .setWeeklyBudget(3000.0)
                     .build()
 
-            val response = stub.updateProfile(request)
+            val userStub = stubWithAuth(userId = "user_calc_1")
+            val response = userStub.updateProfile(request)
 
             assertEquals("user_calc_1", response.userId)
             val goal = response.nutritionGoal
@@ -226,7 +247,8 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                         NutritionGoalProto.newBuilder().setTargetCalories(0).build(),
                     ).build()
 
-            val response = stub.updateProfile(request)
+            val userStub = stubWithAuth(userId = "user_calc_zero")
+            val response = userStub.updateProfile(request)
 
             assertTrue(response.nutritionGoal.targetCalories > 0)
             assertTrue(response.nutritionGoal.targetProteinsGrams > 0.0)
@@ -258,7 +280,8 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                             .build(),
                     ).build()
 
-            val initialResponse = stub.updateProfile(initialRequest)
+            val userStub = stubWithAuth(userId = "user_bob_789")
+            val initialResponse = userStub.updateProfile(initialRequest)
             val initialId = initialResponse.id
             assertEquals(1, profileRepository.count())
 
@@ -283,7 +306,7 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                             .build(),
                     ).build()
 
-            val updatedResponse = stub.updateProfile(updateRequest)
+            val updatedResponse = userStub.updateProfile(updateRequest)
 
             assertEquals(initialId, updatedResponse.id)
             assertEquals(181, updatedResponse.heightCm)
@@ -368,7 +391,7 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
                     .setWeeklyBudget(3000.0)
                     .build()
 
-            val userStub = stubWithIdempotency("idemp-key-test-123")
+            val userStub = stubWithIdempotency("idemp-key-test-123", userId = "user_idemp_1")
 
             val firstResponse = userStub.updateProfile(request)
             val secondResponse = userStub.updateProfile(request)
@@ -380,5 +403,96 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
             // Проверяем, что ответ физически лежит в Redis
             val cachedBytes = idempotencyStore.get("idemp-key-test-123")
             assertNotNull(cachedBytes, "Ответ должен быть сохранён в RedisIdempotencyStore")
+        }
+
+    // ── Тест-кейс 7: Безопасность и разграничение доступа (T-021) ─────────────
+
+    @Test
+    fun `getProfile unauthenticated returns UNAUTHENTICATED`() =
+        runTest {
+            val request = GetProfileRequest.newBuilder().setUserId("user_auth_1").build()
+            val exception =
+                assertThrowsSuspend<StatusException> {
+                    stub.getProfile(request)
+                }
+            assertEquals(Status.Code.UNAUTHENTICATED, exception.status.code)
+        }
+
+    @Test
+    fun `getProfile for different user returns PERMISSION_DENIED`() =
+        runTest {
+            val userStub = stubWithAuth(userId = "user_attacker")
+            val request = GetProfileRequest.newBuilder().setUserId("user_victim").build()
+            val exception =
+                assertThrowsSuspend<StatusException> {
+                    userStub.getProfile(request)
+                }
+            assertEquals(Status.Code.PERMISSION_DENIED, exception.status.code)
+        }
+
+    @Test
+    fun `getProfile by admin for any user succeeds`() =
+        runTest {
+            val targetRequest =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_target")
+                    .setHeightCm(170)
+                    .setWeightKg(60.0)
+                    .setWeeklyBudget(2000.0)
+                    .build()
+
+            stubWithAuth(userId = "user_target").updateProfile(targetRequest)
+
+            val adminStub = stubWithAuth(userId = "admin_user", roles = "ROLE_ADMIN")
+            val profile = adminStub.getProfile(GetProfileRequest.newBuilder().setUserId("user_target").build())
+            assertEquals("user_target", profile.userId)
+        }
+
+    @Test
+    fun `getProfile with Bearer JWT header authenticates successfully`() =
+        runTest {
+            val targetRequest =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_jwt_1")
+                    .setHeightCm(175)
+                    .setWeightKg(70.0)
+                    .setWeeklyBudget(3000.0)
+                    .build()
+
+            stubWithAuth(userId = "user_jwt_1").updateProfile(targetRequest)
+
+            // Form valid Base64URL JWT payload: {"sub":"user_jwt_1","realm_access":{"roles":["ROLE_USER"]}}
+            val header = Base64.getUrlEncoder().withoutPadding().encodeToString("""{"alg":"none"}""".toByteArray())
+            val payload =
+                Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    """{"sub":"user_jwt_1","realm_access":{"roles":["ROLE_USER"]}}""".toByteArray(),
+                )
+            val fakeJwt = "$header.$payload.fake_sig"
+
+            val jwtStub = stubWithAuth(bearerToken = fakeJwt)
+            val response = jwtStub.getProfile(GetProfileRequest.newBuilder().setUserId("user_jwt_1").build())
+            assertEquals("user_jwt_1", response.userId)
+        }
+
+    @Test
+    fun `updateProfile for different user returns PERMISSION_DENIED`() =
+        runTest {
+            val userStub = stubWithAuth(userId = "user_attacker")
+            val request =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_victim")
+                    .setHeightCm(175)
+                    .setWeightKg(70.0)
+                    .setWeeklyBudget(3000.0)
+                    .build()
+
+            val exception =
+                assertThrowsSuspend<StatusException> {
+                    userStub.updateProfile(request)
+                }
+            assertEquals(Status.Code.PERMISSION_DENIED, exception.status.code)
         }
 }
