@@ -10,14 +10,11 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-/**
- * JPA-сущность профиля пользователя.
- * Полностью соответствует контракту ProfileProto (nutritionist/profile/v1/profile.proto).
- */
 @Suppress("LongParameterList")
 @Entity
 @Table(name = "profiles")
@@ -48,4 +45,7 @@ class ProfileEntity(
     val createdAt: Instant = Instant.now(),
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+    @Version
+    @Column(name = "version", nullable = false)
+    var version: Long = 0,
 )

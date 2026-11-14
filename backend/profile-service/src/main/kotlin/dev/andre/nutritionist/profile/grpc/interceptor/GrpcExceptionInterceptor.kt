@@ -30,7 +30,8 @@ typealias GrpcGlobalServerInterceptor = GlobalServerInterceptor
  * - [EntityNotFoundException], [NoSuchElementException] -> [Status.NOT_FOUND]
  * - [IllegalArgumentException], [IllegalStateException] -> [Status.INVALID_ARGUMENT]
  * - [DataIntegrityViolationException] -> [Status.ALREADY_EXISTS]
- * - [OptimisticLockException], [OptimisticLockingFailureException] -> [Status.ABORTED] (конфликт конкурентных изменений)
+ * - [OptimisticLockException], [OptimisticLockingFailureException] ->
+ *   [Status.ABORTED] (конфликт конкурентных изменений)
  * - [StatusException], [StatusRuntimeException] -> пропуск без изменений (включая rich error BadRequest)
  * - Прочие непредвиденные [Throwable] -> [Status.INTERNAL] ("Internal server error"),
  *   предотвращая утечку внутренней схемы SQL/стектрейса клиентам.
@@ -92,11 +93,18 @@ class GrpcExceptionInterceptor : ServerInterceptor {
                     status to trailers
                 }
 
-            val finalTrailers = if (translatedTrailers.keys().isNotEmpty()) translatedTrailers else trailers
+            val finalTrailers =
+                if (translatedTrailers.keys().isNotEmpty()) {
+                    translatedTrailers
+                } else {
+                    trailers
+                }
             super.close(translatedStatus, finalTrailers)
         }
 
-        private fun isInternalOrUnknown(code: Status.Code): Boolean = code == Status.Code.UNKNOWN || code == Status.Code.INTERNAL
+        private fun isInternalOrUnknown(code: Status.Code): Boolean =
+            code == Status.Code.UNKNOWN ||
+                code == Status.Code.INTERNAL
 
         fun closeWithException(t: Throwable) {
             if (isClosed) return

@@ -7,6 +7,7 @@ import com.budgetntr.proto.profile.v1.UpdateProfileRequest
 import dev.andre.nutritionist.profile.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toProto
+import dev.andre.nutritionist.profile.domain.model.UserId
 import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyServerInterceptor
 import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
 import dev.andre.nutritionist.profile.grpc.validation.ProfileRequestValidator
@@ -31,7 +32,7 @@ class ProfileGrpcService(
             logger.info("getProfile called: userId={}", request.userId)
 
             val profile =
-                profileService.getProfileByUserId(request.userId)
+                profileService.getProfileByUserId(UserId(request.userId))
                     ?: throw NoSuchElementException("Profile not found")
 
             logger.info("getProfile returning profile: id={}, userId={}", profile.id, profile.userId)

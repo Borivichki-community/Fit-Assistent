@@ -74,6 +74,7 @@ dependencies {
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.spring.starter.redis)
     implementation(libs.uuid.creator)
     runtimeOnly(libs.postgresql.jdbc)
 

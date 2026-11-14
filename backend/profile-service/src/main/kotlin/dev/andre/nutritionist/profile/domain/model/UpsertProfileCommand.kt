@@ -3,7 +3,7 @@ package dev.andre.nutritionist.profile.domain.model
 import java.math.BigDecimal
 
 data class UpsertProfileCommand(
-    val userId: String,
+    val userId: UserId,
     val heightCm: Int,
     val weightKg: BigDecimal,
     val gender: Gender,

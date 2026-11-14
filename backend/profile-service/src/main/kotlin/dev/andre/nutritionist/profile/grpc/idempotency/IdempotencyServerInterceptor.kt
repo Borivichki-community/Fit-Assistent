@@ -22,9 +22,11 @@ import java.io.InputStream
  * При наличии ключа в заголовке gRPC и попадании в кэш — возвращает сохранённый ответ
  * без повторного обращения к БД и без повторного выполнения бизнес-логики.
  */
+const val IDEMPOTENCY_INTERCEPTOR_ORDER: Int = Ordered.HIGHEST_PRECEDENCE + 10
+
 @Component
 @GlobalServerInterceptor
-@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+@Order(IDEMPOTENCY_INTERCEPTOR_ORDER)
 class IdempotencyServerInterceptor(
     private val idempotencyStore: IdempotencyStore,
 ) : ServerInterceptor {
@@ -43,8 +45,9 @@ class IdempotencyServerInterceptor(
                 val marshaller = call.methodDescriptor.responseMarshaller
                 val stream: InputStream = ByteArrayInputStream(cachedBytes)
                 val cachedResp = marshaller.parse(stream)
+                call.sendHeaders(Metadata())
                 call.sendMessage(cachedResp)
-                call.close(Status.OK, headers)
+                call.close(Status.OK, Metadata())
                 return object : ServerCall.Listener<ReqT>() {}
             }
         }

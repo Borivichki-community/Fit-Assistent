@@ -1,12 +1,12 @@
 package dev.andre.nutritionist.profile.persistence
 
+import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import dev.andre.nutritionist.profile.domain.model.ActivityLevel
 import dev.andre.nutritionist.profile.domain.model.Gender
 import dev.andre.nutritionist.profile.domain.model.GoalType
 import dev.andre.nutritionist.profile.persistence.entity.NutritionGoalEmbeddable
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
-import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeEach
