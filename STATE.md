@@ -5,6 +5,14 @@
 
 Обновлено: 2026-11-14
 
+### Доменные модели Diary (2026-11-14)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Готово: добавлены `DiaryEntry`, `NutritionSummary`, `Money`, `CostSnapshot`, `AddEntryCommand`, `DailyEntries` и enum `Currency.RUB` в domain/model.
+- Новые модели используют существующие typed IDs, деньги в целых копейках, `kotlin.time.Instant`, nullable-снимок неизвестной стоимости; без новых зависимостей, JPA/Protobuf-аннотаций и java-импортов.
+- PASS: `./gradlew :backend:diary-service:compileKotlin :backend:diary-service:test --tests dev.andre.nutritionist.diary.persistence.DiaryEntryPersistenceTest --offline --console=plain` — BUILD SUCCESSFUL. Новые модели скомпилированы, существующий тест хранения прошёл на временной PostgreSQL.
+- Добавлены только модели данных; валидация, расчёт итогов, мапперы и подключение моделей к сервису пока не реализованы.
+
 ### Начальная миграция Diary (2026-11-14)
 
 - Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
