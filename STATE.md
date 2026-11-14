@@ -7,14 +7,23 @@
 
 ---
 
-## Статус проекта: [T-024 / T-025] Завершены: Transactional Outbox в profile-service, публикация UserRegisteredEvent, E2E Testcontainers (PostgreSQL 17 + Kafka + Schema Registry) и документация архитектуры Kafka
+## Статус проекта: Реализован боевой конечный автомат (State Machine) идемпотентности в Redis для profile-service (атомарный SETNX lock, валидация SHA-256 payload, отсечение параллельных запросов in-flight и автоматический release при сбоях)
 
-Ветка: `feature/KAN-40-security-role` (Ключи задач: T-024, T-025)
+Ветка: `feature/KAN-45-gateway` (Ключи задач: T-024, T-025, T-029)
 Роли: `implementer` + `test-reviewer`
 
 ---
 
 ### Выполнено
+
+- [x] **Идемпотентность в profile-service (Redis State Machine & Concurrency Protection):**
+  - **Конечный автомат состояний в Redis:** Добавлен sealed interface [`IdempotencyResult`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/IdempotencyStore.kt) (`Acquired`, `InProgress`, `Cached`, `PayloadMismatch`).
+  - **Атомарный захват и валидация:** В [`RedisIdempotencyStore`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/RedisIdempotencyStore.kt) реализован атомарный `SETNX` со статусом `PROCESSING` и lock TTL 60с, хэширование тела запроса (SHA-256) и сохранение в компактном бинарном формате. При параллельных запросах конкуренты получают `Status.ABORTED`, при несовпадении хэша — `Status.INVALID_ARGUMENT`, при повторе — мгновенный возврат кэшированного ответа из Redis без обращения к БД.
+  - **Освобождение при сбоях:** При ошибках валидации или исключениях в сервисе перехватчик [`IdempotencyServerInterceptor`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/IdempotencyServerInterceptor.kt) автоматически удаляет ключ из Redis (`release`), что позволяет клиенту выполнить retry без ожидания истечения lock TTL.
+  - **Тестирование и верификация:** 
+    - Добавлены тесты в [`ProfileGrpcServiceIntegrationTest`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/test/kotlin/dev/andre/nutritionist/profile/grpc/ProfileGrpcServiceIntegrationTest.kt): проверка обнаружения параллельных in-flight запросов (`ABORTED`), защита от повторного использования ключа с другим payload (`INVALID_ARGUMENT`), очистка блокировки при ошибке валидации с последующим успешным retry.
+    - Все 80/80 тестов в `:backend:profile-service:test` пройдены успешно (GREEN).
+    - `ktlintCheck` и `detekt` пройдены без единого замечания.
 
 - [x] **Шаг 5 (T-024 / T-025): Transactional Outbox в profile-service, событие UserRegisteredEvent и E2E интеграция:**
   - **[T-024] Схема и сущности Outbox:** Создан Liquibase changeset `003-create-outbox-table.xml` (таблица `outbox_messages` с `id UUID PK`, `aggregate_type`, `aggregate_id`, `topic`, `payload BYTEA`, `status`, `attempts`, `created_at`, `published_at`, и частичным индексом `idx_outbox_pending` по `created_at WHERE status = 'PENDING'`). Созданы JPA Entity [`OutboxMessageEntity`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/entity/OutboxMessageEntity.kt) и репозиторий [`OutboxJpaRepository`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/repository/OutboxJpaRepository.kt) с пессимистической блокировкой `FOR NO KEY UPDATE SKIP LOCKED` (`@Lock(LockModeType.PESSIMISTIC_WRITE)` и `jakarta.persistence.lock.timeout = -2`).
