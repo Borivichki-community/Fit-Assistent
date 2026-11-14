@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package com.budgetntr.diary.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.budgetntr.proto.diary.v1";
+option java_outer_classname = "DiaryOuterClass";
+
+service DiaryService {
+  rpc AddEntry(AddEntryRequest) returns (AddEntryResponse);
+  rpc GetDailyEntries(GetDailyEntriesRequest) returns (GetDailyEntriesResponse);
+}
+
+message Money {
+  int64 amount_minor = 1;
+  string currency_code = 2;
+}
+
+message CostSnapshot {
+  Money total = 1;
+  Money unit_price = 2;
+  optional int64 price_basis_milligrams = 3;
+}
+
+message NutritionSummary {
+  int32 calories = 1;
+  double proteins = 2;
+  double fats = 3;
+  double carbs = 4;
+}
+
+message AddEntryRequest {
+  string food_item_id = 1;
+  double quantity_grams = 2;
+  google.protobuf.Timestamp recorded_at = 3;
+  string meal_type = 4;
+  string entry_id = 5;
+  string food_name = 6;
+  NutritionSummary nutrition = 7;
+  CostSnapshot cost = 8;
+}
+
+message AddEntryResponse {
+  DiaryEntryProto entry = 1;
+}
+
+message GetDailyEntriesRequest {
+  string date = 1;
+  string time_zone = 2;
+}
+
+message GetDailyEntriesResponse {
+  repeated DiaryEntryProto entries = 1;
+  NutritionSummary daily_total = 2;
+}
+
+message DiaryEntryProto {
+  string id = 1;
+  string food_item_id = 2;
+  string food_name = 3;
+  double quantity_grams = 4;
+  NutritionSummary nutrition = 5;
+  google.protobuf.Timestamp recorded_at = 6;
+  string meal_type = 7;
+  CostSnapshot cost = 8;
+}

@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinSpring)
     alias(libs.plugins.kotlinJpa)
     alias(libs.plugins.springBoot)
+    alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
 }
 
@@ -16,6 +17,46 @@ allOpen {
     annotation("jakarta.persistence.Embeddable")
 }
 
+protobuf {
+    protoc {
+        artifact =
+            libs.codegen.protoc
+                .get()
+                .toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact =
+                libs.codegen.grpc.java
+                    .get()
+                    .toString()
+        }
+        create("grpckt") {
+            artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                maybeCreate("grpc")
+                create("grpckt")
+            }
+            task.builtins {
+                create("kotlin")
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir("../../proto")
+            include("nutritionist/diary/v1/**")
+        }
+    }
+}
+
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
@@ -25,6 +66,9 @@ dependencies {
     implementation(libs.kotlin.reflect)
 
     implementation(libs.spring.starter.grpc)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.spring.starter.jpa)
