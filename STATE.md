@@ -613,27 +613,24 @@
        * Неавторизованный запрос $\to$ `Status.UNAUTHENTICATED`;
        * Обычный пользователь (`ROLE_USER`) с несовпадающим `targetUserId` $\to$ `Status.PERMISSION_DENIED`;
        * Владелец (`userId == targetUserId`) или администратор (`ROLE_ADMIN` / `ROLE_SERVICE`) $\to$ успешный доступ к операциям `getProfile` и `updateProfile`.
-  2. **[T-023] Регистрация пользователя (Keycloak Admin / Синхронизация профиля):**
-     - `KeycloakClient.kt` (`KeycloakClientImpl` на Spring `RestClient`): создание пользователя в Keycloak Admin REST API (`POST /admin/realms/{realm}/users`).
-     - Сетевой вызов Keycloak выполняется **строго вне `@Transactional`** (`AGENTS.md §4.1`). Конфликт (409 Conflict) транслируется в `Status.ALREADY_EXISTS` без создания осиротевших записей в `profile_db`.
-     - `UserRegistrationService.kt`: оркестрация создания пользователя в Keycloak, расчёт стартовых целей КБЖУ через `NutritionGoalCalculator` и атомарный UPSERT в PostgreSQL.
-     - Поддержка идемпотентности с кешированием в `IdempotencyStore`.
-     - Исправлен `IdempotencyServerInterceptor`: добавлен обязательный вызов `call.sendHeaders(Metadata())` перед отправкой кешированного gRPC-ответа.
+  2. **[T-023] Архитектурное выравнивание регистрации под OAuth 2.1 PKCE:**
+     - Подтверждено, что регистрация пользователей выполняется на клиенте через Keycloak (AppAuth SDK) по протоколу OAuth 2.1 PKCE.
+     - Создание профиля в `profile-service` происходит атомарно через `ProfileService.upsertProfile(command)` при первом вызове `UpdateProfile` с токеном от Keycloak.
+     - Неиспользуемые компоненты серверного создания пользователей (`UserRegistrationService.kt`, `KeycloakClient.kt`, `TestKeycloakConfig.kt`, `FakeKeycloakClient.kt`) и секции `keycloak.admin` удалены из проекта как мёртвый код (YAGNI).
+     - Идемпотентность полностью и централизованно обеспечивается глобальным перехватчиком `IdempotencyServerInterceptor` с сохранением в `RedisIdempotencyStore`.
   3. **[T-022] Тестирование и верификация (Testcontainers PostgreSQL 17):**
      - `AbstractPostgresIntegrationTest.kt`: контейнер PostgreSQL 17 переведён на singleton pattern (`.apply { start() }`) для предотвращения остановки между тест-классами.
-     - `FakeKeycloakClient.kt` и `TestKeycloakConfig.kt`: чистый in-memory фейк (`AGENTS.md §5.1`) без использования MockK.
-     - `ProfileGrpcServiceIntegrationTest.kt` расширен до 19 интеграционных тестов:
+     - `ProfileGrpcServiceIntegrationTest.kt`:
        * Проверка `Status.UNAUTHENTICATED` при отсутствии заголовков авторизации;
        * Проверка `Status.PERMISSION_DENIED` при попытке доступа к чужому профилю с ролью `ROLE_USER`;
        * Проверка успешного доступа владельца профиля (`authenticatedUserId == targetUserId`);
        * Проверка обхода ограничений владельца для `ROLE_ADMIN` и `ROLE_SERVICE`;
        * Проверка аутентификации через Bearer JWT токен с корректным извлечением roles и sub;
-       * Проверка идемпотентности и авторасчёта КБЖУ.
-- **Верификация сборки, тестов и линтеров:**
-  - `./gradlew :backend:profile-service:test` — 82/82 tests GREEN (100% успех на Testcontainers PostgreSQL 17).
+       * Проверка идемпотентности через Redis и авторасчёта КБЖУ.
+- **Верификация сборки и линтеров:**
+  - `./gradlew :backend:profile-service:compileKotlin :backend:profile-service:compileTestKotlin` — BUILD SUCCESSFUL.
   - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
   - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
-  - `./gradlew :backend:profile-service:check` — BUILD SUCCESSFUL.
 
 
 

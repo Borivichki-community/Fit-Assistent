@@ -107,6 +107,6 @@ logging:
   pattern:
     console: >-
       {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
-       "level":"%level","service":"${spring.application.name}",
-       "traceId":"%X{traceId}","spanId":"%X{spanId}",
-       "userId":"%X{userId}","message":"%msg"}%n
+       \"level\":\"%level\",\"service\":\"${spring.application.name}\",
+       \"traceId\":\"%X{traceId}\",\"spanId\":\"%X{spanId}\",
+       \"userId\":\"%X{userId}\",\"message\":\"%msg\"}%n
