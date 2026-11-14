@@ -3,7 +3,52 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-12
+Обновлено: 2026-11-14
+
+### Доменные модели Diary (2026-11-14)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Готово: добавлены `DiaryEntry`, `NutritionSummary`, `Money`, `CostSnapshot`, `AddEntryCommand`, `DailyEntries` и enum `Currency.RUB` в domain/model.
+- Новые модели используют существующие typed IDs, деньги в целых копейках, `kotlin.time.Instant`, nullable-снимок неизвестной стоимости; без новых зависимостей, JPA/Protobuf-аннотаций и java-импортов.
+- PASS: `./gradlew :backend:diary-service:compileKotlin :backend:diary-service:test --tests dev.andre.nutritionist.diary.persistence.DiaryEntryPersistenceTest --offline --console=plain` — BUILD SUCCESSFUL. Новые модели скомпилированы, существующий тест хранения прошёл на временной PostgreSQL.
+- Добавлены только модели данных; валидация, расчёт итогов, мапперы и подключение моделей к сервису пока не реализованы.
+
+### Начальная миграция Diary (2026-11-14)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Готово: пустой XML удалён; создан `001-init-diary-table.yaml` с таблицей `diary_entries` по README, уникальным ключом повтора, CHECK стоимости, индексом пользователя/времени и rollback удаления таблицы.
+- Миграция подключена через master; `application.yml` уже настроен корректно. Outbox и обработчики не входят в эту задачу.
+- PASS: временный JUnit-тест через Gradle init-script и Testcontainers PostgreSQL 17 — BUILD SUCCESSFUL. Проверены Liquibase validate/update, повторный update без потери трёх записей (один changeset в DATABASECHANGELOG), уникальность, неизвестная/нулевая стоимость, CHECK отрицательной суммы и неполной/нулевой базы цены, индекс recorded_at DESC.
+- Исправлен временный тест: после ожидаемых SQL-ошибок включён autocommit. В проект постоянные тесты/зависимости не добавлялись; проверочные файлы находятся в `/private/tmp/fitassistant-diary-liquibase-check*`, отчёт — `backend/diary-service/build/reports/tests/test/`.
+- Рабочая БД и контейнеры проекта не изменялись; полный старт сервиса не проверялся. PostgreSQL использует named volume `postgres_data` по текущему Compose.
+
+### Gradle-генерация Diary (2026-11-14)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роль: `implementer`.
+- Готово: подключены Protobuf-плагин, protoc, Java/Kotlin messages, gRPC Java/Kotlin и runtime-зависимости через каталог версий. Android Studio Gradle Sync — успешно.
+- Источник: `proto/nutritionist/diary/v1/**`; вывод: `backend/diary-service/build/generated/sources/proto/`.
+- PASS: `./gradlew :backend:diary-service:generateProto :backend:diary-service:compileKotlin :backend:diary-service:compileJava :backend:diary-service:compileTestKotlin --offline --console=plain` — BUILD SUCCESSFUL. Kotlin/Java скомпилированы; тестовых исходников нет (`NO-SOURCE`).
+- Тесты и запуск сервиса не выполнялись; Buf по-прежнему отсутствует.
+
+### Контракт дневника (2026-11-14)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роль: `implementer`.
+- Готово: `proto/nutritionist/diary/v1/diary.proto` заполнен по `backend/diary-service/README.md`.
+- Добавлены unary RPC `AddEntry`, `GetDailyEntries`, сообщения записи, КБЖУ и стоимости; исправлен outer class на `DiaryOuterClass`.
+- Сохранены поля и номера из проектной спецификации. Пользователь определяется авторизацией, ключ повтора передаётся в metadata `idempotency-key`; служебная outbox-таблица не публикуется в API.
+- PASS: локальный `protoc` проверил Diary и Profile совместно, создал descriptor set и Java/Kotlin-исходники во временных JAR `/private/tmp/fitassistant-diary-check*` (exit code 0). Это проверка генерации сообщений, не компиляция JVM-кода и не проверка gRPC-stubs.
+- `buf lint` / `buf breaking` не выполнены: Buf отсутствует в PATH. Пустой исходный Diary-файл не был рабочим wire-контрактом; совместимость автоматическим инструментом не подтверждена.
+- Сущности, миграции, обработчики и настройка генерации diary-service не реализовывались; runtime и БД не проверялись.
+
+### Генерация Profile и исправление зависимости (2026-11-13)
+
+- Активированы Skills: `diagnose-build-failure`, `contracts-proto-and-avro`.
+- Проверка с зависимостью `profile-service` от `:mobile:shared` остановилась на несовместимых Android-вариантах. По разрешению пользователя строка зависимости закомментирована.
+- Скачаны необходимые инструменты генерации через Gradle. Buf не найден в PATH; для Gradle-генерации он не требуется.
+- `./gradlew :backend:profile-service:generateProto :backend:profile-service:compileKotlin :backend:profile-service:compileTestKotlin --console=plain` — BUILD SUCCESSFUL.
+- Синхронизация Android Studio — `Sync finished successfully`.
+- Protobuf и gRPC классы сгенерированы в `backend/profile-service/build/generated/sources/proto/`. Основной и тестовый код скомпилированы; тесты и запуск сервиса не выполнялись.
+
 
 ---
 

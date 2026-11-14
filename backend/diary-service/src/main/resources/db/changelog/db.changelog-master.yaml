@@ -1,1 +1,4 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - include:
+      file: v1/001-init-diary-table.yaml
+      relativeToChangelogFile: true
