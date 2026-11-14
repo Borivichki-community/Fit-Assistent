@@ -3,18 +3,35 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-12
+Обновлено: 2026-11-15
 
 ---
 
-## Статус проекта: [T-016 / T-017 / T-018] Завершены: Скелет profile-service, Liquibase и реализация gRPC-сервиса (ProfileGrpcService + ProfileService + ProfileDtoMapper)
+## Статус проекта: [T-024 / T-025] Завершены: Transactional Outbox в profile-service, публикация UserRegisteredEvent, E2E Testcontainers (PostgreSQL 17 + Kafka + Schema Registry) и документация архитектуры Kafka
 
-Ветка: `feature/KAN-36-liquibase` (Ключ задачи: KAN-36, T-016, T-017, T-018)
+Ветка: `feature/KAN-40-security-role` (Ключи задач: T-024, T-025)
 Роли: `implementer` + `test-reviewer`
 
 ---
 
 ### Выполнено
+
+- [x] **Шаг 5 (T-024 / T-025): Transactional Outbox в profile-service, событие UserRegisteredEvent и E2E интеграция:**
+  - **[T-024] Схема и сущности Outbox:** Создан Liquibase changeset `003-create-outbox-table.xml` (таблица `outbox_messages` с `id UUID PK`, `aggregate_type`, `aggregate_id`, `topic`, `payload BYTEA`, `status`, `attempts`, `created_at`, `published_at`, и частичным индексом `idx_outbox_pending` по `created_at WHERE status = 'PENDING'`). Созданы JPA Entity [`OutboxMessageEntity`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/entity/OutboxMessageEntity.kt) и репозиторий [`OutboxJpaRepository`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/repository/OutboxJpaRepository.kt) с пессимистической блокировкой `FOR NO KEY UPDATE SKIP LOCKED` (`@Lock(LockModeType.PESSIMISTIC_WRITE)` и `jakarta.persistence.lock.timeout = -2`).
+  - **[T-024] Надежная публикация вне транзакции:** Реализован локальный in-memory конвертер Avro [`OutboxPayloadConverter`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/service/OutboxPayloadConverter.kt) без сетевого I/O внутри БД-транзакции. Создан [`OutboxService`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/service/OutboxService.kt) (`@Transactional(propagation = Propagation.MANDATORY)`). Создан фоновый процессор [`OutboxProcessor`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/processor/OutboxProcessor.kt) (`@Scheduled` каждые 500мс, атомарная выборка батча через `TransactionTemplate`, отправка в Kafka через `KafkaTemplate` строго вне БД-транзакции, ключ партиции строго `aggregateId` (`userId`) для гарантии FIFO, фиксация статуса `PUBLISHED` при ACK, инкремент попыток и статус `FAILED` при исчерпании лимита, структурированные логи с MDC `userId`/`outboxId`, метрики Micrometer `outbox.messages.published` и `outbox.pending.count`).
+  - **[T-025] Интеграция с регистрацией пользователя:** В [`ProfileService`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/service/ProfileService.kt) метод `upsertProfile` сохраняет событие `UserRegisteredEvent` через `OutboxService` строго при создании нового профиля (`isNewProfile = existing == null`). Повторные обновления профиля не вызывают генерацию событий регистрации.
+  - **Конфигурация Kafka Producer:** Создан [`KafkaProducerConfig`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/config/KafkaProducerConfig.kt) с гарантией надёжности: `acks = all`, `enable.idempotence = true`, `KafkaAvroSerializer`.
+  - **Документация архитектуры:** В [`backend/profile-service/README.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/README.md) добавлен раздел 5 «Архитектура Kafka, партиционирование и надежность доставки» с расчетом числа партиций по формуле Джея Крепса ($P = \max(\lceil T_{target} / T_{consumer} \rceil, N_{consumers}) = 3$), описанием преимуществ KRaft на VPS, ручным управлением оффсетами (`AckMode.MANUAL_IMMEDIATE`, `enable.auto.commit = false`) и защитой от Stop-The-World Rebalance.
+  - **Тестирование и верификация:** 
+    - `ProfilePersistenceTests`: проверка Liquibase, pessimistic lock `SKIP LOCKED`, обновление статусов и retry-механизм.
+    - `ProfileOutboxIntegrationTest`: сквозной интеграционный тест с реальными Testcontainers (PostgreSQL 17 + Redis 7 + Confluent Kafka 7.7 + Schema Registry 7.7) — регистрация -> сохранение в Outbox -> отправка воркером -> получение реальным Kafka Consumer с валидацией партиционирования по `userId`, полей Avro (`email`, `source`, `id`, `registrationTimestamp`) и отсутствия дубликатов при повторных обновлениях.
+    - Полная проверка: 77/77 тестов GREEN (`:backend:profile-service:test`), `ktlintCheck` и `detekt` без ошибок.
+
+- [x] **Шаг 6 (T-026 / T-027 / T-028 / T-029): Миграция инфраструктуры Envoy Gateway на боевой profile-service, TLS, Keycloak JWT и Rate Limiting:**
+  - **[T-026] Helmfile & TLS:** Обновлен `infrastructure/k8s/charts/helmfile.yaml` (Envoy Gateway v1.2.4 с Redis бэкендом). Создан секрет `02-tls-secret.yaml` с самоподписанным сертификатом (CN: `api.budget-nutritionist.app`, SAN: `localhost`, `127.0.0.1`, `envoy-gateway`). В `02-gateway.yaml` настроен HTTPS listener (порт 443, `tls.mode: Terminate`) и сохранён insecure HTTP listener (порт 9090).
+  - **[T-027] Profile Service & GRPCRoute:** Создан манифест `03-profile-service.yaml` (Deployment: non-root UID 10001, лимиты 512M/500m, Actuator liveness/readiness пробы на 8080; Service: gRPC 9090 и Actuator 8080). Создан `04-profile-grpc-route.yaml` с привязкой сервиса `com.budgetntr.profile.v1.ProfileService` к `main-gateway`. Актуализирован `infrastructure/docker/Dockerfile.service` (многоэтапная сборка JDK 21 / JRE 21, запуск от UID 10001, обязательное копирование `proto/` и `shared/`).
+  - **[T-028] SecurityPolicy с Keycloak JWT:** В `05-security-policy.yaml` настроена валидация JWT Keycloak (`issuer`, `remoteJWKS`) и проброс клеймов `sub` -> `x-user-id` и `realm_access.roles` -> `x-user-roles`. Запросы без токена блокируются шлюзом со статусом `UNAUTHENTICATED` (HTTP 401).
+  - **[T-029] Двухуровневый Rate Limiter:** В `06-backend-traffic-policy.yaml` настроен Local Rate Limit (in-memory Token Bucket 20 req/s, burst 50) и Global Rate Limit (100 req/min на пользователя по заголовку `x-user-id` Distinct с хранением счётчиков в Redis). Обновлены смоук-скрипты `scripts/verify-envoy-gateway.sh` и `scripts/verify-envoy-gateway.ps1` для сквозного тестирования 3 сценариев (unauth 401, keycloak jwt success, burst 120 rate limit 429).
 
 - [x] **Шаг 1:** Создание `AGENTS.md` (корневой rulebook) — 361 строка, все правила Kotlin/KMP/Mobile/Backend/Testing.
 - [x] **Шаг 1:** Создание `docs/architecture/01-overview-kmp-infra.md` — структура `:shared`, Koin, Room KMP, gRPC, Docker Compose, CI/CD.

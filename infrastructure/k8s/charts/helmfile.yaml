@@ -1,5 +1,5 @@
 # infrastructure/k8s/charts/helmfile.yaml
-# Helmfile для декларативного управления установкой Envoy Gateway и сопутствующих CRD
+# Helmfile для декларативного управления установкой Envoy Gateway v1.2.x в кластере Kubernetes
 repositories:
   - name: envoy-gateway
     url: https://helm.envoyproxy.io
@@ -13,3 +13,12 @@ releases:
     values:
       - deployment:
           replicas: 1
+      - config:
+          envoyGateway:
+            gateway:
+              controllerName: gateway.envoyproxy.io/gatewayclass-controller
+            rateLimit:
+              backend:
+                type: Redis
+                redis:
+                  url: "redis.budget-nutritionist.svc.cluster.local:6379"
