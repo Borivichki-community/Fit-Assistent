@@ -48,6 +48,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
     consumer:
       group-id: profile-service
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -66,6 +69,14 @@ spring:
   # ── Lifecycle (базовый graceful shutdown) ────────────────────────────────────
   lifecycle:
     timeout-per-shutdown-phase: 5s
+
+# ── Outbox ────────────────────────────────────────────────────────────────────
+outbox:
+  enabled: ${OUTBOX_ENABLED:true}
+  polling-interval-ms: ${OUTBOX_POLLING_INTERVAL_MS:500}
+  batch-size: ${OUTBOX_BATCH_SIZE:50}
+  max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+  send-timeout-seconds: ${OUTBOX_SEND_TIMEOUT_SECONDS:10}
 
 # ── Actuator ──────────────────────────────────────────────────────────────────
 management:
