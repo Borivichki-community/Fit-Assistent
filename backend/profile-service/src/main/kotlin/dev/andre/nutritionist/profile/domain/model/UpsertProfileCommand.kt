@@ -11,4 +11,5 @@ data class UpsertProfileCommand(
     val goalType: GoalType,
     val nutritionGoal: NutritionGoal?,
     val weeklyBudget: BigDecimal,
+    val email: String? = null,
 )
