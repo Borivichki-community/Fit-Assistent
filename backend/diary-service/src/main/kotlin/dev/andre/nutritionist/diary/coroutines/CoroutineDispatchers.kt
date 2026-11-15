@@ -1,4 +1,10 @@
 package dev.andre.nutritionist.diary.coroutines
 
-class CoroutineDispatchers {
+import kotlinx.coroutines.CoroutineDispatcher
+
+interface CoroutineDispatchers {
+    val main: CoroutineDispatcher
+    val io: CoroutineDispatcher
+    val default: CoroutineDispatcher
+    val unconfined: CoroutineDispatcher
 }

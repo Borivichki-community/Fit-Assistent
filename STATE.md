@@ -5,6 +5,40 @@
 
 Обновлено: 2026-11-15
 
+### Упрощение типов и подключение Diary RPC (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` использован для исправления тестового lifecycle и форматирования. Роль: `implementer`.
+- Scope/StoredResponse вложены в IdempotencyStore; конфликт вложен в IdempotencyService. Ссылки обновлены; четыре отдельных файла удалены, EnableScheduling перенесён в GrpcBootstrapConfiguration.
+- Реализованы DiaryGrpcService/DiaryService, репозиторий и JPA-хранилище, мапперы/валидация, внедряемые диспетчеры и DiaryRequestContextInterceptor.
+- RPC AddEntry/DeleteMeal используют execute с одной JDBC/JPA-транзакцией. Чтение GetDailyEntries/GetRange ограничено текущим пользователем, даты включительны в указанном часовом поясе, запрос БД использует полуоткрытый интервал.
+- Доверенная identity берётся только из x-user-id, выставленного Envoy после JWT-проверки согласно архитектуре; backend должен быть изолирован от прямых внешних запросов. JWT внутри приложения не декодируется и не проверяется.
+- PASS: compileKotlin/compileTestKotlin offline; все 17 тестов diary-service (9 сетевых gRPC/Spring/PostgreSQL, 7 идемпотентности, 1 JPA/Liquibase), 0 failures/errors. Проверены регистрация глобальных interceptor, четыре RPC, повтор/конфликт, гонка 8 запросов, rollback, ownership, снимки стоимости, границы DST и запуск зарегистрированной задачи очистки. Отклонённый тест логирующего interceptor не восстанавливался.
+- Исправлены только тестовые ошибки: ручное закрытие Spring-контекста мешало afterAll listeners; проверка ScheduledMethodRunnable не учитывала OutcomeTrackingRunnable Spring 7. Контекст теперь закрывает Spring, задача проверяется через зарегистрированный Runnable и удаление просроченного ответа.
+- FAIL: общий ktlintCheck — прежнее форматирование четырёх ID-моделей и DiaryEntryPersistenceTest, generated protobuf Kotlin. В изменённых участках ошибок нет; настройки линтера и generated-код не менялись. git diff --check — без ошибок.
+- Цепочка внутри diary-service подключена; рабочая БД не изменялась. Envoy/JWT-периметр и клиентская мобильная синхронизация не проверялись; Kafka/outbox не реализовывались в этой задаче.
+
+### Второй этап T-051 — PostgreSQL-идемпотентность (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Реализованы IdempotencyService/Store и PostgreSQL-адаптер, таблица ключей и очистка по TTL. Отклонённый пользователем тест логирующего interceptor не восстановлен.
+- Ключ ограничен пользователем и RPC; хэш SHA-256 рассчитывается по переданным байтам запроса. Исполнитель передаёт синхронное действие, возвращающее сериализованный ответ; всё действие, ключ и ответ фиксируются одной новой READ COMMITTED транзакцией на том же DataSource. Действие должно содержать только локальные операции БД и формирование ответа, без переключения потока и внешних вызовов.
+- Store использует INSERT ON CONFLICT DO NOTHING и SELECT FOR UPDATE; конкурентная очистка обрабатывается повторной попыткой захвата. TTL по умолчанию 24 часа с начала транзакции; до фактической очистки ответ продолжает возвращаться. Очистка раз в час, порциями до 1000, настройки через diary.idempotency.*.
+- Очистка удаляет только результаты из idempotency_keys; постоянная уникальность (user_id, idempotency_key) в diary_entries сохраняется. После очистки старый ответ не восстанавливается автоматически: обработку такой ситуации предстоит подключить на уровне операции дневника.
+- DiaryGrpcService и DiaryService остаются пустыми: gRPC-проверка обязательного ключа, авторизация, сериализация, отображение IdempotencyConflictException в gRPC-статус и вызов execute из AddEntry/DeleteMeal ещё не подключены. Само добавление/удаление дневника не входит в этот этап; T-051 целиком пока не завершена.
+- PASS: offline Gradle compileKotlin/compileTestKotlin; 7 новых интеграционных тестов и существующий DiaryEntryPersistenceTest — 8/8, 0 failures/errors, PostgreSQL 17 Testcontainers. Проверены миграции, повтор, конфликт тела, гонка 8 запросов, откат, разделение пользователя/RPC, TTL и пустой успешный ответ.
+- FAIL: общий ktlintCheck — ранее существовавшие исходники и generated protobuf; в новых файлах замечаний нет. Линтер и зависимости не менялись. git diff --check — без ошибок.
+- Рабочая PostgreSQL не изменялась. Полный запуск Spring, регистрация расписания в работающем приложении и сквозной gRPC-вызов не проверялись.
+
+### Первый этап T-051 — перехват и логирование (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` подключён для разбора ktlint. Роль: `implementer`.
+- Создан `DiaryMutationLoggingInterceptor`: глобальная регистрация Spring gRPC, выбор только AddEntry/DeleteMeal по сгенерированным дескрипторам, логирование начала/наличия ключа и итогового статуса. Тела и значения ключей не логируются.
+- Это только логирование: вызовы проходят дальше без проверки обязательности ключа и без защиты от повторов. Store, таблица ключей, хэш, транзакционная координация и TTL пока не реализованы; DiaryGrpcService/DiaryService остаются без изменений.
+- Добавлены четыре теста in-process gRPC: AddEntry с metadata, DeleteMeal без ключа, чтение без логов мутаций, сохранение статуса ошибки.
+- PASS: compileKotlin, compileTestKotlin и четыре теста DiaryMutationLoggingInterceptorTest (0 failures/errors) через offline Gradle.
+- FAIL: общий ktlintCheck — существующие заглушки/форматирование, порядок импортов DiaryEntryPersistenceTest и generated protobuf Kotlin. Ошибка цепочки вызовов в новом тесте исправлена; существующие исходники и настройки линтера не изменены.
+- Полный запуск Spring, рабочая БД и механизмы повторов/TTL не проверялись.
+
 ### Дополнение контракта Diary — T-050 (2026-11-15)
 
 - Активные Skills: `contracts-proto-and-avro`, `testing-and-verification` (проверка генерации и компиляции); роль: `implementer`.
