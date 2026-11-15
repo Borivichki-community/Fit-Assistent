@@ -31,7 +31,22 @@ spring:
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
     consumer:
       group-id: diary-service
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 50
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         "[specific.avro.reader]": true
+    listener:
+      ack-mode: manual_immediate
+
+diary:
+  kafka:
+    registration:
+      enabled: ${DIARY_REGISTRATION_CONSUMER_ENABLED:true}
+      topic: user.registered
+      partitions: 3
+      replication-factor: 1
+      retry-interval: PT1S
+      retries: 2

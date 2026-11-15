@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: v1/002-idempotency-keys.yaml
       relativeToChangelogFile: true
+  - include:
+      file: v1/003-diary-registration-consumer.yaml
+      relativeToChangelogFile: true
