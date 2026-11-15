@@ -27,10 +27,12 @@ import dev.andre.nutritionist.presentation.profile.ProfileUiState
 fun ProfileScreen(
     state: ProfileUiState,
     onEvent: (ProfileEvent.Ui) -> Unit,
+    modifier: Modifier = Modifier,
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
     onDestinationSelected: (AppDestination) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     isOffline: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -77,6 +79,8 @@ fun ProfileScreen(
                         ProfileSuccessContent(
                             profile = content.profile,
                             onEditClick = { onEvent(ProfileEvent.Ui.EditClicked) },
+                            onLogoutClick = onLogoutClick,
+                            isLoggingOut = isLoggingOut,
                         )
                     }
                     is ProfileUiState.Content.Form -> {

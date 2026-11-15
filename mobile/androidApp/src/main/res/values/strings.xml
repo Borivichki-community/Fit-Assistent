@@ -53,6 +53,7 @@
     <string name="profile_menu_settings">Settings</string>
     <string name="profile_menu_notifications">Notifications</string>
     <string name="profile_menu_help">Help</string>
+    <string name="profile_logout_button">Log out</string>
 
     <!-- Profile Form & Validation -->
     <string name="profile_save_button">Save</string>
@@ -109,18 +110,23 @@
 
     <!-- Authentication -->
     <string name="auth_title">Authorization</string>
+    <string name="auth_subtitle">Sign in to sync your profile and nutrition plans</string>
     <string name="auth_email_hint">example@mail.com</string>
     <string name="auth_password_hint">•••••••••••••</string>
     <string name="auth_forgot_password">Forgot password</string>
     <string name="auth_login_button">Sign In</string>
+    <string name="auth_login_keycloak">Sign in with Keycloak</string>
     <string name="auth_no_account">No account?</string>
     <string name="auth_create_account">Create account</string>
     <string name="auth_via_telegram">Via Telegram</string>
     <string name="auth_via_google">Via Google</string>
+    <string name="auth_loading">Connecting to Keycloak…</string>
 
     <!-- Registration -->
     <string name="signup_title">Registration</string>
+    <string name="signup_subtitle">Create a new account via Keycloak single sign-on</string>
     <string name="signup_register_button">Register</string>
+    <string name="signup_register_keycloak">Register with Keycloak</string>
     <string name="signup_back_button">Back</string>
     <string name="signup_via_google">Register with Google</string>
     <string name="signup_code_title">Confirm Email</string>

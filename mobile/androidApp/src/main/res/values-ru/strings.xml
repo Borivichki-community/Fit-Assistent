@@ -53,6 +53,7 @@
     <string name="profile_menu_settings">Настройки</string>
     <string name="profile_menu_notifications">Уведомления</string>
     <string name="profile_menu_help">Помощь</string>
+    <string name="profile_logout_button">Выйти из аккаунта</string>
 
     <!-- Экран профиля: форма и валидация -->
     <string name="profile_save_button">Сохранить</string>
@@ -109,18 +110,23 @@
 
     <!-- Авторизация (экран авторизации.jpg) -->
     <string name="auth_title">Авторизация</string>
+    <string name="auth_subtitle">Войдите в аккаунт для синхронизации рациона и профиля</string>
     <string name="auth_email_hint">example@mail.com</string>
     <string name="auth_password_hint">•••••••••••••</string>
     <string name="auth_forgot_password">Забыл пароль</string>
     <string name="auth_login_button">Авторизация</string>
+    <string name="auth_login_keycloak">Войти через Keycloak / Аккаунт</string>
     <string name="auth_no_account">Нет аккаунта?</string>
     <string name="auth_create_account">Создать аккаунт</string>
     <string name="auth_via_telegram">Через Telegram</string>
     <string name="auth_via_google">Через Google</string>
+    <string name="auth_loading">Подключение к Keycloak…</string>
 
     <!-- Регистрация (экран регистрации 1.jpg) -->
     <string name="signup_title">Регистрация</string>
+    <string name="signup_subtitle">Регистрация нового аккаунта через Keycloak</string>
     <string name="signup_register_button">Регистрация</string>
+    <string name="signup_register_keycloak">Зарегистрироваться через Keycloak</string>
     <string name="signup_back_button">Назад</string>
     <string name="signup_via_google">Регистрация через Google</string>
     <string name="signup_code_title">Подтверждение почты</string>

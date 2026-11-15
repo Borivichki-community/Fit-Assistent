@@ -20,10 +20,12 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ProfileRoute(
     userId: UserId,
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
     onNavigateToEdit: (UserId) -> Unit = {},
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
     viewModel: ProfileViewModel = koinViewModel(),
-    modifier: Modifier = Modifier,
 ) {
     val state by viewModel.profileState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -45,5 +47,7 @@ fun ProfileRoute(
         state = state,
         onEvent = viewModel::dispatch,
         modifier = modifier,
+        onLogoutClick = onLogoutClick,
+        isLoggingOut = isLoggingOut,
     )
 }

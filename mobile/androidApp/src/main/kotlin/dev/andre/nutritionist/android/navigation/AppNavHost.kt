@@ -1,23 +1,35 @@
 package dev.andre.nutritionist.android.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import dev.andre.nutritionist.android.auth.AuthEvent
+import dev.andre.nutritionist.android.auth.AuthRepository
+import dev.andre.nutritionist.android.auth.AuthUiState
+import dev.andre.nutritionist.android.auth.AuthViewModel
 import dev.andre.nutritionist.android.ui.screens.MainScreen
 import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.domain.model.UserId
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     startDestination: Any = AppDestination.Auth.route,
     modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel = koinViewModel(),
+    authRepository: AuthRepository = koinInject(),
 ) {
+    val authState by authViewModel.state.collectAsStateWithLifecycle()
+    val isLoggingOut = authState.content is AuthUiState.Content.Loading
     val destinationRoute = when (startDestination) {
         is AppDestination -> startDestination.route
         is String -> startDestination
@@ -39,6 +51,7 @@ fun AppNavHost(
                 onNavigateToSignUp = {
                     navController.navigate(AppDestination.SignUp.route)
                 },
+                viewModel = authViewModel,
             )
         }
         composable(AppDestination.SignUp.route) {
@@ -51,6 +64,7 @@ fun AppNavHost(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
+                viewModel = authViewModel,
             )
         }
         composable(AppDestination.Dashboard.route) {
@@ -80,8 +94,19 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Profile.route) {
+            val currentUserId = authRepository.getUserId() ?: UserId("testuser")
             ProfileRoute(
-                userId = UserId("default-user"),
+                userId = currentUserId,
+                isLoggingOut = isLoggingOut,
+                authViewModel = authViewModel,
+                onLogoutClick = {
+                    authViewModel.dispatch(AuthEvent.Ui.LogoutClicked)
+                },
+                onLogoutSuccess = {
+                    navController.navigate(AppDestination.Auth.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 },

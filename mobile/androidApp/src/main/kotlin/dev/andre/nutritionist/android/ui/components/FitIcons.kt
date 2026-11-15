@@ -399,4 +399,36 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка выхода из аккаунта (Logout) */
+    val Logout: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitLogout",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                // Дверь / контур
+                moveTo(9f, 21f)
+                lineTo(5f, 21f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
+                lineTo(3f, 5f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5f, 3f)
+                lineTo(9f, 3f)
+                // Стрелка наружу
+                moveTo(16f, 17f)
+                lineTo(21f, 12f)
+                lineTo(16f, 7f)
+                moveTo(21f, 12f)
+                lineTo(9f, 12f)
+            }
+        }.build()
+    }
 }

@@ -7,14 +7,42 @@
 
 ---
 
-## Статус проекта: Реализован боевой конечный автомат (State Machine) идемпотентности в Redis для profile-service (атомарный SETNX lock, валидация SHA-256 payload, отсечение параллельных запросов in-flight и автоматический release при сбоях)
+## Статус проекта: [T-042] Демо среза №1 завершено: сквозная цепочка Авторизация (Keycloak OAuth 2.1 PKCE) → Envoy Gateway (JWT Validation + Rate Limiting) → profile-service (gRPC + Security Interceptor) → PostgreSQL (profile_db)
 
-Ветка: `feature/KAN-45-gateway` (Ключи задач: T-024, T-025, T-029)
+Ветка: `feature/KAN-45-gateway` (Ключи задач: T-042, KAN-57, KAN-59)
 Роли: `implementer` + `test-reviewer`
 
 ---
 
 ### Выполнено
+
+- [x] **Исправление зависания («Connecting to Keycloak…») и ошибки «ERR_CONNECTION_REFUSED / localhost:8080» при авторизации и регистрации:**
+  - **Причина зависания:** В `AppNavHost.kt` на уровне корня висел `LaunchedEffect(authViewModel) { authViewModel.news.collect { ... } }`. Так как `StoreImpl.news` построен на одноканальной очереди `Channel<News>` (`receiveAsFlow()`), `AppNavHost` перехватывал событие `AuthNews.LaunchAuthTab(intent)`, и дочерний `LoginRoute` его не получал, оставаясь в бесконечной загрузке.
+  - **Причина ошибки ERR_CONNECTION_REFUSED:** В `infrastructure/docker-compose.local.yml` было захардкожено `KC_HOSTNAME: http://localhost:8080`. В результате Keycloak генерировал HTML-формы логина и ссылки регистрации со строгим экшеном `http://localhost:8080/...`. На Android-эмуляторе `localhost` указывает на сам эмулятор (127.0.0.1 ОС Android), где порт 8080 не слушается, что приводило к ошибке `This site can't be reached / localhost refused to connect / ERR_CONNECTION_REFUSED`.
+  - **Решение:**
+    1. Из `infrastructure/docker-compose.local.yml` удалён фиксированный `KC_HOSTNAME: http://localhost:8080`, включен динамический резолв хоста `KC_HOSTNAME_STRICT: "false"`. Теперь при запросе с эмулятора (`Host: 10.0.2.2:8080`) Keycloak динамически отдаёт все ссылки и формы на `10.0.2.2:8080`, а при запросе с хоста — на `localhost:8080`.
+    2. В `mobile/androidApp`: в `AuthConfig.kt` эндпоинты по умолчанию настроены на `10.0.2.2:8080` (стандартный хост-мост Android Emulator).
+    3. В `AppNavHost.kt` удален перехватывающий `LaunchedEffect(authViewModel)`. Слушатель `authViewModel.news` перенесён локально в `ProfileRoute.kt` для обработки `NavigateToAuth` только на экране профиля.
+    4. В `AuthContract.kt` и `AuthUpdate.kt` добавлен `AuthEvent.Ui.AuthCancelled` (`AuthState.Content.Idle`).
+    5. В `AuthCommandsFlowHandler.kt` перехвачена ошибка `AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW`, которая теперь плавно переводит экран в `Idle` без пугающего сообщения об ошибке.
+    6. Добавлен юнит-тест в `AuthUpdateTest.kt`. Все 50/50 unit-тестов `:mobile:androidApp:testDebugUnitTest` GREEN.
+    7. Проверено в живом Android эмуляторе: и вход через Keycloak, и регистрация нового аккаунта открываются мгновенно, страницы рендерятся без ошибок связи, а при закрытии вкладки приложение возвращается в исходное состояние.
+
+- [x] **Шаг 6 (T-042): Демо среза №1 — сквозная цепочка Авторизация (Keycloak OAuth 2.1 PKCE) → Gateway → profile-service → PostgreSQL:**
+  - **Ревизия экранов входа (`LoginScreen.kt`, `SignUpScreen.kt`):** Устранены бутафорские поля паролей и mock 4-значных SMS/email кодов. Реализован лаконичный и современный экран входа: «Войти через Keycloak / Аккаунт» (AppAuth PKCE), «Войти через Google» (`kc_idp_hint=google`), быстрая регистрация («Создать аккаунт» с `prompt=create`), чистый экран `SignUpScreen.kt` без mock-полей.
+  - **MVI Presentation & AppAuth (`AuthViewModel`, `AuthContract`, `AuthCommandsFlowHandler`):** Расширены события и команды авторизации (`idpHint`, `prompt`). В `AuthRepository` добавлен метод `getUserId(): UserId?` с безопасным извлечением `sub` claim из токена. В `AuthRepositoryImpl` токены надёжно хранятся в Android Keystore (`EncryptedPrefsAuthStorage`), а `AuthCallCredentials` автоматически прикрепляет токен к gRPC-запросам без блокировки потоков.
+  - **Сквозная навигация и перехват Intent (`MainActivity.kt`, `AppNavHost.kt`, `LoginRoute.kt`):** `MainActivity` перехватывает deep link `com.budgetntr.fitassistant://oauth2redirect`, передаёт Intent в `AuthViewModel.processAuthResponse()`, переводит авторизованного пользователя на `Dashboard` и динамически передаёт `userId = authRepository.getUserId()` в `ProfileRoute`.
+  - **Envoy Gateway & gRPC (`05-security-policy.yaml`, `AndroidDataModule.kt`):** Запросы направляются на `10.0.2.2:9090` (Envoy Gateway), шлюз валидирует JWT по JWKS Keycloak realm `FitAssistant`, пробрасывает заголовок `x-user-id: <subKeycloak>`, `SecurityGrpcInterceptor` валидирует права доступа к профилю, `ProfileService` читает/пишет данные в PostgreSQL `profile_db`, а `ProfileScreen` отображает реальные данные КБЖУ, веса и бюджета.
+  - **Тестирование и верификация (AGENTS.md §6):**
+    - Unit-тесты `:mobile:androidApp:testDebugUnitTest`: 42/42 GREEN (`LoginScreenTest`, `SignUpScreenTest`, `AuthUpdateTest`, `AuthCommandsFlowHandlerTest`, `AuthRepositoryImplTest`).
+    - Unit-тесты `:mobile:shared:allTests`: 59/59 GREEN.
+    - Сборка `:mobile:androidApp:assembleDebug`: BUILD SUCCESSFUL.
+    - Устранено падение AppAuth `IllegalArgumentException: only https connections are permitted`: реализован `AppAuthConnectionBuilder`, в `AppAuthConfiguration` включен `skipIssuerHttpsCheck(true)`, в `res/xml/network_security_config.xml` разрешен cleartext HTTP для `10.0.2.2`, а в `AuthConfig` добавлены прямые эндпоинты `authEndpoint` и `tokenEndpoint` (`http://10.0.2.2:8080/...`) для стабильной работы в Android эмуляторе. Проверено в живом эмуляторе — Custom Tabs успешно открывает страницу Keycloak.
+  - **Локальный запуск и верификация сервисов (Docker & profile-service bootRun):**
+    - В `infrastructure/docker-compose.local.yml` внешний порт PostgreSQL переведён на `5433` во избежание конфликта с локальной службой Windows, в `.env` актуализированы `PROFILE_DB_URL`, `CATALOG_DB_URL`, `DIARY_DB_URL`. Все 5 контейнеров (Postgres, Keycloak, Redis, Kafka, Schema Registry) запущены и находятся в статусе `Up (healthy)`.
+    - В `application.yml` сервиса `profile-service` исправлен парсинг Logback JSON pattern (устранено некорректное экранирование `\"`), веб-порт Tomcat переведён на `8085` (`server.port: 8085` и `management.server.port: 8085`) во избежание конфликта с Keycloak (порт `8080`).
+    - Успешно проверен запуск `./gradlew :backend:profile-service:bootRun`: Liquibase применил миграции к `profile_db`, HikariCP подключен, Tomcat поднят на порту `8085`, gRPC Server слушает порт `9090`, Actuator health (`liveness` и `readiness`) возвращает `UP`.
+    - Все 80/80 unit и integration тестов `:backend:profile-service:test` пройдены успешно (GREEN).
 
 - [x] **Идемпотентность в profile-service (Redis State Machine & Concurrency Protection):**
   - **Конечный автомат состояний в Redis:** Добавлен sealed interface [`IdempotencyResult`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/IdempotencyStore.kt) (`Acquired`, `InProgress`, `Cached`, `PayloadMismatch`).

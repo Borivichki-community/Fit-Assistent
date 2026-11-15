@@ -3,6 +3,7 @@ package dev.andre.nutritionist.android.auth
 import android.content.Intent
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
 import dev.andre.nutritionist.domain.model.AccessToken
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -25,6 +26,11 @@ interface AuthRepository : AuthTokenProvider {
      * Возвращает строго типизированный [AccessToken] (или null).
      */
     fun getAccessTokenTyped(): AccessToken?
+
+    /**
+     * Возвращает идентификатор текущего пользователя (claim "sub" из токена).
+     */
+    fun getUserId(): UserId?
 
     /**
      * Проверяет, авторизован ли пользователь в данный момент.

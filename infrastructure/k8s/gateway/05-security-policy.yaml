@@ -17,9 +17,9 @@ spec:
   jwt:
     providers:
       - name: keycloak
-        issuer: "http://keycloak:8080/realms/budget-nutritionist"
+        issuer: "http://keycloak:8080/realms/FitAssistant"
         remoteJWKS:
-          uri: "http://keycloak:8080/realms/budget-nutritionist/protocol/openid-connect/certs"
+          uri: "http://keycloak:8080/realms/FitAssistant/protocol/openid-connect/certs"
         claimToHeaders:
           # Проброс sub токена в доверенный заголовок x-user-id для бэкенда
           - claim: sub
