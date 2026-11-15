@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-diary-registration-consumer
+      author: team
+      dbms: postgresql
+      changes:
+        - createTable:
+            tableName: diary_users
+            columns:
+              - column:
+                  name: user_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_diary_users
+                    nullable: false
+              - column:
+                  name: registered_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: initialized_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: processed_events
+            columns:
+              - column:
+                  name: consumer_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_key
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: processed_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: processed_events
+            columnNames: consumer_name, event_key
+            constraintName: pk_processed_events
+      rollback:
+        - dropTable:
+            tableName: processed_events
+        - dropTable:
+            tableName: diary_users
