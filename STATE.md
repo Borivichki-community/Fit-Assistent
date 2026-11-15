@@ -5,6 +5,14 @@
 
 Обновлено: 2026-11-15
 
+### T-052 — атомарное сохранение записи и outbox (2026-11-15)
+
+- Skills: spring-grpc-service, testing-and-verification; роль implementer. Работа ведётся в исходной ветке T-052, consumer T-055 не переносится.
+- В DiaryService.addEntry добавлено сохранение CaloriesConsumedEvent в outbox_messages в транзакции IdempotencyService: запись, событие и ответ фиксируются вместе. Проходной UseCase не создаётся; сетевых клиентов в операции нет.
+- Добавлены DiaryOutboxRepository и миграция 004-diary-outbox.yaml, подключён :shared:contracts. Avro-схема не меняется. Событие содержит сохранённые mealId/userId/calories/recordedAt/mealType; partition_key=userId, traceparent сохраняется из metadata. Статус PENDING; публикация относится к T-053.
+- PASS: ./gradlew :backend:diary-service:test --offline --console=plain — BUILD SUCCESSFUL, 7/7 тестов (6 новых gRPC/Spring/PostgreSQL + существующий JPA), 0 failures/errors/skipped. Проверены чтение Avro из BYTEA, traceparent, PENDING/partition_key, повтор, гонка 8 вызовов, конфликт payload/ID, откат при ошибке outbox и после обеих вставок, повтор после отката и валидация.
+- FAIL: общий ktlintCheck — прежние ID-модели, generated protobuf и порядок импортов DiaryEntryPersistenceTest; форматирование нового теста исправлено точечно. Проверки выполнялись только на временной PostgreSQL; рабочие данные, Kafka и Schema Registry не затрагивались. git diff --check — без ошибок. Коммиты и переключения веток не выполнялись.
+
 ### Упрощение типов и подключение Diary RPC (2026-11-15)
 
 - Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` использован для исправления тестового lifecycle и форматирования. Роль: `implementer`.
