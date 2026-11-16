@@ -3,6 +3,7 @@ package dev.andre.nutritionist.android.auth
 import android.content.Intent
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.AccessToken
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +49,15 @@ class AuthRepositoryImpl(
 
     override fun getAccessTokenTyped(): AccessToken? =
         currentAuthState.accessToken?.let(::AccessToken)
+
+    override fun getUserId(): UserId? {
+        val parsedSub = currentAuthState.parsedIdToken?.subject
+        if (!parsedSub.isNullOrBlank()) {
+            return UserId(parsedSub)
+        }
+        val token = currentAuthState.idToken ?: currentAuthState.accessToken ?: return null
+        return extractSubFromJwt(token)?.let(::UserId)
+    }
 
     override fun isAuthenticated(): Boolean = currentAuthState.isAuthorized
 
@@ -110,4 +120,19 @@ class AuthRepositoryImpl(
             }
         }
     }
+
+    private fun extractSubFromJwt(token: String): String? = runCatching {
+        val parts = token.split(".")
+        if (parts.size >= 2) {
+            val payloadBytes = android.util.Base64.decode(
+                parts[1],
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
+            )
+            val jsonString = String(payloadBytes, Charsets.UTF_8)
+            val subRegex = """"sub"\s*:\s*"([^"]+)"""".toRegex()
+            subRegex.find(jsonString)?.groupValues?.get(1)
+        } else {
+            null
+        }
+    }.getOrNull()
 }

@@ -41,11 +41,25 @@ class AuthCommandsFlowHandlerTest {
         val testIntent = Intent("custom.tabs.intent")
         fakeIntentProvider.intentToReturn = testIntent
 
-        handler.handle(flowOf(AuthCommand.LaunchAuthTab)).test {
+        handler.handle(flowOf(AuthCommand.LaunchAuthTab())).test {
             val event = awaitItem()
             assertTrue(event is AuthEvent.Internal.AuthIntentPrepared)
             assertEquals(testIntent, (event as AuthEvent.Internal.AuthIntentPrepared).intent)
             assertEquals(1, fakeIntentProvider.createIntentCallCount)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `LaunchAuthTab with idpHint and prompt propagates parameters to intent provider`() = runTest {
+        val testIntent = Intent("custom.tabs.intent.google")
+        fakeIntentProvider.intentToReturn = testIntent
+
+        handler.handle(flowOf(AuthCommand.LaunchAuthTab(idpHint = "google", prompt = "create"))).test {
+            val event = awaitItem()
+            assertTrue(event is AuthEvent.Internal.AuthIntentPrepared)
+            assertEquals("google", fakeIntentProvider.lastIdpHint)
+            assertEquals("create", fakeIntentProvider.lastPrompt)
             awaitComplete()
         }
     }
@@ -84,6 +98,20 @@ class AuthCommandsFlowHandlerTest {
         handler.handle(flowOf(AuthCommand.Logout)).test {
             val event = awaitItem()
             assertEquals(AuthEvent.Internal.LoggedOut, event)
+            assertEquals(1, fakeRepository.logoutCallCount)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `Logout command with failure result emits AuthFailed`() = runTest {
+        val error = RuntimeException("Logout network error")
+        fakeRepository.logoutResultToReturn = Result.failure(error)
+
+        handler.handle(flowOf(AuthCommand.Logout)).test {
+            val event = awaitItem()
+            assertTrue(event is AuthEvent.Internal.AuthFailed)
+            assertEquals(error, (event as AuthEvent.Internal.AuthFailed).error)
             assertEquals(1, fakeRepository.logoutCallCount)
             awaitComplete()
         }

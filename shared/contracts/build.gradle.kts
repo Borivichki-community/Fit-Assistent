@@ -40,11 +40,6 @@ avro {
     stringType.set("String")
 }
 
-sourceSets {
-    main {
-        java.srcDir(tasks.named("generateAvroJava"))
-    }
-}
 
 tasks.named("compileTestKotlin") {
     dependsOn("generateTestAvroJava")

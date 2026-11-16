@@ -405,6 +405,116 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
             assertNotNull(cachedBytes, "Ответ должен быть сохранён в RedisIdempotencyStore")
         }
 
+    @Test
+    fun `updateProfile with same idempotency key but different payload returns INVALID_ARGUMENT`() =
+        runTest {
+            val request1 =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_idemp_diff")
+                    .setHeightCm(180)
+                    .setWeightKg(80.0)
+                    .setGender(GenderProto.GENDER_MALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_SEDENTARY)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
+                    .setWeeklyBudget(3000.0)
+                    .build()
+
+            val request2 =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_idemp_diff")
+                    .setHeightCm(190)
+                    .setWeightKg(85.0)
+                    .setGender(GenderProto.GENDER_MALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_SEDENTARY)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
+                    .setWeeklyBudget(3000.0)
+                    .build()
+
+            val userStub = stubWithIdempotency("idemp-key-diff-test", userId = "user_idemp_diff")
+
+            val firstResponse = userStub.updateProfile(request1)
+            assertNotNull(firstResponse.id)
+
+            val exception =
+                assertThrowsSuspend<StatusException> {
+                    userStub.updateProfile(request2)
+                }
+            assertEquals(Status.Code.INVALID_ARGUMENT, exception.status.code)
+            assertTrue(
+                exception.message?.contains("different request payload") == true,
+                "Error message should indicate payload mismatch",
+            )
+        }
+
+    @Test
+    fun `updateProfile when key is in-flight returns ABORTED`() =
+        runTest {
+            val request =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_idemp_inflight")
+                    .setHeightCm(175)
+                    .setWeightKg(70.0)
+                    .setGender(GenderProto.GENDER_FEMALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_LOSE_WEIGHT)
+                    .setWeeklyBudget(2500.0)
+                    .build()
+
+            val key = "idemp-key-inflight-test"
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val dummyHash = digest.digest(request.toByteArray())
+            val acquireResult = idempotencyStore.tryAcquire(key, dummyHash)
+            assertEquals(dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyResult.Acquired, acquireResult)
+
+            val userStub = stubWithIdempotency(key, userId = "user_idemp_inflight")
+            val exception =
+                assertThrowsSuspend<StatusException> {
+                    userStub.updateProfile(request)
+                }
+            assertEquals(Status.Code.ABORTED, exception.status.code)
+            assertTrue(
+                exception.message?.contains("currently in-flight") == true,
+                "Error message should indicate concurrent in-flight request",
+            )
+        }
+
+    @Test
+    fun `updateProfile releases lock on validation failure allowing retry`() =
+        runTest {
+            val invalidRequest =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_idemp_retry")
+                    .setHeightCm(-10)
+                    .setWeightKg(70.0)
+                    .build()
+
+            val key = "idemp-key-retry-test"
+            val userStub = stubWithIdempotency(key, userId = "user_idemp_retry")
+
+            assertThrowsSuspend<StatusException> {
+                userStub.updateProfile(invalidRequest)
+            }
+
+            val validRequest =
+                UpdateProfileRequest
+                    .newBuilder()
+                    .setUserId("user_idemp_retry")
+                    .setHeightCm(175)
+                    .setWeightKg(70.0)
+                    .setGender(GenderProto.GENDER_FEMALE)
+                    .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
+                    .setGoalType(GoalTypeProto.GOAL_TYPE_LOSE_WEIGHT)
+                    .setWeeklyBudget(2500.0)
+                    .build()
+
+            val successResponse = userStub.updateProfile(validRequest)
+            assertNotNull(successResponse.id)
+        }
+
     // ── Тест-кейс 7: Безопасность и разграничение доступа (T-021) ─────────────
 
     @Test

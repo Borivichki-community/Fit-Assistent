@@ -1,0 +1,112 @@
+# infrastructure/k8s/gateway/03-profile-service.yaml
+# Развёртывание микросервиса profile-service в Kubernetes
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: budget-nutritionist
+  labels:
+    app.kubernetes.io/part-of: fitassistant
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-service
+  namespace: budget-nutritionist
+  labels:
+    app: profile-service
+    service: profile
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: profile-service
+  template:
+    metadata:
+      labels:
+        app: profile-service
+        service: profile
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: profile-service
+          image: profile-service:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
+            - name: actuator
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev"
+            - name: PROFILE_GRPC_PORT
+              value: "9090"
+            - name: PROFILE_DB_URL
+              value: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db"
+            - name: DB_USERNAME
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis.budget-nutritionist.svc.cluster.local"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-service
+  namespace: budget-nutritionist
+  labels:
+    app: profile-service
+    service: profile
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+      appProtocol: grpc
+    - name: actuator
+      port: 8080
+      targetPort: 8080
+      appProtocol: http
+  selector:
+    app: profile-service

@@ -1,25 +1,29 @@
 # infrastructure/k8s/gateway/05-security-policy.yaml
 # SecurityPolicy для валидации JWT OAuth 2.1 токенов Keycloak на Envoy Gateway
+# Запросы без валидного заголовка Authorization отклоняются шлюзом (401 Unauthorized / UNAUTHENTICATED)
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
   name: jwt-auth-policy
-  namespace: test-gateway
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
 spec:
   targetRef:
     group: gateway.networking.k8s.io
     kind: GRPCRoute
-    name: echo-grpc-route
+    name: profile-grpc-route
   jwt:
     providers:
       - name: keycloak
-        issuer: "http://keycloak:8080/realms/budget-nutritionist"
-        audiences:
-          - "budget-nutritionist-api"
+        issuer: "http://keycloak:8080/realms/FitAssistant"
         remoteJWKS:
-          uri: "http://keycloak:8080/realms/budget-nutritionist/protocol/openid-connect/certs"
+          uri: "http://keycloak:8080/realms/FitAssistant/protocol/openid-connect/certs"
         claimToHeaders:
+          # Проброс sub токена в доверенный заголовок x-user-id для бэкенда
           - claim: sub
             header: x-user-id
-          - claim: email
-            header: x-user-email
+          # Проброс ролей пользователя в заголовок x-user-roles
+          - claim: realm_access.roles
+            header: x-user-roles

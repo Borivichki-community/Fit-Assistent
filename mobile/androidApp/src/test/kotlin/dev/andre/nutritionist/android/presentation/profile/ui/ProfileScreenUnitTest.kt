@@ -10,9 +10,15 @@ import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.presentation.profile.validation.ProfileFieldsValidation
 import dev.andre.nutritionist.android.presentation.profile.validation.ProfileValidationError
+import dev.andre.nutritionist.android.ui.screens.ProfileSuccessContent
+import dev.andre.nutritionist.domain.model.ProfileId
+import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileState
+import dev.andre.nutritionist.presentation.profile.ProfileUiModel
+import dev.andre.nutritionist.presentation.profile.ProfileUiState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -125,4 +131,159 @@ class ProfileScreenUnitTest {
         assertEquals(ProfileValidationError.OutOfRange(500, 10000), ProfileFieldsValidation.validateDailyCalories("12000"))
         assertNull(ProfileFieldsValidation.validateDailyCalories("2200"))
     }
+
+    @Test
+    fun testCase3_displaysLogoutButtonOnProfileScreen() {
+        val fixedValidState = ProfileState(
+            content = ProfileState.Content.Form(
+                name = "Aleksey",
+                age = "25",
+                targetWeight = "75.0",
+                dailyCalories = "2200",
+            )
+        )
+
+        composeTestRule.setContent {
+            ProfileScreen(
+                state = fixedValidState,
+                onEvent = {},
+                onLogoutClick = {},
+            )
+        }
+
+        val logoutButtonText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutButtonText).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun testCase4_clickLogoutButtonInvokesOnLogoutClick() {
+        val fixedValidState = ProfileState(
+            content = ProfileState.Content.Form(
+                name = "Aleksey",
+                age = "25",
+                targetWeight = "75.0",
+                dailyCalories = "2200",
+            )
+        )
+        var logoutClicked = false
+
+        composeTestRule.setContent {
+            ProfileScreen(
+                state = fixedValidState,
+                onEvent = {},
+                onLogoutClick = { logoutClicked = true },
+            )
+        }
+
+        val logoutButtonText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutButtonText).performScrollTo().performClick()
+
+        assertTrue(logoutClicked)
+    }
+
+    @Test
+    fun testCase5_logoutButtonDisabledWhenIsLoggingOut() {
+        val fixedValidState = ProfileState(
+            content = ProfileState.Content.Form(
+                name = "Aleksey",
+                age = "25",
+                targetWeight = "75.0",
+                dailyCalories = "2200",
+            )
+        )
+        var logoutClicked = false
+
+        composeTestRule.setContent {
+            ProfileScreen(
+                state = fixedValidState,
+                onEvent = {},
+                onLogoutClick = { logoutClicked = true },
+                isLoggingOut = true,
+            )
+        }
+
+        val logoutButtonText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutButtonText).performScrollTo().performClick()
+
+        assertFalse(logoutClicked)
+    }
+
+    @Test
+    fun testCase6_displaysLogoutRowOnProfileSuccessContent() {
+        val profile = createTestProfileUiModel()
+        var logoutClicked = false
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEditClick = {},
+                onLogoutClick = { logoutClicked = true },
+            )
+        }
+
+        val logoutText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutText).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(logoutText).performClick()
+
+        assertTrue(logoutClicked)
+    }
+
+    @Test
+    fun testCase7_logoutRowDisabledWhenLoggingOutOnProfileSuccessContent() {
+        val profile = createTestProfileUiModel()
+        var logoutClicked = false
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEditClick = {},
+                isLoggingOut = true,
+                onLogoutClick = { logoutClicked = true },
+            )
+        }
+
+        val logoutText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutText).performScrollTo().performClick()
+
+        assertFalse(logoutClicked)
+    }
+
+    @Test
+    fun testCase8_displaysAndTriggersLogoutOnFullProfileScreen() {
+        val profile = createTestProfileUiModel()
+        var logoutClicked = false
+        val successState = ProfileUiState(
+            content = ProfileUiState.Content.Success(profile = profile),
+        )
+
+        composeTestRule.setContent {
+            dev.andre.nutritionist.android.ui.screens.ProfileScreen(
+                state = successState,
+                onEvent = {},
+                onLogoutClick = { logoutClicked = true },
+            )
+        }
+
+        val logoutText = context.getString(R.string.profile_logout_button)
+        composeTestRule.onNodeWithText(logoutText).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(logoutText).performClick()
+
+        assertTrue(logoutClicked)
+    }
+
+    private fun createTestProfileUiModel() = ProfileUiModel(
+        id = ProfileId("p-test-01"),
+        userId = UserId("u-test-01"),
+        heightLabel = "180 см",
+        weightLabel = "75 кг",
+        genderLabel = "Мужской",
+        activityLabel = "Умеренная",
+        goalLabel = "Похудение",
+        caloriesGoalLabel = "2200 ккал",
+        proteinsGoalLabel = "140 г",
+        fatsGoalLabel = "70 г",
+        carbsGoalLabel = "250 г",
+        weightGoalLabel = "70 кг",
+        weeklyBudgetLabel = "3500 ₽",
+    )
 }

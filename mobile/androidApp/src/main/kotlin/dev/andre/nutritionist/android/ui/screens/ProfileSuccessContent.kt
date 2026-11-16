@@ -27,11 +27,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.MetricCard
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.android.ui.theme.FitAssistantTheme
+import dev.andre.nutritionist.domain.model.ProfileId
+import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileUiModel
 
 /**
@@ -42,6 +47,8 @@ fun ProfileSuccessContent(
     profile: ProfileUiModel,
     onEditClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
 
@@ -163,9 +170,73 @@ fun ProfileSuccessContent(
                     title = stringResource(R.string.profile_menu_help),
                     onClick = { /* справка */ },
                 )
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(horizontal = Spacing.medium),
+                )
+                SettingsActionRow(
+                    icon = FitIcons.Logout,
+                    title = stringResource(R.string.profile_logout_button),
+                    iconTint = MaterialTheme.colorScheme.error,
+                    textColor = MaterialTheme.colorScheme.error,
+                    enabled = !isLoggingOut,
+                    onClick = onLogoutClick,
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(Spacing.medium))
+    }
+}
+
+@Preview(name = "ProfileSuccessContent - Light Theme", showBackground = true)
+@Composable
+fun ProfileSuccessContentLightPreview() {
+    FitAssistantTheme(darkTheme = false) {
+        ProfileSuccessContent(
+            profile = ProfileUiModel(
+                id = ProfileId("p1"),
+                userId = UserId("u1"),
+                heightLabel = "180 см",
+                weightLabel = "75 кг",
+                genderLabel = "Мужской",
+                activityLabel = "Умеренная",
+                goalLabel = "Похудение",
+                caloriesGoalLabel = "2200 ккал",
+                proteinsGoalLabel = "140 г",
+                fatsGoalLabel = "70 г",
+                carbsGoalLabel = "250 г",
+                weightGoalLabel = "70 кг",
+                weeklyBudgetLabel = "3500 ₽",
+            ),
+            onEditClick = {},
+            onLogoutClick = {},
+        )
+    }
+}
+
+@Preview(name = "ProfileSuccessContent - Dark Theme", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun ProfileSuccessContentDarkPreview() {
+    FitAssistantTheme(darkTheme = true) {
+        ProfileSuccessContent(
+            profile = ProfileUiModel(
+                id = ProfileId("p1"),
+                userId = UserId("u1"),
+                heightLabel = "180 см",
+                weightLabel = "75 кг",
+                genderLabel = "Мужской",
+                activityLabel = "Умеренная",
+                goalLabel = "Похудение",
+                caloriesGoalLabel = "2200 ккал",
+                proteinsGoalLabel = "140 г",
+                fatsGoalLabel = "70 г",
+                carbsGoalLabel = "250 г",
+                weightGoalLabel = "70 кг",
+                weeklyBudgetLabel = "3500 ₽",
+            ),
+            onEditClick = {},
+            onLogoutClick = {},
+        )
     }
 }
