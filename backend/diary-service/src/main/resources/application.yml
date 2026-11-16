@@ -1,3 +1,13 @@
+diary:
+  outbox:
+    enabled: ${DIARY_OUTBOX_ENABLED:true}
+    transaction-id-prefix: ${DIARY_OUTBOX_TRANSACTION_PREFIX:diary-outbox-}
+    poll-interval: PT1S
+    batch-size: 100
+    max-attempts: 10
+    initial-backoff: PT1S
+    max-backoff: PT5M
+
 spring:
   application:
     name: diary-service
@@ -27,6 +37,13 @@ spring:
     properties:
       "[schema.registry.url]": ${SCHEMA_REGISTRY_URL:http://localhost:8081}
     producer:
+      acks: all
+      properties:
+        "[enable.idempotence]": true
+        "[delivery.timeout.ms]": 30000
+        "[request.timeout.ms]": 10000
+        "[max.block.ms]": 10000
+        "[max.in.flight.requests.per.connection]": 1
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
     consumer:
@@ -35,3 +52,4 @@ spring:
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         "[specific.avro.reader]": true
+        "[isolation.level]": read_committed
