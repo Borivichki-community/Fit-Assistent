@@ -7,6 +7,11 @@
 !gradle/**
 !backend/
 !backend/**
+!shared/
+!shared/contracts/
+!shared/contracts/**
+!proto/
+!proto/**
 
 **/build/
 **/.gradle/
