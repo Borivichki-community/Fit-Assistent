@@ -11,6 +11,7 @@ option java_outer_classname = "ProfileOuterClass";
 service ProfileService {
   rpc GetProfile(GetProfileRequest) returns (ProfileProto);
   rpc UpdateProfile(UpdateProfileRequest) returns (ProfileProto);
+  rpc GetDailyCaloriesBalance(GetDailyCaloriesBalanceRequest) returns (DailyCaloriesBalanceResponse);
 }
 
 enum GenderProto {
@@ -53,6 +54,20 @@ message ProfileProto {
   NutritionGoalProto nutrition_goal = 8;
   google.protobuf.Timestamp updated_at = 9;
   double weekly_budget = 10;
+}
+
+message GetDailyCaloriesBalanceRequest {
+  string user_id = 1;
+  string date = 2;
+  string time_zone = 3;
+}
+
+message DailyCaloriesBalanceResponse {
+  string date = 1;
+  string time_zone = 2;
+  int32 target_calories = 3;
+  int64 consumed_calories = 4;
+  int64 remaining_calories = 5;
 }
 
 message GetProfileRequest {

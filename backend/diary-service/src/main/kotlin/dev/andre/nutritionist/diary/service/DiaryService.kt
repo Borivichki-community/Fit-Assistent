@@ -7,6 +7,7 @@ import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
 import dev.andre.nutritionist.diary.domain.model.NutritionSummary
 import dev.andre.nutritionist.diary.domain.model.UserId
 import dev.andre.nutritionist.diary.domain.repository.DiaryRepository
+import dev.andre.nutritionist.diary.outbox.DiaryOutboxRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -15,9 +16,13 @@ import kotlin.time.Instant
 @Service
 class DiaryService(
     private val repository: DiaryRepository,
+    private val outbox: DiaryOutboxRepository,
 ) {
     @Transactional(propagation = Propagation.MANDATORY)
-    fun addEntry(command: AddEntryCommand): DiaryEntry {
+    fun addEntry(
+        command: AddEntryCommand,
+        traceparent: String? = null,
+    ): DiaryEntry {
         require(command.foodName.isNotBlank() && command.foodName.length <= 255) { "Invalid food_name" }
         require(command.quantityGrams.isFinite() && command.quantityGrams > 0 && command.quantityGrams <= 9_999_999.999) {
             "Invalid quantity_grams"
@@ -32,7 +37,9 @@ class DiaryService(
             cost.unitPrice?.let { require(it.amountMinor >= 0) { "Invalid unit price" } }
             cost.priceBasisMilligrams?.let { require(it > 0) { "Invalid price basis" } }
         }
-        return repository.add(command)
+        val entry = repository.add(command)
+        outbox.append(entry, traceparent)
+        return entry
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

@@ -209,76 +209,29 @@ Diary принимает сохранённые клиентом нутриен�
 - Дневник не потребляет `food.price.updated`; исторический снимок не пересчитывается.
 - При будущей публикации CaloriesConsumedEvent значение mealId равно ID сохранённой записи, timestamp — времени приёма пищи, calories — сохранённым целым ккал. Outbox создаётся в той же транзакции. Повторная доставка допустима; потребитель дедуплицирует факт создания по (userId, mealId), а не вычитает его несколько раз.
 
-### 4.3 Transactional Outbox Pattern
+### 4.3 Profile consumer — T-054
 
-```
-┌──────────────────────────────────────────────────────┐
-│  @Transactional (JPA/Hibernate)                      │
-│  1. INSERT INTO diary_entries (...)                  │
-│  2. INSERT INTO outbox_messages (                    │
-│       id, aggregate_type, aggregate_id,              │
-│       topic, payload, created_at, status='PENDING'   │
-│     )                                                │
-└──────────────────────────────────────────────────────┘
-                         │
-                         │ (транзакция зафиксирована)
-                         ▼
-┌──────────────────────────────────────────────────────┐
-│  OutboxProcessor (Scheduled / Debezium CDC)           │
-│  SELECT * FROM outbox_messages WHERE status='PENDING' │
-│  FOR UPDATE SKIP LOCKED                              │
-│  → KafkaProducer.send(topic, avroPayload).get()      │
-│  → UPDATE outbox_messages SET status='PUBLISHED'     │
-└──────────────────────────────────────────────────────┘
-```
+Profile читает diary.entry.created в группе profile-calories-v1 с read_committed. processed_events в profile_db хранит принятые факты потребления; уникальность (consumer_name, user_id, meal_id) и хэш содержимого обеспечивают дедупликацию/обнаружение конфликта. Offset подтверждается после DB commit. Журнал не очищается по TTL.
 
-#### Таблица `outbox_messages` (Liquibase)
-```xml
-<!-- server/src/main/resources/db/changelog/003-outbox.xml -->
-<changeSet id="003-outbox" author="team">
-  <createTable tableName="outbox_messages">
-    <column name="id" type="uuid">
-      <constraints primaryKey="true" nullable="false"/>
-    </column>
-    <column name="aggregate_type" type="varchar(100)"><constraints nullable="false"/></column>
-    <column name="aggregate_id" type="varchar(100)"><constraints nullable="false"/></column>
-    <column name="topic" type="varchar(255)"><constraints nullable="false"/></column>
-    <column name="payload" type="bytea"><constraints nullable="false"/></column>
-    <column name="status" type="varchar(20)" defaultValue="PENDING"><constraints nullable="false"/></column>
-    <column name="created_at" type="timestamptz" defaultValueComputed="NOW()"><constraints nullable="false"/></column>
-    <column name="published_at" type="timestamptz"/>
-    <column name="attempts" type="int" defaultValueNumeric="0"/>
-  </createTable>
-  <createIndex tableName="outbox_messages" indexName="idx_outbox_pending">
-    <column name="status"/>
-    <column name="created_at"/>
-  </createIndex>
-</changeSet>
-```
+GetDailyCaloriesBalance возвращает текущую цель минус сумму принятых калорий за дату в указанной IANA зоне. Требуется доверенный x-user-id и совпадение с пользователем запроса. Расчёт не заменяет Room/PENDING и не компенсирует DeleteMeal: событий удаления в текущем контракте нет.
 
-### 4.4 OutboxProcessor (Kotlin Spring)
-```kotlin
-@Component
-class OutboxProcessor(
-    private val outboxRepository: OutboxMessageRepository,
-    private val kafkaTemplate: KafkaTemplate<String, ByteArray>,
-) {
-    // Выполняется вне @Transactional!
-    @Scheduled(fixedDelay = 500)
-    fun processOutbox() {
-        val messages = outboxRepository.findPendingWithLock(limit = 100)
-        messages.forEach { message ->
-            runCatching {
-                kafkaTemplate.send(message.topic, message.aggregateId, message.payload).get()
-                outboxRepository.markPublished(message.id)
-            }.onFailure { ex ->
-                outboxRepository.incrementAttempts(message.id)
-                logger.error("Failed to publish outbox message ${message.id}", ex)
-            }
-        }
-    }
-}
-```
+Временные ошибки повторяются с ограниченным exponential backoff. После исчерпания попыток исходная запись сохраняется в Profile Outbox и отдельно доставляется в diary.entry.created.profile.dlt; сетевых вызовов внутри DB-транзакции нет. При отказе DLT данные остаются PENDING/FAILED для восстановления. Payload/key/headers и координаты источника сохраняются. Настройки, replay и ограничения — [Profile README](../../backend/profile-service/README.md#4-дневной-остаток-калорий--t-054).
+
+### 4.4 Transactional Outbox — действующая реализация T-053
+
+`:backend:outbox` — общая JVM-библиотека: OutboxMessage с типизированным ID, OutboxPublisher, JdbcOutboxStore, OutboxSettings и OutboxProcessor. Diary хранит схему в своей БД; Kafka/Avro-адаптер и расписание находятся в diary-service. Канонические миграции — 004-diary-outbox.yaml и 005-diary-outbox-delivery.yaml, а не учебная XML-схема.
+
+AddEntry атомарно сохраняет запись, бинарный Avro и ответ идемпотентности. Transaction advisory lock канонического UUID пользователя сериализует выделение sequence_number и commit событий одного пользователя. Ключ Kafka — канонический userId; aggregate_id остаётся ID приёма пищи. recorded_at не используется для порядка очереди.
+
+Обработчик удерживает общий session advisory lock на autocommit-соединении PostgreSQL, выбирает только первое неопубликованное событие topic/key и отправляет вне транзакции БД. После подтверждения Kafka отдельный UPDATE выставляет PUBLISHED. Ошибка фиксации ACK останавливает порцию: следующее событие не отправляется, прежнее будет доставлено повторно.
+
+### 4.5 Ошибки, смена владельца и гарантия доставки
+
+Kafka-публикатор использует транзакции с одним стабильным transactional.id для очереди. При смене владельца producer пересоздаётся, новый initTransactions отсекает старого producer после потери его DB-соединения. Внутри executeInTransaction после init/begin и до send вызывается Session.verifyOwnership: проверяются исходное соединение и точный advisory lock через pg_locks. Это также закрывает гонку, когда старый владелец был остановлен ещё до своего Kafka init. Все реплики очереди используют одинаковый transaction-id-prefix, независимые очереди — разные. Потребителям обязателен isolation.level=read_committed. Изменение числа партиций требует отдельного плана миграции порядка.
+
+После ошибки растут attempts, устанавливаются экспоненциальный backoff и next_attempt_at. После лимита — FAILED; строка остаётся на диске и блокирует последующие события этого пользователя. Другие пользователи могут обрабатываться. Ручной retry конкретной FAILED-строки сохраняет её исходный номер и payload.
+
+Доставка at least once: Kafka-транзакция не является общей транзакцией с PostgreSQL. Падение после Kafka commit до PUBLISHED приводит к повтору того же (userId, mealId), который потребитель обязан дедуплицировать. traceparent сохраняется в outbox и передаётся в Kafka. Автоматическое расписание, параметры, обновление backlog и локальная Docker-сборка описаны в [Diary README](../../backend/diary-service/README.md#5-межсервисные-события).
 
 ---
 

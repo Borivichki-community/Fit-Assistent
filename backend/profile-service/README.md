@@ -2,14 +2,14 @@
 
 > Микросервис управления биометрическим профилем пользователя, целями питания (КБЖУ) и недельным бюджетом.
 
-> **Статус:** Profile Proto существует, серверные RPC пока являются каркасом. SQL/JPA ниже — целевая модель; master-changelog пуст.
+> **Статус:** реализованы GetProfile/UpdateProfile и T-054: consumer CaloriesConsumedEvent, журнал processed_events, дневной остаток и DLT через общий Outbox. Миграции подключены в master-changelog.
 
 ---
 
 ## 1. База данных и схема (`profile_db`)
 
 - **СУБД:** PostgreSQL 17 (порт `5432`, база `profile_db`).
-- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.yaml`).
+- **Инструмент миграций:** Liquibase (`src/main/resources/db/changelog/db.changelog-master.xml`).
 - **Стратегия первичных ключей:** UUID v7 / Sequential UUID.
 
 ### Схема таблицы `profiles` (`001-init-profile-table.xml`)
@@ -66,6 +66,7 @@ import "google/protobuf/timestamp.proto";
 service ProfileService {
   rpc GetProfile(GetProfileRequest) returns (ProfileProto);
   rpc UpdateProfile(UpdateProfileRequest) returns (ProfileProto);
+  rpc GetDailyCaloriesBalance(GetDailyCaloriesBalanceRequest) returns (DailyCaloriesBalanceResponse);
 }
 
 enum GenderProto {
@@ -113,7 +114,39 @@ message ProfileProto {
 
 ---
 
-## 4. Владение профилем и события
+## 4. Дневной остаток калорий — T-054
+
+Consumer группы `profile-calories-v1` читает `diary.entry.created` с `isolation.level=read_committed` и без auto-commit. Ключ должен соответствовать UUID пользователя. Avro-схема и общий маппер не менялись. Нулевые калории допустимы, отрицательные отклоняются.
+
+`processed_events` хранит факты потребления и SHA-256 канонических данных: calories, timestamp в миллисекундах, mealType, notes. Уникальность — `(consumer_name, user_id, meal_id)`. Повтор не увеличивает сумму; изменённое содержимое с теми же ID считается конфликтом. INSERT ON CONFLICT и проверка выполняются одной DB-транзакцией; offset подтверждается после её завершения. После commit БД и сбоя offset повтор безопасен. Журнал не очищается по TTL.
+
+`GetDailyCaloriesBalance` принимает `user_id` (UUID), ISO `date` и IANA `time_zone`. Возвращает date, time_zone, target_calories, consumed_calories, remaining_calories. Требует доверенный `x-user-id` от Envoy; запрос другого пользователя запрещён. Этот RPC не использует Redis-кэш идемпотентных ответов. Прямой внешний доступ к backend должен быть закрыт: JWT проверяется на Gateway, клиентский x-user-id заменяется доверенной identity.
+
+Расчёт: текущая цель профиля минус SUM фактов за полуоткрытый интервал от начала дня до начала следующего дня в указанной зоне. Учитываются DST, поздние события и изменение цели. Перерасход возвращается отрицательным значением. Профиль и сумма читаются в одной REPEATABLE READ транзакции; если профиля нет — NOT_FOUND. События можно принять до создания профиля.
+
+Это асинхронная проекция доставленных фактов добавления, а не гарантия полной истории: consumer lag, события в DLT и истёкший Kafka retention могут давать неполные данные. `DeleteMeal` не компенсируется: действующая схема не содержит удаления/корректировки. Для остатка актуального дневника после удалений нужен отдельный контракт компенсации. Мобильный расчёт по Room, включая PENDING, остаётся источником UI и контекста Recipe AI.
+
+### Retry и dead-letter topic
+
+`profile.calories.max-attempts=4` — всего четыре обработки временной ошибки. Backoff: 1000, 2000, 4000 мс, предел 10000 мс; параметры initial-backoff-ms/max-backoff-ms. Ошибки валидации не повторяются. Таймауты Schema Registry ограничены 2 секундами; внутренние HTTP retries отключены, повтором управляет listener.
+
+После исчерпания попыток recoverer сохраняет исходные bytes, nullable key/value, все заголовки и координаты источника в `outbox_messages`. Уникальность по координатам исходной записи предотвращает повторную постановку. Если DB-запись не удалась, offset не подтверждается. Отдельный процессор общего `:backend:outbox` публикует в `diary.entry.created.profile.dlt` вне DB-транзакции; PUBLISHED выставляется только после ACK. Для повреждённого Avro не требуется успешная десериализация или Schema Registry при отправке в DLT.
+
+В DLT value — исходный Confluent Avro payload или исходные повреждённые bytes/tombstone; key и заголовки сохраняются. Добавляются profile-original-topic, profile-original-partition, profile-original-offset и profile-failure-type. DLT — транспорт для диагностики, не новая Avro-схема. При повторной доставке DLT возможны дубликаты.
+
+Outbox повторяет публикацию до `profile.calories.dlt-outbox.max-attempts=10`, с backoff от 1 секунды до 5 минут. После лимита строка остаётся FAILED. После устранения причины повторить конкретную запись через `JdbcOutboxStore.retryFailed(OutboxMessageId)`; не удалять payload. Для восстановления бизнес-обработки исправить причину и переотправить исходный key/value в основной topic. Уже принятые mealId повторно не учитываются.
+
+Listener и DLT scheduler включены по умолчанию; `PROFILE_CALORIES_ENABLED=false` отключает их. DLT создаётся KafkaAdmin, по умолчанию 1 partition/1 replica для локальной среды; в production задать dlt-partitions/dlt-replicas и права на создание либо заранее создать topic. Исходный topic должен быть подготовлен инфраструктурой/Diary; consumer не меняет его число партиций. При первом старте группа читает earliest из доступной истории.
+
+### Проверка
+
+Целевой интеграционный класс: `CaloriesConsumerIntegrationTest`. Использует отдельные PostgreSQL/Kafka/Schema Registry без рабочих данных. Команда:
+
+```bash
+./gradlew -PbackendOnly=true :backend:profile-service:test --tests '*CaloriesConsumerIntegrationTest' --offline --console=plain --no-daemon --max-workers=1
+```
+
+## 5. Владение профилем и события
 
 Profile хранит биометрию, цели питания и установленный пользователем недельный лимит бюджета. Мобильный клиент использует существующие `GetProfile` / `UpdateProfile` и локальную копию в Room. Остаток лимита вычисляет мобильный доменный слой по снимкам дневника; это не отдельный серверный денежный счёт.
 

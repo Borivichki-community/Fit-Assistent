@@ -63,6 +63,7 @@ import java.util.concurrent.atomic.AtomicReference
     properties = [
         "spring.grpc.server.port=0",
         "diary.kafka.registration.retry-interval=PT0.1S",
+        "diary.outbox.enabled=false",
     ],
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

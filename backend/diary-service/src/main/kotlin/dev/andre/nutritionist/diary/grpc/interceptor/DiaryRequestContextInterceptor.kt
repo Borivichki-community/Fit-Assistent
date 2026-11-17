@@ -42,10 +42,14 @@ class DiaryRequestContextInterceptor : ServerInterceptor {
 
         val context = Context.current().withValue(USER_ID_CONTEXT, UserId(userId))
         val requestContext = if (key == null) context else context.withValue(KEY_CONTEXT, IdempotencyKey(key))
-        return Contexts.interceptCall(requestContext, call, headers, next)
+        val traceparent = headers.get(TRACEPARENT_HEADER)?.takeIf { it.length <= 256 }
+        val tracedContext = if (traceparent == null) requestContext else requestContext.withValue(TRACEPARENT_CONTEXT, traceparent)
+        return Contexts.interceptCall(tracedContext, call, headers, next)
     }
 
     companion object {
+        private val TRACEPARENT_HEADER = Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER)
+        private val TRACEPARENT_CONTEXT = Context.key<String>("diary-traceparent")
         private val USER_ID_HEADER = Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER)
         private val IDEMPOTENCY_KEY_HEADER = Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER)
         private val USER_ID_CONTEXT = Context.key<UserId>("diary-user-id")
@@ -55,6 +59,8 @@ class DiaryRequestContextInterceptor : ServerInterceptor {
                 DiaryServiceGrpc.getAddEntryMethod().fullMethodName,
                 DiaryServiceGrpc.getDeleteMealMethod().fullMethodName,
             )
+
+        fun currentTraceparent(): String? = TRACEPARENT_CONTEXT.get()
 
         fun currentUserId(): UserId =
             USER_ID_CONTEXT.get()

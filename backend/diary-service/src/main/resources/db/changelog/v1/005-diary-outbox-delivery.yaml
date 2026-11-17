@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-diary-outbox-delivery
+      author: team
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              CREATE SEQUENCE outbox_message_order;
+              ALTER TABLE outbox_messages ADD COLUMN sequence_number BIGINT;
+              WITH ordered AS (
+                  SELECT id, ROW_NUMBER() OVER (ORDER BY created_at, id) AS position
+                  FROM outbox_messages
+              )
+              UPDATE outbox_messages m SET sequence_number = ordered.position FROM ordered WHERE m.id = ordered.id;
+              SELECT setval('outbox_message_order', COALESCE(MAX(sequence_number), 1), COUNT(*) > 0) FROM outbox_messages;
+              ALTER SEQUENCE outbox_message_order OWNED BY outbox_messages.sequence_number;
+              ALTER TABLE outbox_messages ALTER COLUMN sequence_number SET DEFAULT nextval('outbox_message_order');
+              ALTER TABLE outbox_messages ALTER COLUMN sequence_number SET NOT NULL;
+              UPDATE outbox_messages SET partition_key = partition_key::uuid::text WHERE topic = 'diary.entry.created';
+        - addColumn:
+            tableName: outbox_messages
+            columns:
+              - column:
+                  name: next_attempt_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_error
+                  type: VARCHAR(256)
+        - addUniqueConstraint:
+            tableName: outbox_messages
+            columnNames: sequence_number
+            constraintName: uq_outbox_sequence
+        - createIndex:
+            tableName: outbox_messages
+            indexName: idx_outbox_due
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: next_attempt_at
+              - column:
+                  name: sequence_number
+        - sql:
+            sql: |
+              CREATE INDEX idx_outbox_unpublished ON outbox_messages (topic, partition_key, sequence_number)
+                  WHERE status <> 'PUBLISHED';
+              ALTER TABLE outbox_messages ADD CONSTRAINT ck_outbox_status CHECK (status IN ('PENDING', 'PUBLISHED', 'FAILED'));
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE outbox_messages DROP CONSTRAINT ck_outbox_status;
+              DROP INDEX idx_outbox_unpublished;
+        - dropIndex:
+            tableName: outbox_messages
+            indexName: idx_outbox_due
+        - dropUniqueConstraint:
+            tableName: outbox_messages
+            constraintName: uq_outbox_sequence
+        - dropColumn:
+            tableName: outbox_messages
+            columnName: next_attempt_at
+        - dropColumn:
+            tableName: outbox_messages
+            columnName: last_error
+        - dropColumn:
+            tableName: outbox_messages
+            columnName: sequence_number

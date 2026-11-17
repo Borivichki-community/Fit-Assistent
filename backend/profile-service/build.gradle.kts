@@ -78,6 +78,9 @@ dependencies {
     implementation(libs.uuid.creator)
     runtimeOnly(libs.postgresql.jdbc)
 
+    implementation(project(":shared:contracts"))
+    implementation(libs.kotlinx.datetime)
+    implementation(project(":backend:outbox"))
     implementation(libs.spring.kafka)
     implementation(libs.avro.runtime)
     implementation(libs.confluent.avro.serializer) {
@@ -105,6 +108,10 @@ val ktlintEngineVersion =
         .findVersion("ktlint")
         .get()
         .requiredVersion
+
+ktlint {
+    version.set(ktlintEngineVersion)
+}
 
 tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
     exclude { element ->

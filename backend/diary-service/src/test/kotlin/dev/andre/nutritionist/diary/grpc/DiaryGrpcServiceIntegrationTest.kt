@@ -43,7 +43,11 @@ import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
 @SpringBootTest(
     classes = [DiaryApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    properties = ["spring.grpc.server.port=0", "diary.kafka.registration.enabled=false"],
+    properties = [
+        "spring.grpc.server.port=0",
+        "diary.kafka.registration.enabled=false",
+        "diary.outbox.enabled=false",
+    ],
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DirtiesContext
@@ -62,6 +66,7 @@ class DiaryGrpcServiceIntegrationTest
 
         @BeforeEach
         fun clearDatabase() {
+            jdbc.update("DELETE FROM outbox_messages")
             jdbc.update("DELETE FROM idempotency_keys")
             jdbc.update("DELETE FROM diary_entries")
         }
@@ -74,7 +79,7 @@ class DiaryGrpcServiceIntegrationTest
 
         @Test
         fun `cleanup task is registered by the existing configuration`() {
-            client("alice", "expired").addEntry(entry())
+            client(ALICE_USER_ID, "expired").addEntry(entry())
             jdbc.update("UPDATE idempotency_keys SET expires_at = CURRENT_TIMESTAMP - INTERVAL '1 second'")
             val task = scheduler.scheduledTasks.single { it.task.toString().endsWith("IdempotencyCleanup.cleanUp") }
 
@@ -94,9 +99,9 @@ class DiaryGrpcServiceIntegrationTest
                     .setUnitPrice(MoneyProto.newBuilder().setAmountMinor(8230).setCurrencyCode("RUB"))
                     .setPriceBasisMilligrams(100000)
             val withCost = request.toBuilder().setCost(cost).build()
-            val first = client("alice", "add-key").addEntry(withCost)
-            val repeated = client("alice", "add-key").addEntry(withCost)
-            val day = client("alice").getDailyEntries(day("2026-11-15", "UTC"))
+            val first = client(ALICE_USER_ID, "add-key").addEntry(withCost)
+            val repeated = client(ALICE_USER_ID, "add-key").addEntry(withCost)
+            val day = client(ALICE_USER_ID).getDailyEntries(day("2026-11-15", "UTC"))
 
             assertEquals(first, repeated)
             assertEquals(request.entryId, first.entry.id)
@@ -108,19 +113,19 @@ class DiaryGrpcServiceIntegrationTest
             assertEquals(1, count("diary_entries"))
             assertEquals(1, count("idempotency_keys"))
 
-            val unknown = client("alice", "unknown-cost").addEntry(entry())
+            val unknown = client(ALICE_USER_ID, "unknown-cost").addEntry(entry())
             val unknownCost =
-                client("alice").getDailyEntries(day("2026-11-15", "UTC")).entriesList.single { it.id == unknown.entry.id }
+                client(ALICE_USER_ID).getDailyEntries(day("2026-11-15", "UTC")).entriesList.single { it.id == unknown.entry.id }
             assertFalse(unknownCost.hasCost())
         }
 
         @Test
         fun `same key with another body returns already exists`() {
             val request = entry()
-            client("alice", "same-key").addEntry(request)
+            client(ALICE_USER_ID, "same-key").addEntry(request)
 
             assertStatus(Status.Code.ALREADY_EXISTS) {
-                client("alice", "same-key").addEntry(request.toBuilder().setQuantityGrams(300.0).build())
+                client(ALICE_USER_ID, "same-key").addEntry(request.toBuilder().setQuantityGrams(300.0).build())
             }
             assertEquals(1, count("diary_entries"))
             assertEquals(1, count("idempotency_keys"))
@@ -128,16 +133,16 @@ class DiaryGrpcServiceIntegrationTest
 
         @Test
         fun `delete is idempotent and isolated by user`() {
-            val added = client("alice", "add").addEntry(entry())
+            val added = client(ALICE_USER_ID, "add").addEntry(entry())
             val deletion = DeleteMealRequest.newBuilder().setEntryId(added.entry.id).build()
 
-            assertTrue(client("bob").getDailyEntries(day("2026-11-15", "UTC")).entriesList.isEmpty())
-            assertStatus(Status.Code.NOT_FOUND) { client("bob", "delete").deleteMeal(deletion) }
+            assertTrue(client(BOB_USER_ID).getDailyEntries(day("2026-11-15", "UTC")).entriesList.isEmpty())
+            assertStatus(Status.Code.NOT_FOUND) { client(BOB_USER_ID, "delete").deleteMeal(deletion) }
             assertEquals(1, count("diary_entries"))
             assertEquals(1, count("idempotency_keys"))
 
-            val first = client("alice", "delete").deleteMeal(deletion)
-            assertEquals(first, client("alice", "delete").deleteMeal(deletion))
+            val first = client(ALICE_USER_ID, "delete").deleteMeal(deletion)
+            assertEquals(first, client(ALICE_USER_ID, "delete").deleteMeal(deletion))
             assertEquals(0, count("diary_entries"))
             assertEquals(2, count("idempotency_keys"))
         }
@@ -150,10 +155,10 @@ class DiaryGrpcServiceIntegrationTest
                 "2026-03-29T21:59:59Z",
                 "2026-03-29T22:00:00Z",
             ).forEachIndexed { index, timestamp ->
-                client("alice", "add-$index").addEntry(entry(timestamp))
+                client(ALICE_USER_ID, "add-$index").addEntry(entry(timestamp))
             }
 
-            val day = client("alice").getDailyEntries(day("2026-03-29", "Europe/Berlin"))
+            val day = client(ALICE_USER_ID).getDailyEntries(day("2026-03-29", "Europe/Berlin"))
             assertEquals(2, day.entriesCount)
             assertEquals(300, day.dailyTotal.calories)
 
@@ -164,8 +169,8 @@ class DiaryGrpcServiceIntegrationTest
                     .setEndDate("2026-03-29")
                     .setTimeZone("Europe/Berlin")
                     .build()
-            assertEquals(3, client("alice").getRange(range).entriesCount)
-            assertEquals(0, client("bob").getRange(range).entriesCount)
+            assertEquals(3, client(ALICE_USER_ID).getRange(range).entriesCount)
+            assertEquals(0, client(BOB_USER_ID).getRange(range).entriesCount)
         }
 
         @Test
@@ -173,11 +178,11 @@ class DiaryGrpcServiceIntegrationTest
             assertStatus(Status.Code.UNAUTHENTICATED) {
                 DiaryServiceGrpc.newBlockingStub(channel).getDailyEntries(day("2026-11-15", "UTC"))
             }
-            assertStatus(Status.Code.INVALID_ARGUMENT) { client("alice").addEntry(entry()) }
+            assertStatus(Status.Code.INVALID_ARGUMENT) { client(ALICE_USER_ID).addEntry(entry()) }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice").deleteMeal(DeleteMealRequest.newBuilder().setEntryId(UUID.randomUUID().toString()).build())
+                client(ALICE_USER_ID).deleteMeal(DeleteMealRequest.newBuilder().setEntryId(UUID.randomUUID().toString()).build())
             }
-            assertEquals(0, client("alice").getDailyEntries(day("2026-11-15", "UTC")).entriesCount)
+            assertEquals(0, client(ALICE_USER_ID).getDailyEntries(day("2026-11-15", "UTC")).entriesCount)
             assertEquals(0, count("idempotency_keys"))
         }
 
@@ -185,22 +190,22 @@ class DiaryGrpcServiceIntegrationTest
         fun `invalid requests return invalid argument and do not reserve keys`() {
             val request = entry()
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice", "negative").addEntry(request.toBuilder().setQuantityGrams(-1.0).build())
+                client(ALICE_USER_ID, "negative").addEntry(request.toBuilder().setQuantityGrams(-1.0).build())
             }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice", "nan").addEntry(request.toBuilder().setQuantityGrams(Double.NaN).build())
+                client(ALICE_USER_ID, "nan").addEntry(request.toBuilder().setQuantityGrams(Double.NaN).build())
             }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice", "uuid").addEntry(request.toBuilder().setEntryId("invalid").build())
+                client(ALICE_USER_ID, "uuid").addEntry(request.toBuilder().setEntryId("invalid").build())
             }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice", "meal").addEntry(request.toBuilder().setMealType("INVALID").build())
+                client(ALICE_USER_ID, "meal").addEntry(request.toBuilder().setMealType("INVALID").build())
             }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice").getDailyEntries(day("2026-11-15", "Invalid/Zone"))
+                client(ALICE_USER_ID).getDailyEntries(day("2026-11-15", "Invalid/Zone"))
             }
             assertStatus(Status.Code.INVALID_ARGUMENT) {
-                client("alice").getRange(
+                client(ALICE_USER_ID).getRange(
                     GetRangeRequest
                         .newBuilder()
                         .setStartDate("2026-11-16")
@@ -216,11 +221,11 @@ class DiaryGrpcServiceIntegrationTest
         @Test
         fun `database failure rolls back the new key`() {
             val request = entry()
-            val original = client("alice", "original").addEntry(request)
+            val original = client(ALICE_USER_ID, "original").addEntry(request)
 
-            assertStatus(Status.Code.ALREADY_EXISTS) { client("alice", "another-key").addEntry(request) }
+            assertStatus(Status.Code.ALREADY_EXISTS) { client(ALICE_USER_ID, "another-key").addEntry(request) }
 
-            assertEquals(original, client("alice", "original").addEntry(request))
+            assertEquals(original, client(ALICE_USER_ID, "original").addEntry(request))
             assertEquals(1, count("diary_entries"))
             assertEquals(1, count("idempotency_keys"))
         }
@@ -238,7 +243,7 @@ class DiaryGrpcServiceIntegrationTest
                         executor.submit<AddEntryResponse> {
                             ready.countDown()
                             check(start.await(10, TimeUnit.SECONDS))
-                            client("alice", "parallel").addEntry(request)
+                            client(ALICE_USER_ID, "parallel").addEntry(request)
                         }
                     }
                 assertTrue(ready.await(10, TimeUnit.SECONDS))
@@ -309,6 +314,8 @@ class DiaryGrpcServiceIntegrationTest
         }
 
         companion object {
+            private const val ALICE_USER_ID = "00000000-0000-0000-0000-000000000001"
+            private const val BOB_USER_ID = "00000000-0000-0000-0000-000000000002"
             private val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:17-alpine")).apply { start() }
 
             @JvmStatic
