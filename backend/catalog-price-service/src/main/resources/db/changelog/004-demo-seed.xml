@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="catalog-004-demo" author="team" contextFilter="@catalog-demo">
+        <insert tableName="stores">
+            <column name="id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="name" value="DEMO Store"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000101"/>
+            <column name="name" value="DEMO Grain A"/>
+            <column name="category" value="demo-grains"/>
+            <column name="calories_per_100g" value="300"/>
+            <column name="proteins_per_100g" value="10"/>
+            <column name="fats_per_100g" value="3"/>
+            <column name="carbs_per_100g" value="60"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000102"/>
+            <column name="name" value="DEMO Grain B"/>
+            <column name="category" value="demo-grains"/>
+            <column name="calories_per_100g" value="250"/>
+            <column name="proteins_per_100g" value="8"/>
+            <column name="fats_per_100g" value="2"/>
+            <column name="carbs_per_100g" value="50"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000103"/>
+            <column name="name" value="DEMO Protein A"/>
+            <column name="category" value="demo-proteins"/>
+            <column name="calories_per_100g" value="120"/>
+            <column name="proteins_per_100g" value="20"/>
+            <column name="fats_per_100g" value="4"/>
+            <column name="carbs_per_100g" value="1"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000104"/>
+            <column name="name" value="DEMO Vegetable A"/>
+            <column name="category" value="demo-vegetables"/>
+            <column name="calories_per_100g" value="40"/>
+            <column name="proteins_per_100g" value="2"/>
+            <column name="fats_per_100g" value="1"/>
+            <column name="carbs_per_100g" value="6"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000105"/>
+            <column name="name" value="DEMO Dairy A"/>
+            <column name="category" value="demo-dairy"/>
+            <column name="calories_per_100g" value="80"/>
+            <column name="proteins_per_100g" value="5"/>
+            <column name="fats_per_100g" value="3"/>
+            <column name="carbs_per_100g" value="8"/>
+        </insert>
+        <insert tableName="products">
+            <column name="id" value="00000000-0000-0000-0000-000000000106"/>
+            <column name="name" value="DEMO Without Price"/>
+            <column name="category" value="demo-vegetables"/>
+            <column name="calories_per_100g" value="30"/>
+            <column name="proteins_per_100g" value="1"/>
+            <column name="fats_per_100g" value="0"/>
+            <column name="carbs_per_100g" value="5"/>
+        </insert>
+        <insert tableName="prices">
+            <column name="product_id" value="00000000-0000-0000-0000-000000000101"/>
+            <column name="store_id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit_price_minor" value="1000"/>
+            <column name="price_basis_milligrams" value="100000"/>
+            <column name="updated_at" value="2026-01-01T00:00:00Z"/>
+        </insert>
+        <insert tableName="prices">
+            <column name="product_id" value="00000000-0000-0000-0000-000000000102"/>
+            <column name="store_id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit_price_minor" value="2000"/>
+            <column name="price_basis_milligrams" value="100000"/>
+            <column name="updated_at" value="2026-01-01T00:00:00Z"/>
+        </insert>
+        <insert tableName="prices">
+            <column name="product_id" value="00000000-0000-0000-0000-000000000103"/>
+            <column name="store_id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit_price_minor" value="3000"/>
+            <column name="price_basis_milligrams" value="100000"/>
+            <column name="updated_at" value="2026-01-01T00:00:00Z"/>
+        </insert>
+        <insert tableName="prices">
+            <column name="product_id" value="00000000-0000-0000-0000-000000000104"/>
+            <column name="store_id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit_price_minor" value="4000"/>
+            <column name="price_basis_milligrams" value="100000"/>
+            <column name="updated_at" value="2026-01-01T00:00:00Z"/>
+        </insert>
+        <insert tableName="prices">
+            <column name="product_id" value="00000000-0000-0000-0000-000000000105"/>
+            <column name="store_id" value="00000000-0000-0000-0000-000000000001"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit_price_minor" value="5000"/>
+            <column name="price_basis_milligrams" value="100000"/>
+            <column name="updated_at" value="2026-01-01T00:00:00Z"/>
+        </insert>
+        <rollback>
+            <delete tableName="prices"><where>store_id = '00000000-0000-0000-0000-000000000001'</where></delete>
+            <delete tableName="products"><where>id IN ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000106')</where></delete>
+            <delete tableName="stores"><where>id = '00000000-0000-0000-0000-000000000001'</where></delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
