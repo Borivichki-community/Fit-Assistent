@@ -10,6 +10,9 @@
 - T-043: добавлены products, stores, prices, ограничения КБЖУ/денег, индексы, JPA-модели, health probes и JSON-логи.
 - Цена хранится в минимальных единицах с массой единицы в мг; средние/фильтры приводятся к 100 г отдельно по валюте.
 - Начальная ветка: KAN-61-Скелет-catalog-service-+-Liquibase-products (a544492). Следующие ветки создаются последовательно от текущей.
+- T-045: compileKotlin, compileTestKotlin, ktlintCheck PASS. EXPLAIN runtime BLOCKED: Docker daemon не работает; результаты производительности не заявляются.
+- T-045: динамические параметризованные фильтры названия/категории/КБЖУ/средней цены; keyset по UUID без OFFSET, версия токена и fingerprint фильтров; GIN pg_trgm и covering index цен. EXPLAIN ANALYZE на 100000 синтетических строк оформлен отдельным benchmark-тестом (нужен Docker).
+- T-044: compileKotlin/ktlintCheck PASS; Java+Kotlin gRPC codegen проверен Gradle. Buf lint/breaking/generate BLOCKED (buf отсутствует).
 - T-044: добавлен catalog.proto (4 RPC), Gradle JVM codegen, gateway route/JWT/rate limit/NetworkPolicy, проверка admin и обязательного ключа UpsertPrice. Дедупликация и снимок ответа хранятся в PostgreSQL атомарно с ценой, включая конкурентные повторы. Новые proto без комментариев по инструкции пользователя; семантика описана в README.
 - T-043: compileKotlin и ktlintCheck PASS; исправлено форматирование value classes и существующего GrpcBootstrapConfiguration. Активирован diagnose-build-failure для диагностики линтера.
 - Docker daemon недоступен; Testcontainers и EXPLAIN пока не проверены. buf и k6 отсутствуют.

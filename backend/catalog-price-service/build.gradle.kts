@@ -101,7 +101,11 @@ ktlint {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        if (!project.hasProperty("catalogBenchmark")) {
+            excludeTags("benchmark")
+        }
+    }
 }
 
 tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {

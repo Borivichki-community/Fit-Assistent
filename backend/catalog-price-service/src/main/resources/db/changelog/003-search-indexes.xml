@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="catalog-003" author="team">
+        <sql>CREATE EXTENSION IF NOT EXISTS pg_trgm</sql>
+        <sql>CREATE INDEX idx_products_name_trgm ON products USING gin (name gin_trgm_ops)</sql>
+        <sql>CREATE INDEX idx_prices_lookup_cover ON prices(product_id, currency) INCLUDE (unit_price_minor, price_basis_milligrams)</sql>
+        <rollback>
+            <dropIndex tableName="products" indexName="idx_products_name_trgm"/>
+            <dropIndex tableName="prices" indexName="idx_prices_lookup_cover"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
