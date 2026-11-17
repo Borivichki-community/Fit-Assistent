@@ -21,6 +21,14 @@
 
 ---
 
+## Кэш (T-047)
+
+Cache-aside Redis для GetProduct, SearchProducts, GetAveragePrices. Успешные ответы сериализуются Protobuf/Base64; ошибки не кэшируются. TTL `catalog.cache.ttl-seconds` = 60, разрешено 1–3600. Ключи содержат namespace, операцию и SHA-256 запроса; старые поколения истекают по TTL.
+
+Перед search/average выполняется лёгкое чтение ревизии из PostgreSQL. Каждый новый UpsertPrice атомарно повышает её; replay ключа не повышает. Это защищает от stale fill и неудачного удаления ключей Redis. Изменения напрямую SQL должны повышать catalog_revision в той же транзакции. Изменения самих продуктов вне текущего API видны после TTL GetProduct; будущий импорт должен обновлять и стратегию инвалидирования.
+
+Redis вне DB-транзакций. Ошибка соединения или повреждённая запись не ломает чтение: fallback к БД; таймауты подключения/команды 200 мс. Время БД дополнительно не скрывается кэшем; search/average всё равно требуют доступной PostgreSQL. `catalog.cache.requests{operation,result=hit|miss}`, `catalog.cache.errors{operation}` видны в /actuator/metrics и /actuator/prometheus. DB pool и Redis конфигурируются внешним окружением, ACL/password при необходимости через Spring Redis properties/Secret.
+
 ## Демонстрационные данные (T-046)
 
 `./gradlew :backend:catalog-price-service:bootRun --args='--spring.profiles.active=catalog-demo'`

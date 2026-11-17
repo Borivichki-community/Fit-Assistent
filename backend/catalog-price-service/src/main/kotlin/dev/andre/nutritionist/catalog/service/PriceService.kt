@@ -77,6 +77,7 @@ class PriceService(
                     parameters,
                 ) { row, _ -> row.getTimestamp("updated_at").toInstant() }
                 .single()
+        jdbc.update("UPDATE catalog_revision SET revision = revision + 1 WHERE singleton = true", emptyMap<String, Any>())
         val response = encode(updatedAt)
         jdbc.update(
             "UPDATE price_requests SET response = :response WHERE subject = :subject AND request_key = :key",

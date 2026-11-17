@@ -10,6 +10,8 @@
 - T-043: добавлены products, stores, prices, ограничения КБЖУ/денег, индексы, JPA-модели, health probes и JSON-логи.
 - Цена хранится в минимальных единицах с массой единицы в мг; средние/фильтры приводятся к 100 г отдельно по валюте.
 - Начальная ветка: KAN-61-Скелет-catalog-service-+-Liquibase-products (a544492). Следующие ветки создаются последовательно от текущей.
+- T-047: compileKotlin/compileTestKotlin/ktlintCheck PASS; bootJar PASS после загрузки отсутствовавшего Prometheus registry из Maven (offline сборка первоначально не имела артефакта). Runtime Redis пока не проверен.
+- T-047: Redis cache-aside product/search/average, TTL 60с (настройка 1..3600), Micrometer hit/miss/error. Ревизия PostgreSQL повышается вместе с новой ценой; revision в ключах search/average исключает старые цены после записи даже при недоступном Redis. Redis вне транзакции; ошибки/битые записи дают fallback к БД. Prometheus registry добавлен через BOM.
 - T-046: явный opt-in Liquibase context @catalog-demo и профиль catalog-demo: 6 искусственных продуктов, магазин и 5 цен. Это не реальные пищевые/рыночные данные; выбор источника остаётся открытым. Seed не включён по умолчанию и не перезаписывает данные при рестарте.
 - T-045: compileKotlin, compileTestKotlin, ktlintCheck PASS. EXPLAIN runtime BLOCKED: Docker daemon не работает; результаты производительности не заявляются.
 - T-045: динамические параметризованные фильтры названия/категории/КБЖУ/средней цены; keyset по UUID без OFFSET, версия токена и fingerprint фильтров; GIN pg_trgm и covering index цен. EXPLAIN ANALYZE на 100000 синтетических строк оформлен отдельным benchmark-тестом (нужен Docker).

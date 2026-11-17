@@ -32,13 +32,17 @@ class CatalogGrpcService(
     private val repository: CatalogRepository,
     private val prices: PriceService,
     private val dispatchers: CoroutineDispatchers,
+    private val cache: dev.andre.nutritionist.catalog.cache.CatalogCache,
 ) : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
     override suspend fun getProduct(request: GetProductRequest): GetProductResponse =
         rpc {
-            val product =
-                repository.getProduct(productId(request.productId))
-                    ?: throw Status.NOT_FOUND.withDescription("Product not found").asRuntimeException()
-            GetProductResponse.newBuilder().setProduct(product.toProto()).build()
+            val id = productId(request.productId)
+            cache.getOrLoad("product", id.raw.toByteArray(), GetProductResponse::parseFrom, { it.toByteArray() }) {
+                val product =
+                    repository.getProduct(id)
+                        ?: throw Status.NOT_FOUND.withDescription("Product not found").asRuntimeException()
+                GetProductResponse.newBuilder().setProduct(product.toProto()).build()
+            }
         }
 
     override suspend fun searchProducts(request: SearchProductsRequest): SearchProductsResponse =
@@ -47,13 +51,20 @@ class CatalogGrpcService(
             val limit = request.pageSize.takeIf { it > 0 } ?: 50
             val filter = request.toFilter()
             val after = SearchCursor.decode(request)
-            val rows = repository.search(filter, after, limit + 1)
-            val page = rows.take(limit)
-            SearchProductsResponse
-                .newBuilder()
-                .addAllProducts(page.map { it.toProto() })
-                .setNextPageToken(if (rows.size > limit) SearchCursor.encode(page.last().id, request) else "")
-                .build()
+            cache.getOrLoad(
+                "search",
+                versioned(request.toByteArray()),
+                SearchProductsResponse::parseFrom,
+                { it.toByteArray() },
+            ) {
+                val rows = repository.search(filter, after, limit + 1)
+                val page = rows.take(limit)
+                SearchProductsResponse
+                    .newBuilder()
+                    .addAllProducts(page.map { it.toProto() })
+                    .setNextPageToken(if (rows.size > limit) SearchCursor.encode(page.last().id, request) else "")
+                    .build()
+            }
         }
 
     override suspend fun getAveragePrices(request: GetAveragePricesRequest): GetAveragePricesResponse =
@@ -61,10 +72,17 @@ class CatalogGrpcService(
             require(request.productIdsCount in 1..100) { "product_ids must contain 1..100 IDs" }
             val currency = currency(request.currency)
             val ids = request.productIdsList.map(::productId).distinct()
-            GetAveragePricesResponse
-                .newBuilder()
-                .addAllPrices(repository.averagePrices(ids, currency).map { it.toProto() })
-                .build()
+            cache.getOrLoad(
+                "average",
+                versioned(request.toByteArray()),
+                GetAveragePricesResponse::parseFrom,
+                { it.toByteArray() },
+            ) {
+                GetAveragePricesResponse
+                    .newBuilder()
+                    .addAllPrices(repository.averagePrices(ids, currency).map { it.toProto() })
+                    .build()
+            }
         }
 
     override suspend fun upsertPrice(request: UpsertPriceRequest): UpsertPriceResponse =
@@ -125,6 +143,8 @@ class CatalogGrpcService(
             }
         }
     }
+
+    private fun versioned(request: ByteArray): ByteArray = repository.priceRevision().toString().toByteArray() + byteArrayOf(0) + request
 
     private fun productId(raw: String): ProductId = ProductId(uuid(raw))
 

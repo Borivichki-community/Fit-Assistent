@@ -107,6 +107,7 @@ postgresql-jdbc = { module = "org.postgresql:postgresql" }
 uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 
 spring-starter-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 
 spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
 avro-runtime = { module = "org.apache.avro:avro", version.ref = "avro" }

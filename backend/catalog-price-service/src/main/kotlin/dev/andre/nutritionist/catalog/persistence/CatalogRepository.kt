@@ -47,6 +47,11 @@ class CatalogRepository(
         }
     }
 
+    fun priceRevision(): Long =
+        checkNotNull(
+            jdbc.queryForObject("SELECT revision FROM catalog_revision WHERE singleton = true", emptyMap<String, Any>(), Long::class.java),
+        )
+
     private fun product(row: ResultSet): Product =
         Product(
             ProductId(row.getString("id")),
