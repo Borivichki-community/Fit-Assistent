@@ -3,7 +3,18 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-16
+Обновлено: 2026-11-24
+
+### T-056 — итоги GetDay по приёмам пищи
+
+- Активны spring-grpc-service, contracts-proto-and-avro, testing-and-verification; роль implementer.
+- Реализованы чистый агрегатор сохранённых нутриентов, четыре группы BREAKFAST/LUNCH/DINNER/SNACK и совместимое поле meal_totals в GetDailyEntries. Одна выборка дня, без повторного расчёта порций и запросов каталога.
+- Созданы MealNutritionSummary, DiaryNutritionAggregator и три целевых тестовых класса. Обновлены DailyEntries, DiaryService, gRPC-маппер/обработчик, diary.proto и README. БЖУ суммируются сотыми долями грамма; переполнение итогов возвращает RESOURCE_EXHAUSTED.
+
+### T-055 — consumer регистрации пользователей
+
+- Реализован Kafka-consumer регистрации пользователей UserRegisteredEvent с инициализацией дневника и защитой от повторов.
+- Подключена миграция 003-diary-registration-consumer.yaml и интеграционные тесты.
 
 ### T-053 — оформление коммитов после восстановления файла
 
