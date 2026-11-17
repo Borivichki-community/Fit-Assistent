@@ -4,6 +4,17 @@
 
 > **T-043:** реализованы таблицы `products`, `stores`, `prices` и JPA-модели продуктов/магазинов. Миграции — `src/main/resources/db/changelog`. Цена за единицу хранится в целых минимальных единицах с базой массы в мг. Старые SQL/Protobuf примеры ниже остаются проектами будущих рецептов/избранного и не описывают действующую схему.
 
+## Действующий Catalog API (T-044)
+
+Контракт: `proto/nutritionist/catalog/v1/catalog.proto`, пакет `com.budgetntr.catalog.v1`.
+- SearchProducts: page_size 0 = 50, максимум 100; next_page_token пуст на последней странице.
+- GetProduct: UUID продукта; неизвестный UUID — NOT_FOUND, неверный — INVALID_ARGUMENT.
+- GetAveragePrices: 1–100 UUID, дубли удаляются; currency по умолчанию RUB. Продукты без цен не возвращаются. Среднее арифметическое по текущим предложениям магазинов, нормализованным к 100000 мг, округление HALF_UP до целой минимальной единицы. Валюты не смешиваются, давность предложения не скрывается автоматическим отсечением.
+- UpsertPrice: только admin/ROLE_ADMIN; обязательный idempotency-key (1–128 ASCII букв/цифр, ._:-). product/store должны существовать; amount 0..10^12, basis 1..10^12 мг. Сервер назначает updated_at; одна текущая цена на (product, store, currency).
+- Повтор subject/key возвращает исходный ответ; другой payload — INVALID_ARGUMENT; запросы конкурентно сериализуются БД. Ключи не удаляются по TTL.
+- gRPC identity x-user-id/x-user-roles доверены только от JWT Gateway. Локальный сервер по умолчанию loopback; в Kubernetes требуется CNI с NetworkPolicy и применение 07-catalog.yaml вместе с deployment. Прямой доступ из недоверенной сети запрещён; unsigned JWT fallback отсутствует.
+- HTTP 8086, gRPC 9192. DB_USERNAME/DB_PASSWORD должны поставляться внешним источником; секреты в репозиторий не записываются.
+
 ---
 
 ## 1. База данных и схема (`catalog_db`)

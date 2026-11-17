@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package com.budgetntr.catalog.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.budgetntr.proto.catalog.v1";
+option java_outer_classname = "CatalogOuterClass";
+
+service CatalogService {
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse);
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  rpc GetAveragePrices(GetAveragePricesRequest) returns (GetAveragePricesResponse);
+  rpc UpsertPrice(UpsertPriceRequest) returns (UpsertPriceResponse);
+}
+
+message Nutrition {
+  double calories_per_100g = 1;
+  double proteins_per_100g = 2;
+  double fats_per_100g = 3;
+  double carbs_per_100g = 4;
+}
+
+message Product {
+  string product_id = 1;
+  string name = 2;
+  string category = 3;
+  Nutrition nutrition = 4;
+}
+
+message NumericRange {
+  optional double min = 1;
+  optional double max = 2;
+}
+
+message SearchProductsRequest {
+  string query = 1;
+  string category = 2;
+  NumericRange calories = 3;
+  NumericRange proteins = 4;
+  NumericRange fats = 5;
+  NumericRange carbs = 6;
+  optional int64 min_price_per_100g_minor = 7;
+  optional int64 max_price_per_100g_minor = 8;
+  string currency = 9;
+  int32 page_size = 10;
+  string page_token = 11;
+}
+
+message SearchProductsResponse {
+  repeated Product products = 1;
+  string next_page_token = 2;
+}
+
+message GetProductRequest {
+  string product_id = 1;
+}
+
+message GetProductResponse {
+  Product product = 1;
+}
+
+message GetAveragePricesRequest {
+  repeated string product_ids = 1;
+  string currency = 2;
+}
+
+message AveragePrice {
+  string product_id = 1;
+  int64 price_per_100g_minor = 2;
+  string currency = 3;
+  int32 store_count = 4;
+}
+
+message GetAveragePricesResponse {
+  repeated AveragePrice prices = 1;
+}
+
+message Price {
+  string product_id = 1;
+  string store_id = 2;
+  int64 unit_price_minor = 3;
+  string currency = 4;
+  int64 price_basis_milligrams = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message UpsertPriceRequest {
+  string product_id = 1;
+  string store_id = 2;
+  int64 unit_price_minor = 3;
+  string currency = 4;
+  int64 price_basis_milligrams = 5;
+}
+
+message UpsertPriceResponse {
+  Price price = 1;
+}
