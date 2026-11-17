@@ -8,7 +8,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
-@SpringBootTest
+@SpringBootTest(properties = ["profile.calories.enabled=false"])
 @ActiveProfiles("dev")
 abstract class AbstractPostgresIntegrationTest {
     companion object {
