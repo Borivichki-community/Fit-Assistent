@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-price-service
+  namespace: budget-nutritionist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-price-service
+  template:
+    metadata:
+      labels:
+        app: catalog-price-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: catalog-price-service
+          image: fitassistant/catalog-price-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 9192
+            - name: actuator
+              containerPort: 8086
+          env:
+            - name: SPRING_GRPC_SERVER_ADDRESS
+              value: "0.0.0.0"
+            - name: CATALOG_GRPC_PORT
+              value: "9192"
+            - name: CATALOG_HTTP_PORT
+              value: "8086"
+            - name: CATALOG_DB_URL
+              value: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/catalog_db"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-credentials
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-db-credentials
+                  key: password
+            - name: REDIS_HOST
+              value: "redis.budget-nutritionist.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: actuator
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: actuator
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: actuator
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]

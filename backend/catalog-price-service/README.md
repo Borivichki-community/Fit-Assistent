@@ -1,6 +1,6 @@
 # Catalog & Price Service (`:backend:catalog-price-service`)
 
-> Микросервис каталога продуктов питания, базы рецептов блюд, истории и актуальных цен из супермаркетов, а также пользовательских избранных блюд.
+> Реализован каталог продуктов и текущих справочных цен (T-043–T-048). Рецепты, избранное и история цен из старой спецификации ниже не входят в эту реализацию.
 
 > **T-043:** реализованы таблицы `products`, `stores`, `prices` и JPA-модели продуктов/магазинов. Миграции — `src/main/resources/db/changelog`. Цена за единицу хранится в целых минимальных единицах с базой массы в мг. Старые SQL/Protobuf примеры ниже остаются проектами будущих рецептов/избранного и не описывают действующую схему.
 
@@ -17,9 +17,24 @@
 - UpsertPrice: только admin/ROLE_ADMIN; обязательный idempotency-key (1–128 ASCII букв/цифр, ._:-). product/store должны существовать; amount 0..10^12, basis 1..10^12 мг. Сервер назначает updated_at; одна текущая цена на (product, store, currency).
 - Повтор subject/key возвращает исходный ответ; другой payload — INVALID_ARGUMENT; запросы конкурентно сериализуются БД. Ключи не удаляются по TTL.
 - gRPC identity x-user-id/x-user-roles доверены только от JWT Gateway. Локальный сервер по умолчанию loopback; в Kubernetes требуется CNI с NetworkPolicy и применение 07-catalog.yaml вместе с deployment. Прямой доступ из недоверенной сети запрещён; unsigned JWT fallback отсутствует.
+- Kubernetes: `07-catalog.yaml` (Service/route/JWT/rate limit/NetworkPolicy) и `08-catalog-deployment.yaml` (bind 0.0.0.0, probes, Secret refs). До применения нужны PostgreSQL/catalog_db, Redis, Gateway, образ и внешний Secret `catalog-db-credentials` с ключами username/password. Monitoring ingress разрешён namespace monitoring на 8086. Манифесты не применялись к кластеру.
 - HTTP 8086, gRPC 9192. DB_USERNAME/DB_PASSWORD должны поставляться внешним источником; секреты в репозиторий не записываются.
 
 ---
+
+## Проверки и нагрузочный smoke (T-048)
+
+`./gradlew :backend:catalog-price-service:test :backend:catalog-price-service:ktlintCheck :backend:catalog-price-service:bootJar`
+
+Обычный test включает unit и обязательные Testcontainers (PostgreSQL 17 + Redis 7). Тесты не используют реальную БД/Redis и не пропускают отсутствие Docker как успех. Проверяются миграции и opt-in seed, фильтры/keyset, нормализация цен, авторизация/admin/key, конкурентные повторы, rollback ошибочного запроса, cache hit/TTL/повреждение и ревизия после изменения цены. Backend не публикует события и не вызывает Kafka, поэтому Kafka-контейнер не требуется.
+
+Для тестов контракта без Docker: `./gradlew :backend:catalog-price-service:test --tests '*SearchContractTest'`. EXPLAIN benchmark запускается отдельно с `-PcatalogBenchmark`, как описано выше.
+
+k6: запустите каталог в отдельной тестовой БД с профилем catalog-demo, затем из корня проекта:
+`ALLOW_TRUSTED_LOCAL=true PLAINTEXT=true k6 run backend/catalog-price-service/load/search-products.js`.
+Это только loopback-тест доверенного backend-порта; для Gateway задайте CATALOG_TARGET, CATALOG_TOKEN и PLAINTEXT=false для TLS. Токен читается из окружения и не записывается в файлы. QUERY/CATEGORY — необязательные фильтры (нужна непустая выдача). 5 VU, 100 итераций, чтение первой и следующей страниц; checks=100%, error rate=0, целевой p95 <200ms. Это критерии smoke, не полученный замер.
+
+Текущая верификация: компиляция production/tests, ktlint, bootJar и 10 unit/contract-тестов (включая разбор всех Liquibase changesets и Redis fallback) PASS; Testcontainers/EXPLAIN BLOCKED из-за отсутствия Docker daemon; k6 и buf не установлены. Производительность, запуск миграций и Gateway в живом окружении пока не подтверждены.
 
 ## Кэш (T-047)
 

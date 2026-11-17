@@ -6,10 +6,17 @@
 Обновлено: 2026-11-18
 
 ## Текущая сессия — каталог T-043–T-048
+- Реализация всех шести задач подготовлена в последовательных ветках, финальная ветка feature/T-048-catalog-tests. Непроверенные пункты: live миграции/DB/Redis/gRPC, EXPLAIN ANALYZE, k6, Buf и Kubernetes. Источник реального каталога остаётся открытым.
+- Коммиты: T-043 923e9a4; T-044 c3e15ab; T-045 cf9c3e5; T-046 0087b15; T-047 430edf8. T-048 — следующий коммит этой ветки.
+- Следующая атомарная проверка после включения Docker: ./gradlew :backend:catalog-price-service:test, затем benchmark с -PcatalogBenchmark. Никакие новые фичи вне T-043–T-048 не начаты.
 - Активные Skills: spring-grpc-service, contracts-proto-and-avro, testing-and-verification; роль implementer.
 - T-043: добавлены products, stores, prices, ограничения КБЖУ/денег, индексы, JPA-модели, health probes и JSON-логи.
 - Цена хранится в минимальных единицах с массой единицы в мг; средние/фильтры приводятся к 100 г отдельно по валюте.
 - Начальная ветка: KAN-61-Скелет-catalog-service-+-Liquibase-products (a544492). Следующие ветки создаются последовательно от текущей.
+- T-048: compileKotlin/Java, compileTestKotlin, ktlintCheck, bootJar, XML well-formedness, Compose config --quiet, node --check, git diff --check PASS. 10 unit/contract тестов PASS (8 SearchContractTest + Liquibase parser + Redis connection failure). Независимое read-only ревью блокирующих замечаний в текущем дереве не выявило.
+- Добавлен Kubernetes Deployment с Secret refs, bind 0.0.0.0 и probes; monitoring ingress 8086. Live Kubernetes не проверен.
+- T-048: создано 8 contract/unit тестов (PASS), 7 сценариев Testcontainers PostgreSQL/Redis/gRPC, нагрузочный k6 smoke 5 VU/100 итераций; node --check PASS. Интеграционный запуск и benchmark завершились ошибкой Could not find a valid Docker environment до выполнения сценариев. k6/buf отсутствуют. Без skip/ослабления проверок.
+- Ревью: исправлены Redis host/depends_on для Compose каталога и search_path изолированной схемы теста (pg_trgm находится в public).
 - T-047: compileKotlin/compileTestKotlin/ktlintCheck PASS; bootJar PASS после загрузки отсутствовавшего Prometheus registry из Maven (offline сборка первоначально не имела артефакта). Runtime Redis пока не проверен.
 - T-047: Redis cache-aside product/search/average, TTL 60с (настройка 1..3600), Micrometer hit/miss/error. Ревизия PostgreSQL повышается вместе с новой ценой; revision в ключах search/average исключает старые цены после записи даже при недоступном Redis. Redis вне транзакции; ошибки/битые записи дают fallback к БД. Prometheus registry добавлен через BOM.
 - T-046: явный opt-in Liquibase context @catalog-demo и профиль catalog-demo: 6 искусственных продуктов, магазин и 5 цен. Это не реальные пищевые/рыночные данные; выбор источника остаётся открытым. Seed не включён по умолчанию и не перезаписывает данные при рестарте.
