@@ -44,6 +44,7 @@ include(":backend:profile-service")
 include(":backend:catalog-price-service")
 include(":backend:diary-service")
 include(":backend:outbox")
+include(":backend:integration-tests")
 include(":backend:recipe-ai-service")
 
 //не подключенный в разработку модуль food cv

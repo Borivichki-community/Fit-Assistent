@@ -35,6 +35,7 @@ spring-boot = "4.1.2"
 uuid-creator = "6.1.1"
 
 grpc-java = "1.69.0"
+javax-annotation = "1.3.2"
 protobuf = "4.36.2"
 protobuf-plugin = "0.10.0"
 
@@ -128,6 +129,9 @@ spring-starter-test = { module = "org.springframework.boot:spring-boot-starter-t
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 spring-kafka-test = { module = "org.springframework.kafka:spring-kafka-test" }
 grpc-inprocess = { module = "io.grpc:grpc-inprocess" }
+grpc-netty = { module = "io.grpc:grpc-netty", version.ref = "grpc" }
+grpc-services = { module = "io.grpc:grpc-services", version.ref = "grpc" }
+javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version.ref = "javax-annotation" }
 
 
 testcontainers-core = { module = "org.testcontainers:testcontainers" }
