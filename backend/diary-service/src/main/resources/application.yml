@@ -1,4 +1,12 @@
 diary:
+  kafka:
+    registration:
+      enabled: ${DIARY_REGISTRATION_CONSUMER_ENABLED:true}
+      topic: user.registered
+      partitions: 3
+      replication-factor: 1
+      retry-interval: PT1S
+      retries: 2
   outbox:
     enabled: ${DIARY_OUTBOX_ENABLED:true}
     transaction-id-prefix: ${DIARY_OUTBOX_TRANSACTION_PREFIX:diary-outbox-}
@@ -48,8 +56,13 @@ spring:
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
     consumer:
       group-id: diary-service
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 50
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         "[specific.avro.reader]": true
         "[isolation.level]": read_committed
+    listener:
+      ack-mode: manual_immediate

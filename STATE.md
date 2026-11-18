@@ -5,6 +5,17 @@
 
 Обновлено: 2026-11-17
 
+### Объединение T-054 и T-055 перед T-056
+
+- По поручению пользователя T-054 вливается в T-055 без переписывания опубликованной истории; после проверки будет создана ветка T-056-GetDay-агрегация-КБЖУ.
+- Активны spring-grpc-service и testing-and-verification; роль implementer.
+- Разрешены конфликты зависимостей, application.yml и master changelog: сохранены consumer регистрации, общий outbox и миграции 001–005; настройки diary объединены в один YAML-раздел.
+- diagnose-build-failure подключён для адаптации прежних тестовых контекстов: gRPC-фикстуры используют UUID, очистка включает outbox_messages, посторонние consumer/scheduler выключены только в изолированных тестах.
+- PASS: полный :backend:diary-service:test — 49/49, 0 failures/errors/skipped; bootJar, offline Gradle, 59 секунд. Проверены gRPC, идемпотентность, consumer регистрации, публикация outbox и миграции вместе в одном checkout; контейнеры временные.
+- PASS: ktlintKotlinScriptCheck и git diff --cached --check; неразрешённых конфликтов нет.
+- Независимое read-only ревью объединения не выявило блокирующих замечаний. UUID-литералы вынесены в константы; повторные 9/9 gRPC-тестов PASS. В изменённых тестах замечаний ktlint нет; ktlintTestSourceSetCheck FAIL только из-за прежнего порядка импортов неизменённого DiaryEntryPersistenceTest.kt.
+- Решение: объединённая T-055 является базой T-056-GetDay-агрегация-КБЖУ; история T-052 → T-053 → T-054 сохраняется через merge, rebase/force push не применяются. Следующая операция после merge-коммита — создание этой ветки; реализация T-056 не начинается, push не выполняется.
+
 ### T-054 — оформление коммитов
 
 - По поручению пользователя изменения разделены на четыре коммита: хранение и расчёт калорий; consumer с retry/DLT; RPC и интеграционные проверки; документация.
@@ -67,6 +78,19 @@
 - Добавлены DiaryOutboxRepository и миграция 004-diary-outbox.yaml, подключён :shared:contracts. Avro-схема не меняется. Событие содержит сохранённые mealId/userId/calories/recordedAt/mealType; partition_key=userId, traceparent сохраняется из metadata. Статус PENDING; публикация относится к T-053.
 - PASS: ./gradlew :backend:diary-service:test --offline --console=plain — BUILD SUCCESSFUL, 7/7 тестов (6 новых gRPC/Spring/PostgreSQL + существующий JPA), 0 failures/errors/skipped. Проверены чтение Avro из BYTEA, traceparent, PENDING/partition_key, повтор, гонка 8 вызовов, конфликт payload/ID, откат при ошибке outbox и после обеих вставок, повтор после отката и валидация.
 - FAIL: общий ktlintCheck — прежние ID-модели, generated protobuf и порядок импортов DiaryEntryPersistenceTest; форматирование нового теста исправлено точечно. Проверки выполнялись только на временной PostgreSQL; рабочие данные, Kafka и Schema Registry не затрагивались. git diff --check — без ошибок. Коммиты и переключения веток не выполнялись.
+
+### T-055 / KAN-73 — входящий consumer регистрации (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`; `twg`/`twg-jira` использованы только для чтения Jira. Роль: `implementer`.
+- Прочитаны KAN-70/71/72/73/75; T-055 требует UserRegisteredEvent → инициализация дневника, с processed_events, retry и DLT по шаблону T-054. Исходящий CaloriesConsumedEvent относится к отдельным T-052/T-053.
+- Kafka Profile изучена в develop c86dfe0: user.registered, Avro UserRegisteredEvent; текущая T-052 остаётся на abcfe1e, слияние и коммиты не выполняются. Схема Avro не меняется.
+- Реализованы consumer/конфигурация и транзакционная инициализация: diary_users хранит userId/registered_at/initialized_at без email и фиктивных приёмов пищи. processed_events и diary_users записываются вместе; ACK выполняется после коммита.
+- В схеме регистрации нет отдельного eventId: постоянный семантический ключ UserRegisteredEvent:userId гарантирует одну инициализацию при повторной доставке на новом offset. Записи дневника не зависят от скорости доставки регистрации и не удаляются при повторе.
+- Добавлены миграция 003-diary-registration-consumer.yaml, зависимость от :shared:contracts, ограниченные retry и user.registered.DLT. DLT поддерживает исходные байты ошибки десериализации и различные SpecificRecord через RecordNameStrategy; неуспешная отправка в DLT не подтверждает исходный offset. Существующий gRPC integration test сохранён, Kafka в нём явно отключена.
+- PASS: offline Gradle test — все 26 тестов diary-service, 0 failures/errors/skipped (9 новых Kafka + 9 gRPC + 7 идемпотентности + 1 JPA). Использованы временные PostgreSQL 17, Kafka 4.2.2 и Schema Registry 8.2.4. Проверены wire Avro, ACK после коммита, повтор на новом offset, гонка 8 доставок, rollback/3 попытки, DLT валидации/неверного Avro/другого типа Avro, продолжение партиции, сохранение прежних записей и gRPC health SERVING.
+- FAIL: общий ktlintCheck — прежнее форматирование четырёх ID-моделей, DiaryEntryPersistenceTest и generated protobuf Kotlin. В новых файлах ошибок нет; линтер и generated-код не менялись. git diff --check — без ошибок.
+- При диагностике тестового стенда исправлены JDBC-передача Instant через Timestamp и подключение Schema Registry к отдельной сети Testcontainers: имя registrationNetwork исключает затенение свойства GenericContainer.network. diagnose-build-failure использован для диагностики и точечного исправления форматирования.
+- Рабочие данные и Compose-стенд не менялись; Profile producer отдельно не запускался, совместимость подтверждена чтением develop и отправкой реального Avro-контракта в тестовый брокер. T-052/T-053, общий исходящий outbox, изменения Jira, слияние веток и коммиты не выполнялись.
 
 ### Упрощение типов и подключение Diary RPC (2026-11-15)
 

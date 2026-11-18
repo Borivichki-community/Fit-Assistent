@@ -252,3 +252,17 @@ Dockerfile и .dockerignore включают backend/outbox, shared/contracts и
 Существующая [CaloriesConsumedEvent](../../shared/contracts/src/main/avro/CaloriesConsumedEvent.avsc) содержит `userId`, `mealId`, `calories`, `timestamp`, `mealType`, `notes`. Её целевое назначение — факт потребления, а не денежный расход. При будущей публикации `mealId = entry_id`, `timestamp = recorded_at`, `calories` берётся из сохранённой записи; доставка через outbox. Потребитель дедуплицирует создание по `(userId, mealId)`.
 
 `diary.entry.created` не используется Recipe AI для ведения баланса. Поле стоимости в Avro не добавляется; новый обязательный потребитель не вводится. Дневник не потребляет `food.price.updated`: цены каталога не меняют исторические снимки.
+
+### 5.1 Входящая регистрация пользователя — T-055 / KAN-73
+
+Diary принимает `UserRegisteredEvent` из `user.registered` в группе `diary-service`. Формат совпадает с отправителем Profile из `develop` (`c86dfe0`); изменения Avro-схемы не требуются.
+
+Инициализация создаёт пустой дневник: строку `diary_users` с `user_id`, `registered_at` и `initialized_at`. Email и источник регистрации не копируются, фиктивные записи еды не создаются. Существующие записи питания сохраняются; gRPC не блокируется в ожидании события регистрации.
+
+В одной PostgreSQL-транзакции сохраняются семантический ключ `UserRegisteredEvent:<userId>` в `processed_events` и строка дневника. В текущем контракте нет отдельного eventId: регистрация одного пользователя считается одним фактом, даже если повтор пришёл с другим Kafka offset. Дедупликация постоянная; TTL ответов gRPC к ней не относится.
+
+Consumer подтверждает offset вручную только после возврата транзакционного сервиса, то есть после коммита. По умолчанию выполняются первоначальная попытка и два retry с интервалом 1 секунда. Ошибки валидации и десериализации не повторяются. После исчерпания retry сообщение отправляется в `user.registered.DLT`; offset подтверждается только при успешной отправке в DLT. При ошибке десериализации сохраняются исходные байты.
+
+Настройки находятся в `diary.kafka.registration`: `enabled`, `topic`, `partitions`, `replication-factor`, `retry-interval`, `retries`. По умолчанию основной топик и DLT создаются с тремя партициями и replication factor 1 для локального стенда. Адреса брокера и Schema Registry задаются существующими `KAFKA_BOOTSTRAP_SERVERS` и `SCHEMA_REGISTRY_URL`. Для отключения consumer можно задать `DIARY_REGISTRATION_CONSUMER_ENABLED=false`.
+
+Интеграционные тесты используют отдельные Testcontainers PostgreSQL, Kafka и Schema Registry; рабочий Compose-стенд не используется.
