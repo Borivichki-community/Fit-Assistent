@@ -56,6 +56,12 @@ message GetDailyEntriesRequest {
 message GetDailyEntriesResponse {
   repeated DiaryEntryProto entries = 1;
   NutritionSummary daily_total = 2;
+  repeated MealNutritionSummary meal_totals = 3;
+}
+
+message MealNutritionSummary {
+  string meal_type = 1;
+  NutritionSummary nutrition = 2;
 }
 
 message DiaryEntryProto {

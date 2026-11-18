@@ -1,10 +1,10 @@
 package dev.andre.nutritionist.diary.service
 
+import dev.andre.nutritionist.diary.domain.calculator.DiaryNutritionAggregator
 import dev.andre.nutritionist.diary.domain.model.AddEntryCommand
 import dev.andre.nutritionist.diary.domain.model.DailyEntries
 import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
-import dev.andre.nutritionist.diary.domain.model.NutritionSummary
 import dev.andre.nutritionist.diary.domain.model.UserId
 import dev.andre.nutritionist.diary.domain.repository.DiaryRepository
 import dev.andre.nutritionist.diary.outbox.DiaryOutboxRepository
@@ -57,18 +57,7 @@ class DiaryService(
         userId: UserId,
         from: Instant,
         until: Instant,
-    ): DailyEntries {
-        val entries = getRange(userId, from, until)
-        return DailyEntries(
-            entries,
-            NutritionSummary(
-                entries.fold(0) { total, entry -> Math.addExact(total, entry.nutrition.calories) },
-                entries.sumOf { it.nutrition.proteins },
-                entries.sumOf { it.nutrition.fats },
-                entries.sumOf { it.nutrition.carbs },
-            ),
-        )
-    }
+    ): DailyEntries = DiaryNutritionAggregator.aggregate(getRange(userId, from, until))
 
     @Transactional(readOnly = true)
     fun getRange(

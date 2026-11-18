@@ -9,6 +9,7 @@ import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
 import dev.andre.nutritionist.diary.domain.model.FoodItemId
 import dev.andre.nutritionist.diary.domain.model.IdempotencyKey
+import dev.andre.nutritionist.diary.domain.model.MealNutritionSummary
 import dev.andre.nutritionist.diary.domain.model.MealType
 import dev.andre.nutritionist.diary.domain.model.Money
 import dev.andre.nutritionist.diary.domain.model.NutritionSummary
@@ -19,6 +20,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Instant
 import com.budgetntr.proto.diary.v1.CostSnapshot as CostSnapshotProto
+import com.budgetntr.proto.diary.v1.MealNutritionSummary as MealNutritionSummaryProto
 import com.budgetntr.proto.diary.v1.Money as MoneyProto
 import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
 
@@ -86,6 +88,13 @@ class DiaryGrpcMapper {
             .setProteins(nutrition.proteins)
             .setFats(nutrition.fats)
             .setCarbs(nutrition.carbs)
+            .build()
+
+    fun toProto(meal: MealNutritionSummary): MealNutritionSummaryProto =
+        MealNutritionSummaryProto
+            .newBuilder()
+            .setMealType(meal.mealType.name)
+            .setNutrition(toProto(meal.nutrition))
             .build()
 
     fun dateBounds(
