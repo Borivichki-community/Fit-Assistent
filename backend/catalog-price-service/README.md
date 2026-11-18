@@ -7,7 +7,11 @@
 ## Действующий Catalog API (T-044)
 
 Контракт: `proto/nutritionist/catalog/v1/catalog.proto`, пакет `com.budgetntr.catalog.v1`.
-- SearchProducts: page_size 0 = 50, максимум 100; next_page_token пуст на последней странице.
+- SearchProducts: page_size 0 = 50, максимум 100; next_page_token пуст на последней странице. Сортировка UUID ASC, keyset строго после последнего UUID. Токен версионирован и привязан к исходным фильтрам (page_size можно менять). Это живая выдача, без snapshot: обновления цен между страницами могут менять соответствие фильтрам.
+- query — регистронезависимое вхождение буквального текста (до 200 символов, %, _ экранируются); category — точное совпадение (до 100). Диапазоны включительные, присутствие min/max учитывается; NaN, infinity, отрицательные и обратные диапазоны отклоняются.
+- Цена фильтра — округлённое среднее текущих предложений в указанной валюте на 100 г, то же значение, что GetAveragePrices. Без цен продукт допустим в обычной выдаче, но исключён при фильтрации цены.
+- Индексы: UUID PK, category/id, отдельные КБЖУ/id, GIN pg_trgm для имени, covering product/currency для цен. pg_trgm должен быть доступен роли миграций.
+- Benchmark: `./gradlew :backend:catalog-price-service:test -PcatalogBenchmark --tests '*CatalogSearchBenchmarkTest'`. Только собственный PostgreSQL Testcontainer: 100000 продуктов и 100000 цен, ANALYZE, EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) для четырёх запросов из production SQL builder. Планы сохраняются в `backend/catalog-price-service/build/reports/catalog-explain/`. По умолчанию benchmark исключён из обычных unit/integration тестов как отдельная нагрузка. В текущем окружении Docker недоступен, планы/latency не измерены.
 - GetProduct: UUID продукта; неизвестный UUID — NOT_FOUND, неверный — INVALID_ARGUMENT.
 - GetAveragePrices: 1–100 UUID, дубли удаляются; currency по умолчанию RUB. Продукты без цен не возвращаются. Среднее арифметическое по текущим предложениям магазинов, нормализованным к 100000 мг, округление HALF_UP до целой минимальной единицы. Валюты не смешиваются, давность предложения не скрывается автоматическим отсечением.
 - UpsertPrice: только admin/ROLE_ADMIN; обязательный idempotency-key (1–128 ASCII букв/цифр, ._:-). product/store должны существовать; amount 0..10^12, basis 1..10^12 мг. Сервер назначает updated_at; одна текущая цена на (product, store, currency).

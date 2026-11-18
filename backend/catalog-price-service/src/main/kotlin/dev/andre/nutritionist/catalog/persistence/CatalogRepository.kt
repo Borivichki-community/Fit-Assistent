@@ -22,13 +22,13 @@ class CatalogRepository(
             .singleOrNull()
 
     fun search(
+        filter: dev.andre.nutritionist.catalog.domain.SearchFilter,
         after: ProductId?,
         limit: Int,
-    ): List<Product> =
-        jdbc.query(
-            "SELECT * FROM products WHERE (:after IS NULL OR id > CAST(:after AS uuid)) ORDER BY id LIMIT :limit",
-            mapOf("after" to after?.raw, "limit" to limit),
-        ) { row, _ -> product(row) }
+    ): List<Product> {
+        val query = ProductSearchSql.build(filter, after, limit)
+        return jdbc.query(query.sql, query.parameters) { row, _ -> product(row) }
+    }
 
     fun averagePrices(
         ids: List<ProductId>,

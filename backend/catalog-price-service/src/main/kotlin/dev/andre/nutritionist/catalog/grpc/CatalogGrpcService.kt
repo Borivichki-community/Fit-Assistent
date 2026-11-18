@@ -45,13 +45,14 @@ class CatalogGrpcService(
         rpc {
             require(request.pageSize in 0..100) { "page_size must be 0..100" }
             val limit = request.pageSize.takeIf { it > 0 } ?: 50
-            val after = request.pageToken.takeIf { it.isNotEmpty() }?.let(::productId)
-            val rows = repository.search(after, limit + 1)
+            val filter = request.toFilter()
+            val after = SearchCursor.decode(request)
+            val rows = repository.search(filter, after, limit + 1)
             val page = rows.take(limit)
             SearchProductsResponse
                 .newBuilder()
                 .addAllProducts(page.map { it.toProto() })
-                .setNextPageToken(if (rows.size > limit) page.last().id.raw else "")
+                .setNextPageToken(if (rows.size > limit) SearchCursor.encode(page.last().id, request) else "")
                 .build()
         }
 
