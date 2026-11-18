@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="catalog-002" author="team">
+        <createTable tableName="price_requests">
+            <column name="subject" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="request_key" type="varchar(128)"><constraints nullable="false"/></column>
+            <column name="request_hash" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="response" type="bytea"/>
+        </createTable>
+        <addPrimaryKey tableName="price_requests" columnNames="subject,request_key" constraintName="pk_price_requests"/>
+        <rollback><dropTable tableName="price_requests"/></rollback>
+    </changeSet>
+</databaseChangeLog>

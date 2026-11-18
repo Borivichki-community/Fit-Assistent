@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinJpa)
     alias(libs.plugins.springBoot)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.protobuf)
 }
 
 kotlin {
@@ -16,15 +17,52 @@ allOpen {
     annotation("jakarta.persistence.Embeddable")
 }
 
+protobuf {
+    protoc {
+        artifact =
+            libs.codegen.protoc
+                .get()
+                .toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact =
+                libs.codegen.grpc.java
+                    .get()
+                    .toString()
+        }
+        create("grpckt") { artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar" }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                create("grpckt")
+            }
+            task.builtins { create("kotlin") }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto { srcDir("../../proto") }
+    }
+}
+
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
 
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.starter.web)
     implementation(libs.spring.starter.actuator)
     implementation(libs.kotlin.reflect)
 
     implementation(libs.spring.starter.grpc)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.grpc.kotlin.stub)
+    implementation(libs.kotlinx.coroutines.slf4j)
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.spring.starter.jpa)
@@ -64,6 +102,17 @@ ktlint {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
+    exclude {
+        it.file.toPath().startsWith(
+            layout.buildDirectory
+                .get()
+                .asFile
+                .toPath(),
+        )
+    }
 }
 
 tasks.named("check") {

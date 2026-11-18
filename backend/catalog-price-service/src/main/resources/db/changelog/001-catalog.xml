@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="catalog-001" author="team">
+        <createTable tableName="products">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="name" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="category" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="calories_per_100g" type="numeric(7,2)"><constraints nullable="false"/></column>
+            <column name="proteins_per_100g" type="numeric(5,2)"><constraints nullable="false"/></column>
+            <column name="fats_per_100g" type="numeric(5,2)"><constraints nullable="false"/></column>
+            <column name="carbs_per_100g" type="numeric(5,2)"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="stores">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="name" type="varchar(255)"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="prices">
+            <column name="product_id" type="uuid"><constraints nullable="false" references="products(id)" foreignKeyName="fk_prices_product"/></column>
+            <column name="store_id" type="uuid"><constraints nullable="false" references="stores(id)" foreignKeyName="fk_prices_store"/></column>
+            <column name="currency" type="varchar(3)"><constraints nullable="false"/></column>
+            <column name="unit_price_minor" type="bigint"><constraints nullable="false"/></column>
+            <column name="price_basis_milligrams" type="bigint"><constraints nullable="false"/></column>
+            <column name="updated_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="prices" columnNames="product_id,store_id,currency" constraintName="pk_prices"/>
+        <sql>
+            ALTER TABLE products ADD CONSTRAINT ck_products_nutrition CHECK (
+                calories_per_100g BETWEEN 0 AND 1000 AND
+                proteins_per_100g BETWEEN 0 AND 100 AND
+                fats_per_100g BETWEEN 0 AND 100 AND carbs_per_100g BETWEEN 0 AND 100);
+            ALTER TABLE products ADD CONSTRAINT ck_products_text CHECK (btrim(name) &lt;&gt; '' AND btrim(category) &lt;&gt; '');
+            ALTER TABLE prices ADD CONSTRAINT ck_prices_amount CHECK (unit_price_minor BETWEEN 0 AND 1000000000000 AND price_basis_milligrams BETWEEN 1 AND 1000000000000);
+            ALTER TABLE prices ADD CONSTRAINT ck_prices_currency CHECK (currency ~ '^[A-Z]{3}$');
+        </sql>
+        <createIndex tableName="products" indexName="idx_products_category_id"><column name="category"/><column name="id"/></createIndex>
+        <createIndex tableName="products" indexName="idx_products_proteins"><column name="proteins_per_100g"/><column name="id"/></createIndex>
+        <createIndex tableName="products" indexName="idx_products_fats"><column name="fats_per_100g"/><column name="id"/></createIndex>
+        <createIndex tableName="products" indexName="idx_products_carbs"><column name="carbs_per_100g"/><column name="id"/></createIndex>
+        <createIndex tableName="products" indexName="idx_products_calories"><column name="calories_per_100g"/><column name="id"/></createIndex>
+        <createIndex tableName="prices" indexName="idx_prices_currency_product"><column name="currency"/><column name="product_id"/></createIndex>
+        <createIndex tableName="prices" indexName="idx_prices_store"><column name="store_id"/></createIndex>
+        <rollback><dropTable tableName="prices"/><dropTable tableName="stores"/><dropTable tableName="products"/></rollback>
+    </changeSet>
+</databaseChangeLog>
