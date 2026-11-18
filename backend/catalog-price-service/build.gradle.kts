@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.spring.starter.jpa)
+    implementation(libs.spring.starter.redis)
+    runtimeOnly(libs.micrometer.prometheus)
     implementation(libs.spring.starter.liquibase)
     runtimeOnly(libs.postgresql.jdbc)
 

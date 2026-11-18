@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/003-search-indexes.xml
   - include:
       file: db/changelog/004-demo-seed.xml
+  - include:
+      file: db/changelog/005-cache-revision.xml

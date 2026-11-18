@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="catalog-005" author="team">
+        <createTable tableName="catalog_revision">
+            <column name="singleton" type="boolean" defaultValueBoolean="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="revision" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE catalog_revision ADD CONSTRAINT ck_catalog_singleton CHECK (singleton)</sql>
+        <insert tableName="catalog_revision"><column name="singleton" valueBoolean="true"/><column name="revision" valueNumeric="0"/></insert>
+        <rollback><dropTable tableName="catalog_revision"/></rollback>
+    </changeSet>
+</databaseChangeLog>
