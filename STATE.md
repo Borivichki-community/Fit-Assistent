@@ -3,7 +3,16 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-14
+Обновлено: 2026-11-15
+
+### Дополнение контракта Diary — T-050 (2026-11-15)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification` (проверка генерации и компиляции); роль: `implementer`.
+- Добавлены RPC `DeleteMeal` и `GetRange` с отдельными request/response; существующие RPC, сообщения и номера полей сохранены.
+- `DeleteMealRequest.entry_id` задаёт удаляемую запись; успешный ответ пустой. Ключ удаления передаётся через metadata `idempotency-key`, пользователь определяется авторизацией.
+- `GetRangeRequest`: `start_date` и `end_date` в формате YYYY-MM-DD, обе даты включительно в `time_zone`; ответ содержит список `DiaryEntryProto`. Эти правила должен соблюдать будущий серверный обработчик.
+- PASS: `./gradlew :backend:diary-service:generateProto :backend:diary-service:compileKotlin :backend:diary-service:compileJava --offline --console=plain` — BUILD SUCCESSFUL; `git diff --check` — без ошибок. Diff контракта содержит только добавления.
+- Buf отсутствует в PATH: `buf lint` и `buf breaking` не выполнены. Серверные обработчики и runtime не проверялись и не изменялись.
 
 ### Доменные модели Diary (2026-11-14)
 
