@@ -25,6 +25,8 @@ Room favorite_operations -> Catalog.SetFavorite -> catalog_db
 Profile.GetProfile/UpdateProfile <-> профиль и недельный лимит
 ```
 
+T-054 добавляет серверную проекцию подтверждённых событий потребления: Diary Outbox → diary.entry.created → Profile processed_events → GetDailyCaloriesBalance. При ошибках: Profile Outbox → diary.entry.created.profile.dlt. Мобильный расчёт остаётся независимым; серверная проекция не учитывает PENDING и удаления без отдельного события.
+
 ## 2. Владельцы данных
 
 | Данные | Владелец и хранение | Правила |
@@ -35,7 +37,8 @@ Profile.GetProfile/UpdateProfile <-> профиль и недельный лим
 | Избранное | Catalog: user_favorite_foods, user_favorite_recipes, user_favorite_meal_plans | UNIQUE(user_id, FK); SetFavorite для FOOD_ITEM/RECIPE/DAILY_MEAL_PLAN |
 | Локальные намерения избранного | Room: favorite_items + favorite_operations | Устойчивый FIFO на аккаунт, tombstone, ключ на операцию |
 | Запись питания и стоимость порции | Room до отправки; Diary / diary_db после ACK | Сервер сохраняет клиентский снимок, не пересчитывает сумму |
-| Остаток бюджета/КБЖУ | Производное значение mobile/shared | Профиль + полная локальная история периода; отдельного серверного счёта нет |
+| Остаток бюджета/КБЖУ для UI | Производное значение mobile/shared | Профиль + полная локальная история периода, включая PENDING |
+| Серверный остаток калорий T-054 | Profile / processed_events | Текущая цель минус принятые факты добавления за дату/зону; eventual consistency, без компенсации удалений |
 | Контекст AI | Один запрос генерации | Готовые ограничения и предпочтения, без событийного денежного баланса |
 | Результат CV | Будущий food-cv-service / кэш Redis | Распознавание, не источник фактического расхода |
 

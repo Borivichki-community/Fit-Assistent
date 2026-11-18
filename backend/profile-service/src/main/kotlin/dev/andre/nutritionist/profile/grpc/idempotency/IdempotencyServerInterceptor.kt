@@ -37,7 +37,10 @@ class IdempotencyServerInterceptor(
         headers: Metadata,
         next: ServerCallHandler<ReqT, RespT>,
     ): ServerCall.Listener<ReqT> {
-        val key = headers.get(IDEMPOTENCY_KEY_HEADER)
+        val key =
+            headers
+                .get(IDEMPOTENCY_KEY_HEADER)
+                .takeUnless { call.methodDescriptor.fullMethodName.endsWith("/GetDailyCaloriesBalance") }
         if (key != null) {
             val cachedBytes = idempotencyStore.get(key)
             if (cachedBytes != null) {

@@ -31,6 +31,7 @@ import java.net.http.HttpResponse
 @ActiveProfiles("dev")
 @TestPropertySource(
     properties = [
+        "profile.calories.enabled=false",
         "spring.liquibase.enabled=false",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect",
         "spring.jpa.hibernate.ddl-auto=none",
