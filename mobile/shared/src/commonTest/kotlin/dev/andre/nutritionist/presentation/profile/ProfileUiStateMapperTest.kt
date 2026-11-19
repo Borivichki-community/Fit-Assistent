@@ -7,7 +7,6 @@ import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
-import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -32,7 +31,7 @@ class ProfileUiStateMapperTest {
             targetWeightKg = 70.0,
         ),
         weeklyBudget = 5000.0,
-        updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+        updatedAt = kotlin.time.Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
 
     @Test
@@ -47,7 +46,7 @@ class ProfileUiStateMapperTest {
         val state = ProfileState(content = ProfileState.Content.Error("Ошибка"))
         val uiState = mapper.map(state)
         assertIs<ProfileUiState.Content.Error>(uiState.content)
-        assertEquals("Ошибка", (uiState.content as ProfileUiState.Content.Error).message)
+        assertEquals("Ошибка", uiState.content.message)
     }
 
     @Test
@@ -56,7 +55,7 @@ class ProfileUiStateMapperTest {
         val uiState = mapper.map(state)
 
         assertIs<ProfileUiState.Content.Success>(uiState.content)
-        val uiModel = (uiState.content as ProfileUiState.Content.Success).profile
+        val uiModel = uiState.content.profile
 
         assertEquals("180 см", uiModel.heightLabel)
         assertEquals("75.0 кг", uiModel.weightLabel)
@@ -69,6 +68,7 @@ class ProfileUiStateMapperTest {
         assertEquals("200 г", uiModel.carbsGoalLabel)
         assertEquals("70 кг", uiModel.weightGoalLabel)
         assertEquals("5000 ₽ / нед.", uiModel.weeklyBudgetLabel)
+        assertEquals("user-test-1", uiModel.displayName)
     }
 
     @Test
@@ -82,10 +82,50 @@ class ProfileUiStateMapperTest {
         val uiState = mapper.map(state)
 
         assertIs<ProfileUiState.Content.Success>(uiState.content)
-        val uiModel = (uiState.content as ProfileUiState.Content.Success).profile
+        val uiModel = uiState.content.profile
 
         assertEquals("Не указан", uiModel.genderLabel)
         assertEquals("Не указано", uiModel.activityLabel)
         assertEquals("Не указано", uiModel.goalLabel)
+    }
+
+    @Test
+    fun `map Success state propagates displayName from state`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Success(testProfile),
+            displayName = "Aleksey Codintsev",
+        )
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = uiState.content.profile
+        assertEquals("Aleksey Codintsev", uiModel.displayName)
+    }
+
+    @Test
+    fun `map Success state falls back to userId raw when displayName is blank`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Success(testProfile),
+            displayName = "   ",
+        )
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = uiState.content.profile
+        assertEquals("user-test-1", uiModel.displayName)
+    }
+
+    @Test
+    fun `map Success state maps raw typed fields correctly for dialog editing`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = uiState.content.profile
+
+        assertEquals(75.0, uiModel.rawWeightKg)
+        assertEquals(ActivityLevel.MODERATE, uiModel.rawActivityLevel)
+        assertEquals(GoalType.LOSE_WEIGHT, uiModel.rawGoalType)
+        assertEquals(5000.0, uiModel.rawWeeklyBudget)
     }
 }

@@ -3,14 +3,20 @@ package dev.andre.nutritionist.android.presentation.profile.ui
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.presentation.profile.validation.ProfileFieldsValidation
 import dev.andre.nutritionist.android.presentation.profile.validation.ProfileValidationError
 import dev.andre.nutritionist.android.ui.screens.ProfileSuccessContent
+import dev.andre.nutritionist.domain.model.ActivityLevel
+import dev.andre.nutritionist.domain.model.GoalType
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
@@ -271,9 +277,144 @@ class ProfileScreenUnitTest {
         assertTrue(logoutClicked)
     }
 
-    private fun createTestProfileUiModel() = ProfileUiModel(
+    @Test
+    fun testCase9_displaysActualDisplayNameNotDefaultJohnOnProfileSuccessContent() {
+        val testName = "Aleksey Codintsev"
+        val profile = createTestProfileUiModel(displayName = testName)
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEditClick = {},
+                onLogoutClick = {},
+            )
+        }
+
+        // Must display actual name
+        composeTestRule.onNodeWithText(testName).assertIsDisplayed()
+        // Must NOT display hardcoded "John"
+        val defaultJohn = context.getString(R.string.profile_default_user_name)
+        composeTestRule.onNodeWithText(defaultJohn).assertDoesNotExist()
+    }
+
+    @Test
+    fun testCase10_displaysMetricsMatchingProfileUiModel() {
+        val profile = createTestProfileUiModel(
+            displayName = "Maria Ivanova",
+        ).copy(
+            weightLabel = "62.5 кг",
+            heightLabel = "168 см",
+            activityLabel = "Лёгкая активность",
+            goalLabel = "Снижение веса",
+            weeklyBudgetLabel = "4500 ₽ / нед.",
+        )
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEditClick = {},
+                onLogoutClick = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("62.5 кг").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Лёгкая активность").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Снижение веса").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("4500 ₽ / нед.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun testCase11_displaysActualDisplayNameAndAgeNotJohnAnd28OnProfileScreenSuccessState() {
+        val testProfile = dev.andre.nutritionist.domain.mapper.OnboardingDataMapper.toProfile(
+            data = dev.andre.nutritionist.domain.model.OnboardingData(
+                firstName = "Alexey",
+                heightCm = "180",
+                weightKg = "75.0",
+                age = "32",
+            ),
+            userId = UserId("user-alex-123"),
+        )
+
+        val state = ProfileState(
+            content = ProfileState.Content.Success(
+                profile = testProfile,
+                displayName = "Alexey",
+                age = "32",
+            ),
+            displayName = "Alexey",
+            age = "32",
+        )
+
+        composeTestRule.setContent {
+            ProfileScreen(
+                state = state,
+                onEvent = {},
+            )
+        }
+
+        // Must display "Alexey" and "32"
+        composeTestRule.onNodeWithText("Alexey").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("32").performScrollTo().assertIsDisplayed()
+
+        // Must NOT display "John" and "28"
+        val defaultJohn = context.getString(R.string.profile_default_user_name)
+        composeTestRule.onNodeWithText(defaultJohn).assertDoesNotExist()
+        composeTestRule.onNodeWithText("28").assertDoesNotExist()
+    }
+
+    @Test
+    fun testCase12_displaysSetupProfileButtonWhenProfileNotFound() {
+        var createProfileClicked = false
+        val notFoundState = ProfileUiState(
+            content = ProfileUiState.Content.Error(message = "NOT_FOUND: Profile not found"),
+        )
+
+        composeTestRule.setContent {
+            dev.andre.nutritionist.android.ui.screens.ProfileScreen(
+                state = notFoundState,
+                onEvent = {},
+                onCreateProfileClick = { createProfileClicked = true },
+            )
+        }
+
+        val expectedMessage = context.getString(R.string.profile_not_found_message)
+        composeTestRule.onNodeWithText(expectedMessage).assertIsDisplayed()
+
+        val fillSurveyText = context.getString(R.string.profile_fill_survey_again)
+        composeTestRule.onNodeWithText(fillSurveyText).performClick()
+
+        assertTrue(createProfileClicked)
+    }
+
+    @Test
+    fun testCase13_displaysFillSurveyBannerWhenProfileIsIncomplete() {
+        var fillSurveyClicked = false
+        val incompleteProfile = createTestProfileUiModel().copy(isComplete = false)
+        val successState = ProfileUiState(
+            content = ProfileUiState.Content.Success(incompleteProfile),
+        )
+
+        composeTestRule.setContent {
+            dev.andre.nutritionist.android.ui.screens.ProfileScreen(
+                state = successState,
+                onEvent = {},
+                onCreateProfileClick = { fillSurveyClicked = true },
+            )
+        }
+
+        val bannerTitle = context.getString(R.string.banner_complete_profile_title)
+        composeTestRule.onNodeWithText(bannerTitle).assertIsDisplayed()
+
+        val fillSurveyText = context.getString(R.string.profile_fill_survey_again)
+        composeTestRule.onAllNodesWithText(fillSurveyText).onFirst().performClick()
+
+        assertTrue(fillSurveyClicked)
+    }
+
+    private fun createTestProfileUiModel(displayName: String = "Aleksey Codintsev") = ProfileUiModel(
         id = ProfileId("p-test-01"),
         userId = UserId("u-test-01"),
+        displayName = displayName,
         heightLabel = "180 см",
         weightLabel = "75 кг",
         genderLabel = "Мужской",
@@ -285,5 +426,163 @@ class ProfileScreenUnitTest {
         carbsGoalLabel = "250 г",
         weightGoalLabel = "70 кг",
         weeklyBudgetLabel = "3500 ₽",
+        rawWeightKg = 75.0,
+        rawActivityLevel = ActivityLevel.MODERATE,
+        rawGoalType = GoalType.LOSE_WEIGHT,
+        rawWeeklyBudget = 3500.0,
     )
+
+    @Test
+    fun testCase14_clickWeightCardOpensEditWeightDialogAndDispatchesChangeWeight() {
+        val profile = createTestProfileUiModel()
+        var capturedEvent: ProfileEvent.Ui? = null
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEvent = { capturedEvent = it },
+            )
+        }
+
+        // Клик по карточке веса
+        composeTestRule.onNodeWithText("75 кг").performClick()
+
+        // Проверяем отображение диалога
+        val dialogTitle = context.getString(R.string.dialog_edit_weight_title)
+        composeTestRule.onNodeWithText(dialogTitle).assertIsDisplayed()
+
+        // Вводим новый вес
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("80.5")
+
+        // Нажимаем Сохранить
+        val saveText = context.getString(R.string.common_save)
+        composeTestRule.onNodeWithText(saveText).performClick()
+
+        assertNotNull(capturedEvent)
+        assertTrue(capturedEvent is ProfileEvent.Ui.ChangeWeight)
+        assertEquals(80.5, (capturedEvent as ProfileEvent.Ui.ChangeWeight).weightKg, 0.001)
+    }
+
+    @Test
+    fun testCase15_clickActivityCardOpensEditActivityDialogAndDispatchesChangeActivity() {
+        val profile = createTestProfileUiModel()
+        var capturedEvent: ProfileEvent.Ui? = null
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEvent = { capturedEvent = it },
+            )
+        }
+
+        // Клик по карточке активности
+        composeTestRule.onNodeWithText("Умеренная").performClick()
+
+        // Диалог выбора активности открыт
+        val dialogTitle = context.getString(R.string.dialog_edit_activity_title)
+        composeTestRule.onNodeWithText(dialogTitle).assertIsDisplayed()
+
+        // Выбираем Высокую активность
+        val veryActiveOption = context.getString(R.string.onboarding_activity_very_active)
+        composeTestRule.onNodeWithText(veryActiveOption).performClick()
+
+        // Нажимаем Сохранить
+        val saveText = context.getString(R.string.common_save)
+        composeTestRule.onNodeWithText(saveText).performClick()
+
+        assertNotNull(capturedEvent)
+        assertTrue(capturedEvent is ProfileEvent.Ui.ChangeActivity)
+        assertEquals(ActivityLevel.VERY_ACTIVE, (capturedEvent as ProfileEvent.Ui.ChangeActivity).activityLevel)
+    }
+
+    @Test
+    fun testCase16_clickGoalCardOpensEditGoalDialogAndDispatchesChangeGoal() {
+        val profile = createTestProfileUiModel()
+        var capturedEvent: ProfileEvent.Ui? = null
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEvent = { capturedEvent = it },
+            )
+        }
+
+        // Клик по карточке цели
+        composeTestRule.onNodeWithText("Похудение").performClick()
+
+        // Диалог цели открыт
+        val dialogTitle = context.getString(R.string.dialog_edit_goal_title)
+        composeTestRule.onNodeWithText(dialogTitle).assertIsDisplayed()
+
+        // Выбираем Набор массы
+        val gainGoalOption = context.getString(R.string.onboarding_goal_gain)
+        composeTestRule.onNodeWithText(gainGoalOption).performClick()
+
+        // Нажимаем Сохранить
+        val saveText = context.getString(R.string.common_save)
+        composeTestRule.onNodeWithText(saveText).performClick()
+
+        assertNotNull(capturedEvent)
+        assertTrue(capturedEvent is ProfileEvent.Ui.ChangeGoal)
+        assertEquals(GoalType.GAIN_WEIGHT, (capturedEvent as ProfileEvent.Ui.ChangeGoal).goalType)
+    }
+
+    @Test
+    fun testCase17_clickBudgetCardOpensEditBudgetDialogAndDispatchesChangeBudget() {
+        val profile = createTestProfileUiModel()
+        var capturedEvent: ProfileEvent.Ui? = null
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEvent = { capturedEvent = it },
+            )
+        }
+
+        // Клик по карточке бюджета
+        composeTestRule.onNodeWithText("3500 ₽").performClick()
+
+        // Диалог бюджета открыт
+        val dialogTitle = context.getString(R.string.dialog_edit_budget_title)
+        composeTestRule.onNodeWithText(dialogTitle).assertIsDisplayed()
+
+        // Вводим новый бюджет
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("6500")
+
+        // Нажимаем Сохранить
+        val saveText = context.getString(R.string.common_save)
+        composeTestRule.onNodeWithText(saveText).performClick()
+
+        assertNotNull(capturedEvent)
+        assertTrue(capturedEvent is ProfileEvent.Ui.ChangeBudget)
+        assertEquals(6500.0, (capturedEvent as ProfileEvent.Ui.ChangeBudget).weeklyBudget, 0.001)
+    }
+
+    @Test
+    fun testCase18_invalidWeightShowsErrorAndDoesNotDispatch() {
+        val profile = createTestProfileUiModel()
+        var capturedEvent: ProfileEvent.Ui? = null
+
+        composeTestRule.setContent {
+            ProfileSuccessContent(
+                profile = profile,
+                onEvent = { capturedEvent = it },
+            )
+        }
+
+        // Клик по карточке веса
+        composeTestRule.onNodeWithText("75 кг").performClick()
+
+        // Вводим некорректный вес (5.0 кг < 20.0 кг)
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("5.0")
+
+        // Нажимаем Сохранить
+        val saveText = context.getString(R.string.common_save)
+        composeTestRule.onNodeWithText(saveText).performClick()
+
+        // Ошибка валидации отображается, событие не отправлено
+        val errorText = context.getString(R.string.validation_invalid_weight)
+        composeTestRule.onNodeWithText(errorText).assertIsDisplayed()
+        assertNull(capturedEvent)
+    }
 }

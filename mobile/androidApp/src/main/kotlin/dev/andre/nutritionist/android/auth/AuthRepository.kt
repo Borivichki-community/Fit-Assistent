@@ -33,6 +33,11 @@ interface AuthRepository : AuthTokenProvider {
     fun getUserId(): UserId?
 
     /**
+     * Возвращает отображаемое имя текущего пользователя (given_name / name / preferred_username из ID Token).
+     */
+    fun getUserDisplayName(): String?
+
+    /**
      * Проверяет, авторизован ли пользователь в данный момент.
      */
     override fun isAuthenticated(): Boolean

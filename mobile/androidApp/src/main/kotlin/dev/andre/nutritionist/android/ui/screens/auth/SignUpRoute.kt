@@ -56,7 +56,7 @@ fun SignUpRoute(
         },
         onNavigateBack = onNavigateBack,
         onGoogleSignUpClick = {
-            viewModel.dispatch(AuthEvent.Ui.StartLogin(idpHint = "google"))
+            viewModel.dispatch(AuthEvent.Ui.StartLogin(idpHint = "google", prompt = "login"))
         },
         modifier = modifier,
     )

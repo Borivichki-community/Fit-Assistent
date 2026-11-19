@@ -119,9 +119,12 @@ fun ProfileScreen(
                         )
                     }
                     is ProfileState.Content.Success -> {
+                        val displayName = (content.displayName ?: state.displayName)?.takeIf { it.isNotBlank() }
+                            ?: content.profile.userId.raw
+                        val age = (content.age ?: state.age)?.takeIf { it.isNotBlank() } ?: ""
                         ProfileFormContent(
-                            name = stringResource(R.string.profile_default_user_name),
-                            age = "28",
+                            name = displayName,
+                            age = age,
                             targetWeight = "${content.profile.nutritionGoal.targetWeightKg.toInt()}",
                             dailyCalories = "${content.profile.nutritionGoal.targetCalories}",
                             nameError = null,

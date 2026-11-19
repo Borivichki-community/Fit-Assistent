@@ -38,13 +38,13 @@ import dev.andre.nutritionist.android.ui.theme.FitAssistantTheme
 import kotlinx.coroutines.launch
 
 /**
- * 5-шаговый визард онбординга / регистрации в минималистичном стиле Antigravity.
- * Воспроизводит скриншоты онбординга Flutter (1..6):
- * - Шаг 0: Имя и фамилия
- * - Шаг 1: Рост, вес, возраст, пол
- * - Шаг 2: Уровень физической активности
- * - Шаг 3: Недельный бюджет и рекомендации
- * - Шаг 4: Выбор цели питания
+ * 4-шаговый визард онбординга / регистрации в минималистичном стиле Antigravity.
+ * Имя пользователя берётся напрямую из Keycloak (OIDC / OAuth 2.1 PKCE).
+ * Визард собирает физические параметры и цели питания:
+ * - Шаг 0: Рост, вес, возраст, пол
+ * - Шаг 1: Уровень физической активности
+ * - Шаг 2: Недельный бюджет и рекомендации
+ * - Шаг 3: Выбор цели питания
  */
 @Composable
 fun RegistrationWizardScreen(
@@ -53,11 +53,10 @@ fun RegistrationWizardScreen(
     initialData: OnboardingData = OnboardingData(),
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(initialPage = 0) { 5 }
+    val pagerState = rememberPagerState(initialPage = 0) { 4 }
     var data by remember { mutableStateOf(initialData) }
 
     // Состояния ошибок валидации полей
-    var firstNameError by remember { mutableStateOf<String?>(null) }
     var heightError by remember { mutableStateOf<String?>(null) }
     var weightError by remember { mutableStateOf<String?>(null) }
     var ageError by remember { mutableStateOf<String?>(null) }
@@ -88,17 +87,7 @@ fun RegistrationWizardScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     when (page) {
-                        0 -> OnboardingNameStep(
-                            firstName = data.firstName,
-                            lastName = data.lastName,
-                            onFirstNameChanged = {
-                                data = data.copy(firstName = it)
-                                if (firstNameError != null) firstNameError = null
-                            },
-                            onLastNameChanged = { data = data.copy(lastName = it) },
-                            firstNameError = firstNameError,
-                        )
-                        1 -> OnboardingBodyStep(
+                        0 -> OnboardingBodyStep(
                             firstName = data.firstName,
                             heightCm = data.heightCm,
                             weightKg = data.weightKg,
@@ -121,12 +110,12 @@ fun RegistrationWizardScreen(
                             weightError = weightError,
                             ageError = ageError,
                         )
-                        2 -> OnboardingActivityStep(
+                        1 -> OnboardingActivityStep(
                             firstName = data.firstName,
                             activityLevel = data.activityLevel,
                             onActivityLevelChanged = { data = data.copy(activityLevel = it) },
                         )
-                        3 -> OnboardingBudgetStep(
+                        2 -> OnboardingBudgetStep(
                             firstName = data.firstName,
                             weeklyBudget = data.weeklyBudget,
                             onWeeklyBudgetChanged = {
@@ -135,7 +124,7 @@ fun RegistrationWizardScreen(
                             },
                             budgetError = budgetError,
                         )
-                        4 -> OnboardingGoalStep(
+                        3 -> OnboardingGoalStep(
                             selectedGoal = data.goalType,
                             onGoalSelected = { data = data.copy(goalType = it) },
                         )
@@ -168,14 +157,14 @@ fun RegistrationWizardScreen(
                     }
                 }
 
-                // Индикатор шагов (5 точек)
+                // Индикатор шагов (4 точки)
                 DotsIndicator(
-                    totalDots = 5,
+                    totalDots = 4,
                     currentDot = pagerState.currentPage,
                 )
 
                 // Кнопка «Далее» / «Завершить»
-                val isFinalStep = pagerState.currentPage == 4
+                val isFinalStep = pagerState.currentPage == 3
                 WizardNavButton(
                     direction = if (isFinalStep) WizardNavDirection.FINISH else WizardNavDirection.FORWARD,
                     contentDescription = if (isFinalStep) {
@@ -186,14 +175,6 @@ fun RegistrationWizardScreen(
                     onClick = {
                         when (pagerState.currentPage) {
                             0 -> {
-                                val nameValidation = ProfileFieldsValidation.validateName(data.firstName)
-                                if (nameValidation != null) {
-                                    firstNameError = emptyErrorText
-                                    return@WizardNavButton
-                                }
-                                coroutineScope.launch { pagerState.animateScrollToPage(1) }
-                            }
-                            1 -> {
                                 val ageVal = ProfileFieldsValidation.validateAge(data.age)
                                 val weightVal = ProfileFieldsValidation.validateTargetWeight(data.weightKg)
                                 if (data.heightCm.isBlank()) {
@@ -206,21 +187,21 @@ fun RegistrationWizardScreen(
                                     weightError = outOfRangeErrorText
                                 }
                                 if (heightError == null && ageError == null && weightError == null) {
-                                    coroutineScope.launch { pagerState.animateScrollToPage(2) }
+                                    coroutineScope.launch { pagerState.animateScrollToPage(1) }
                                 }
                             }
-                            2 -> {
-                                coroutineScope.launch { pagerState.animateScrollToPage(3) }
+                            1 -> {
+                                coroutineScope.launch { pagerState.animateScrollToPage(2) }
                             }
-                            3 -> {
+                            2 -> {
                                 val budgetInt = data.weeklyBudget.toIntOrNull()
                                 if (budgetInt == null || budgetInt <= 0) {
                                     budgetError = notANumberErrorText
                                     return@WizardNavButton
                                 }
-                                coroutineScope.launch { pagerState.animateScrollToPage(4) }
+                                coroutineScope.launch { pagerState.animateScrollToPage(3) }
                             }
-                            4 -> {
+                            3 -> {
                                 onFinish(data)
                             }
                         }

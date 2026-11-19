@@ -31,6 +31,10 @@ class FakeAuthRepository : AuthRepository {
 
     override fun getUserId(): UserId? = currentUserId
 
+    var userDisplayNameToReturn: String? = null
+
+    override fun getUserDisplayName(): String? = userDisplayNameToReturn
+
     override fun isAuthenticated(): Boolean = _state.value
 
     override suspend fun processAuthResponse(intent: Intent): Result<Unit> {

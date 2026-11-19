@@ -5,12 +5,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,46 +26,50 @@ class RegistrationWizardScreenTest {
         get() = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun `step 0 shows welcome title and empty first name displays error on forward click`() {
+    fun `step 0 shows body step with personalized name and empty height displays error on forward click`() {
         composeTestRule.setContent {
             RegistrationWizardScreen(
                 onFinish = {},
-                initialData = OnboardingData(firstName = "", lastName = ""),
+                initialData = OnboardingData(firstName = "Aleksey"),
             )
         }
 
-        // Verify title is displayed
-        val welcomeTitle = context.getString(R.string.onboarding_title_welcome)
-        composeTestRule.onNodeWithText(welcomeTitle).assertIsDisplayed()
+        // Verify title with personalized Keycloak name is displayed on step 0
+        val expectedTitle = context.getString(R.string.onboarding_title_about_format, "Aleksey")
+        composeTestRule.onNodeWithText(expectedTitle).assertIsDisplayed()
 
-        // Click next with empty first name
-        val nextContentDesc = context.getString(R.string.onboarding_nav_next)
+        // Click next with empty height
         composeTestRule.onNodeWithText("→").performClick()
 
-        // Error message should appear
+        // Error message for empty height should appear
         val emptyError = context.getString(R.string.validation_error_empty)
         composeTestRule.onNodeWithText(emptyError).assertIsDisplayed()
     }
 
     @Test
-    fun `step 0 enters first name and navigates to step 1`() {
+    fun `step 0 with valid body data navigates to step 1 activity`() {
         composeTestRule.setContent {
             RegistrationWizardScreen(
                 onFinish = {},
-                initialData = OnboardingData(firstName = "Aleksey", lastName = "Codintsev"),
+                initialData = OnboardingData(
+                    firstName = "Aleksey",
+                    heightCm = "180",
+                    weightKg = "75.0",
+                    age = "25",
+                ),
             )
         }
 
-        // Click next with valid name
+        // Click next on step 0 with valid body params
         composeTestRule.onNodeWithText("→").performClick()
 
-        // Step 1 should display "Aleksey, расскажи о себе"
-        val expectedStep1Title = context.getString(R.string.onboarding_title_about_format, "Aleksey")
+        // Step 1 should display activity step with personalized title
+        val expectedStep1Title = context.getString(R.string.onboarding_title_activity_format, "Aleksey")
         composeTestRule.onNodeWithText(expectedStep1Title).assertIsDisplayed()
     }
 
     @Test
-    fun `completing all steps invokes onFinish with collected data`() {
+    fun `completing all 4 steps invokes onFinish with collected data`() {
         var finishedData: OnboardingData? = null
 
         composeTestRule.setContent {
@@ -84,28 +86,25 @@ class RegistrationWizardScreenTest {
             )
         }
 
-        // Advance through steps
-        // Step 0 -> 1
+        // Step 0 (Body) -> Step 1 (Activity)
         composeTestRule.onNodeWithText("→").performClick()
 
-        // Step 1 -> 2
+        // Step 1 (Activity) -> Step 2 (Budget)
         composeTestRule.onNodeWithText("→").performClick()
 
-        // Step 2 -> 3
+        // Step 2 (Budget) -> Step 3 (Goal)
         composeTestRule.onNodeWithText("→").performClick()
 
-        // Step 3 -> 4
-        composeTestRule.onNodeWithText("→").performClick()
-
-        // Step 4 (Finish step): click finish "✓"
+        // Step 3 (Finish step: Goal): click finish "✓"
         composeTestRule.onNodeWithText("✓").performClick()
 
         assertNotNull(finishedData)
-        val data = finishedData as OnboardingData
+        val data = checkNotNull(finishedData)
         assertEquals("Aleksey", data.firstName)
         assertEquals("Codintsev", data.lastName)
         assertEquals("180", data.heightCm)
         assertEquals("75.0", data.weightKg)
         assertEquals("25", data.age)
+        assertEquals("5000", data.weeklyBudget)
     }
 }
