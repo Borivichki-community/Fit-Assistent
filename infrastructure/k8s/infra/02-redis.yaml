@@ -1,0 +1,199 @@
+# infrastructure/k8s/infra/02-redis.yaml
+# Разделение Redis на redis-state (идемпотентность, rate-limiting) и redis-cache (кэш данных)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-state
+  namespace: budget-nutritionist
+  labels:
+    app: redis-state
+    app.kubernetes.io/name: redis-state
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+  selector:
+    app: redis-state
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-state
+  namespace: budget-nutritionist
+  labels:
+    app: redis-state
+    app.kubernetes.io/name: redis-state
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-state
+  template:
+    metadata:
+      labels:
+        app: redis-state
+        app.kubernetes.io/name: redis-state
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: redis-state
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - redis-server
+          args:
+            - "--maxmemory"
+            - "128mb"
+            - "--maxmemory-policy"
+            - "volatile-ttl"
+            - "--appendonly"
+            - "yes"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: redis-state-data
+              mountPath: /data
+      volumes:
+        - name: redis-state-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cache
+  namespace: budget-nutritionist
+  labels:
+    app: redis-cache
+    app.kubernetes.io/name: redis-cache
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  type: ClusterIP
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+  selector:
+    app: redis-cache
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+  namespace: budget-nutritionist
+  labels:
+    app: redis-cache
+    app.kubernetes.io/name: redis-cache
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-cache
+  template:
+    metadata:
+      labels:
+        app: redis-cache
+        app.kubernetes.io/name: redis-cache
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: redis-cache
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - redis-server
+          args:
+            - "--maxmemory"
+            - "256mb"
+            - "--maxmemory-policy"
+            - "allkeys-lru"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 384Mi
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: redis-cache-data
+              mountPath: /data
+      volumes:
+        - name: redis-cache-data
+          emptyDir: {}

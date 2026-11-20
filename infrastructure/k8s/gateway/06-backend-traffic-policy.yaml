@@ -1,17 +1,29 @@
 # infrastructure/k8s/gateway/06-backend-traffic-policy.yaml
-# BackendTrafficPolicy для Global Rate Limiting через Envoy Gateway
+# BackendTrafficPolicy: Двухуровневый Rate Limiting (Local In-Memory + Global Redis)
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  name: rate-limit-policy
-  namespace: test-gateway
+  name: profile-rate-limit-policy
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
 spec:
   targetRef:
     group: gateway.networking.k8s.io
     kind: GRPCRoute
-    name: echo-grpc-route
+    name: profile-grpc-route
   rateLimit:
-    type: Global
+    type: Local
+    # ── 1. Local Rate Limiting (Token Bucket in-memory per Envoy instance) ────────
+    # Защита от спама и DoS без сетевых задержек: 20 req/s с burst до 50
+    local:
+      rules:
+        - limit:
+            requests: 20
+            unit: Second
+    # ── 2. Global Rate Limiting (Distributed Redis counter per user) ──────────────
+    # Ограничение для авторизованных клиентов: 100 запросов в минуту на каждый x-user-id
     global:
       rules:
         - clientSelectors:

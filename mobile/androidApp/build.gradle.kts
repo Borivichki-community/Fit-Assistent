@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.appauth)
     implementation(libs.androidx.security.crypto)
 

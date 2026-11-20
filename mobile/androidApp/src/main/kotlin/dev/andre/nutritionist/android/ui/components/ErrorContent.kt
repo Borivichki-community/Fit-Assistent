@@ -14,6 +14,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,12 +23,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.andre.nutritionist.android.R
 
-
 @Composable
 fun ErrorContent(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    actionButtonText: String? = null,
+    onActionClick: (() -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -57,15 +59,35 @@ fun ErrorContent(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(Spacing.medium))
-                Button(
-                    onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    shape = RoundedCornerShape(Spacing.buttonRadius),
-                ) {
-                    Text(text = stringResource(R.string.retry_button))
+                if (actionButtonText != null && onActionClick != null) {
+                    Button(
+                        onClick = onActionClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        shape = RoundedCornerShape(Spacing.buttonRadius),
+                    ) {
+                        Text(text = actionButtonText)
+                    }
+                    Spacer(modifier = Modifier.height(Spacing.small))
+                    OutlinedButton(
+                        onClick = onRetry,
+                        shape = RoundedCornerShape(Spacing.buttonRadius),
+                    ) {
+                        Text(text = stringResource(R.string.retry_button))
+                    }
+                } else {
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        shape = RoundedCornerShape(Spacing.buttonRadius),
+                    ) {
+                        Text(text = stringResource(R.string.retry_button))
+                    }
                 }
             }
         }

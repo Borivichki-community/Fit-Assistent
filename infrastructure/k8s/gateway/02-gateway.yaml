@@ -1,13 +1,34 @@
 # infrastructure/k8s/gateway/02-gateway.yaml
-# Определение основного шлюза Envoy Gateway с прослушиванием gRPC-порта 9090
+# Определение основного шлюза Envoy Gateway с поддержкой TLS-терминации и dev-портов
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: main-gateway
   namespace: envoy-gateway-system
+  labels:
+    app.kubernetes.io/name: envoy-gateway
+    app.kubernetes.io/part-of: fitassistant
 spec:
   gatewayClassName: envoy-gateway
   listeners:
+    # Безопасный listener для gRPC и HTTPS с TLS-терминацией (порт 443)
+    - name: grpc-tls
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: profile-gateway-cert
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: GRPCRoute
+
+    # Insecure listener для gRPC в локальном dev-окружении (порт 9090)
     - name: grpc-insecure
       protocol: HTTP
       port: 9090
@@ -17,6 +38,8 @@ spec:
         kinds:
           - group: gateway.networking.k8s.io
             kind: GRPCRoute
+
+    # HTTP listener для REST/Actuator (порт 80)
     - name: http
       protocol: HTTP
       port: 80
