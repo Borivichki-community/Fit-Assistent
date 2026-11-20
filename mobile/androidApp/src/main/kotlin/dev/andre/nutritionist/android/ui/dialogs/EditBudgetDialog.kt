@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.andre.nutritionist.android.R
+import dev.andre.nutritionist.domain.validation.ProfileValidator
 
 /**
  * Диалог точечного редактирования недельного бюджета пользователя.
+ * Валидирует ввод через доменный ProfileValidator (1.0 .. 1_000_000.0).
  */
 @Composable
 fun EditBudgetDialog(
@@ -34,12 +36,15 @@ fun EditBudgetDialog(
     var isError by remember { mutableStateOf(false) }
 
     fun validateAndConfirm() {
-        val parsed = budgetText.trim().replace(',', '.').toDoubleOrNull()
-        if (parsed != null && parsed > 0.0) {
-            onConfirm(parsed)
-        } else {
-            isError = true
+        val error = ProfileValidator.validateWeeklyBudget(budgetText)
+        if (error == null) {
+            val parsed = budgetText.trim().replace(',', '.').toDoubleOrNull()
+            if (parsed != null) {
+                onConfirm(parsed)
+                return
+            }
         }
+        isError = true
     }
 
     AlertDialog(

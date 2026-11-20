@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.andre.nutritionist.android.R
+import dev.andre.nutritionist.domain.validation.ProfileValidator
 
 /**
  * Диалог точечного редактирования веса пользователя.
+ * Валидирует ввод через доменный ProfileValidator (20.0 .. 500.0 кг).
  */
 @Composable
 fun EditWeightDialog(
@@ -34,12 +36,15 @@ fun EditWeightDialog(
     var isError by remember { mutableStateOf(false) }
 
     fun validateAndConfirm() {
-        val parsed = weightText.trim().replace(',', '.').toDoubleOrNull()
-        if (parsed != null && parsed in 20.0..300.0) {
-            onConfirm(parsed)
-        } else {
-            isError = true
+        val error = ProfileValidator.validateWeight(weightText)
+        if (error == null) {
+            val parsed = weightText.trim().replace(',', '.').toDoubleOrNull()
+            if (parsed != null) {
+                onConfirm(parsed)
+                return
+            }
         }
+        isError = true
     }
 
     AlertDialog(

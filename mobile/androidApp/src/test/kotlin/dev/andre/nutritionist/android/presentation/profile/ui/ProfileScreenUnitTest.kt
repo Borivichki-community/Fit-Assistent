@@ -12,9 +12,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
-import dev.andre.nutritionist.android.presentation.profile.validation.ProfileFieldsValidation
-import dev.andre.nutritionist.android.presentation.profile.validation.ProfileValidationError
+import dev.andre.nutritionist.android.presentation.profile.validation.toMessageRes
 import dev.andre.nutritionist.android.ui.screens.ProfileSuccessContent
+import dev.andre.nutritionist.domain.validation.FieldValidationError
+import dev.andre.nutritionist.domain.validation.ProfileValidator
 import dev.andre.nutritionist.domain.model.ActivityLevel
 import dev.andre.nutritionist.domain.model.GoalType
 import dev.andre.nutritionist.domain.model.ProfileId
@@ -107,35 +108,42 @@ class ProfileScreenUnitTest {
     @Test
     fun testValidation_pureFunctionsVerifyAllConstraints() {
         // Name validation
-        assertEquals(ProfileValidationError.Empty, ProfileFieldsValidation.validateName(""))
-        assertEquals(ProfileValidationError.Empty, ProfileFieldsValidation.validateName("   "))
-        assertEquals(ProfileValidationError.TooShort(2), ProfileFieldsValidation.validateName("A"))
-        assertNull(ProfileFieldsValidation.validateName("Aleksey"))
+        assertEquals(FieldValidationError.Empty, ProfileValidator.validateName(""))
+        assertEquals(FieldValidationError.Empty, ProfileValidator.validateName("   "))
+        assertEquals(FieldValidationError.TooShort(2), ProfileValidator.validateName("A"))
+        assertNull(ProfileValidator.validateName("Aleksey"))
 
         // Age validation
-        assertEquals(ProfileValidationError.Empty, ProfileFieldsValidation.validateAge(""))
-        assertEquals(ProfileValidationError.NotANumber, ProfileFieldsValidation.validateAge("abc"))
-        assertEquals(ProfileValidationError.NegativeOrZero, ProfileFieldsValidation.validateAge("-5"))
-        assertEquals(ProfileValidationError.NegativeOrZero, ProfileFieldsValidation.validateAge("0"))
-        assertEquals(ProfileValidationError.OutOfRange(14, 120), ProfileFieldsValidation.validateAge("10"))
-        assertEquals(ProfileValidationError.OutOfRange(14, 120), ProfileFieldsValidation.validateAge("150"))
-        assertNull(ProfileFieldsValidation.validateAge("25"))
+        assertEquals(FieldValidationError.Empty, ProfileValidator.validateAge(""))
+        assertEquals(FieldValidationError.NotANumber, ProfileValidator.validateAge("abc"))
+        assertEquals(FieldValidationError.NegativeOrZero, ProfileValidator.validateAge("-5"))
+        assertEquals(FieldValidationError.NegativeOrZero, ProfileValidator.validateAge("0"))
+        assertEquals(FieldValidationError.OutOfRange(14, 120), ProfileValidator.validateAge("10"))
+        assertEquals(FieldValidationError.OutOfRange(14, 120), ProfileValidator.validateAge("150"))
+        assertNull(ProfileValidator.validateAge("25"))
 
-        // Weight validation
-        assertEquals(ProfileValidationError.Empty, ProfileFieldsValidation.validateTargetWeight(""))
-        assertEquals(ProfileValidationError.NotANumber, ProfileFieldsValidation.validateTargetWeight("invalid"))
-        assertEquals(ProfileValidationError.NegativeOrZero, ProfileFieldsValidation.validateTargetWeight("-70.0"))
-        assertEquals(ProfileValidationError.OutOfRange(30.0, 300.0), ProfileFieldsValidation.validateTargetWeight("20.0"))
-        assertEquals(ProfileValidationError.OutOfRange(30.0, 300.0), ProfileFieldsValidation.validateTargetWeight("350.0"))
-        assertNull(ProfileFieldsValidation.validateTargetWeight("75.5"))
+        // Weight validation (20.0..500.0 aligned with backend)
+        assertEquals(FieldValidationError.Empty, ProfileValidator.validateTargetWeight(""))
+        assertEquals(FieldValidationError.NotANumber, ProfileValidator.validateTargetWeight("invalid"))
+        assertEquals(FieldValidationError.NegativeOrZero, ProfileValidator.validateTargetWeight("-70.0"))
+        assertEquals(FieldValidationError.OutOfRange(20.0, 500.0), ProfileValidator.validateTargetWeight("15.0"))
+        assertEquals(FieldValidationError.OutOfRange(20.0, 500.0), ProfileValidator.validateTargetWeight("550.0"))
+        assertNull(ProfileValidator.validateTargetWeight("75.5"))
 
         // Calories validation
-        assertEquals(ProfileValidationError.Empty, ProfileFieldsValidation.validateDailyCalories(""))
-        assertEquals(ProfileValidationError.NotANumber, ProfileFieldsValidation.validateDailyCalories("xyz"))
-        assertEquals(ProfileValidationError.NegativeOrZero, ProfileFieldsValidation.validateDailyCalories("0"))
-        assertEquals(ProfileValidationError.OutOfRange(500, 10000), ProfileFieldsValidation.validateDailyCalories("300"))
-        assertEquals(ProfileValidationError.OutOfRange(500, 10000), ProfileFieldsValidation.validateDailyCalories("12000"))
-        assertNull(ProfileFieldsValidation.validateDailyCalories("2200"))
+        assertEquals(FieldValidationError.Empty, ProfileValidator.validateDailyCalories(""))
+        assertEquals(FieldValidationError.NotANumber, ProfileValidator.validateDailyCalories("xyz"))
+        assertEquals(FieldValidationError.NegativeOrZero, ProfileValidator.validateDailyCalories("0"))
+        assertEquals(FieldValidationError.OutOfRange(500, 10000), ProfileValidator.validateDailyCalories("300"))
+        assertEquals(FieldValidationError.OutOfRange(500, 10000), ProfileValidator.validateDailyCalories("12000"))
+        assertNull(ProfileValidator.validateDailyCalories("2200"))
+
+        // String resource mapping
+        assertEquals(R.string.validation_error_empty, FieldValidationError.Empty.toMessageRes())
+        assertEquals(R.string.validation_error_not_a_number, FieldValidationError.NotANumber.toMessageRes())
+        assertEquals(R.string.validation_error_negative_or_zero, FieldValidationError.NegativeOrZero.toMessageRes())
+        assertEquals(R.string.validation_error_out_of_range, FieldValidationError.OutOfRange(1, 10).toMessageRes())
+        assertEquals(R.string.validation_error_too_short, FieldValidationError.TooShort(2).toMessageRes())
     }
 
     @Test

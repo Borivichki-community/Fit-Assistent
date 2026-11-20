@@ -30,7 +30,11 @@ class RegistrationWizardScreenTest {
         composeTestRule.setContent {
             RegistrationWizardScreen(
                 onFinish = {},
-                initialData = OnboardingData(firstName = "Aleksey"),
+                initialData = OnboardingData(
+                    firstName = "Aleksey",
+                    weightKg = "75.0",
+                    age = "25",
+                ),
             )
         }
 
@@ -106,5 +110,64 @@ class RegistrationWizardScreenTest {
         assertEquals("75.0", data.weightKg)
         assertEquals("25", data.age)
         assertEquals("5000", data.weeklyBudget)
+    }
+
+    @Test
+    fun `step 0 with out of range height displays error and does not navigate to step 1`() {
+        composeTestRule.setContent {
+            RegistrationWizardScreen(
+                onFinish = {},
+                initialData = OnboardingData(
+                    firstName = "Aleksey",
+                    heightCm = "350",
+                    weightKg = "75.0",
+                    age = "25",
+                ),
+            )
+        }
+
+        // Click next on step 0 with invalid height (350 > 300)
+        composeTestRule.onNodeWithText("→").performClick()
+
+        // Out of range error should be displayed
+        val outOfRangeError = context.getString(R.string.validation_error_out_of_range)
+        composeTestRule.onNodeWithText(outOfRangeError).assertIsDisplayed()
+
+        // Wizard stays on step 0 (personalized about title still displayed)
+        val expectedStep0Title = context.getString(R.string.onboarding_title_about_format, "Aleksey")
+        composeTestRule.onNodeWithText(expectedStep0Title).assertIsDisplayed()
+    }
+
+    @Test
+    fun `step 2 with invalid weekly budget displays error and does not navigate to step 3`() {
+        composeTestRule.setContent {
+            RegistrationWizardScreen(
+                onFinish = {},
+                initialData = OnboardingData(
+                    firstName = "Aleksey",
+                    heightCm = "180",
+                    weightKg = "75.0",
+                    age = "25",
+                    weeklyBudget = "-500",
+                ),
+            )
+        }
+
+        // Step 0 -> Step 1
+        composeTestRule.onNodeWithText("→").performClick()
+
+        // Step 1 -> Step 2
+        composeTestRule.onNodeWithText("→").performClick()
+
+        // Step 2 (Budget): click next with negative budget
+        composeTestRule.onNodeWithText("→").performClick()
+
+        // Error message for negative or zero budget should be displayed
+        val budgetError = context.getString(R.string.validation_error_negative_or_zero)
+        composeTestRule.onNodeWithText(budgetError).assertIsDisplayed()
+
+        // Label for budget still visible on screen (stays on step 2)
+        val budgetLabel = context.getString(R.string.onboarding_label_budget)
+        composeTestRule.onNodeWithText(budgetLabel).assertIsDisplayed()
     }
 }
