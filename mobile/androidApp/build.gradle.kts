@@ -1,8 +1,37 @@
+import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.protobuf)
+}
+
+protobuf {
+    protoc {
+        artifact = libs.codegen.protoc.get().toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact = libs.codegen.grpc.java.get().toString()
+        }
+        create("grpckt") {
+            artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        ofBuildType("debug").forEach { task ->
+            task.builtins {
+                maybeCreate("java")
+            }
+            task.plugins {
+                create("grpc") {
+                    option("@generated=omit")
+                }
+                create("grpckt")
+            }
+        }
+    }
 }
 
 kotlin {
@@ -30,6 +59,11 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation(libs.grpc.okhttp)
+    debugImplementation(libs.grpc.protobuf)
+    debugImplementation(libs.grpc.stub)
+    debugImplementation(libs.grpc.kotlin.stub)
+    debugImplementation(libs.protobuf.java)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
@@ -77,6 +111,19 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+        }
+    }
+    sourceSets {
+        getByName("debug").proto {
+            srcDir("../../proto")
+            setIncludes(
+                listOf(
+                    "nutritionist/diary/v1/diary.proto",
+                    "nutritionist/catalog/v1/catalog.proto",
+                    "nutritionist/recipe/v1/recipe.proto",
+                    "health.proto",
+                ),
+            )
         }
     }
     buildFeatures {

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package com.budgetntr.recipe.v1;
+
+option java_multiple_files = true;
+option java_package = "com.budgetntr.proto.recipe.v1";
+option java_outer_classname = "RecipeOuterClass";
+
+service RecipeAiService {
+  rpc GenerateWeekMenu(GenerateWeekMenuRequest) returns (stream GenerateWeekMenuResponse);
+}
+
+message GenerateWeekMenuRequest {
+  int32 daily_calories = 1;
+  int64 weekly_budget_minor = 2;
+  repeated string excluded_product_ids = 3;
+  repeated string preferred_product_ids = 4;
+}
+
+message GenerateWeekMenuResponse {
+  oneof event {
+    WeekMenuDay day_ready = 1;
+    WeekMenuSummary final = 2;
+  }
+}
+
+message WeekMenuDay {
+  int32 day_number = 1;
+  repeated MenuMeal meals = 2;
+  double calories = 3;
+  int64 estimated_cost_minor = 4;
+}
+
+message MenuMeal {
+  MealType type = 1;
+  string name = 2;
+  repeated MenuIngredient ingredients = 3;
+  double calories = 4;
+  int64 estimated_cost_minor = 5;
+}
+
+enum MealType {
+  MEAL_TYPE_UNSPECIFIED = 0;
+  MEAL_TYPE_BREAKFAST = 1;
+  MEAL_TYPE_LUNCH = 2;
+  MEAL_TYPE_DINNER = 3;
+}
+
+message MenuIngredient {
+  string product_id = 1;
+  string name = 2;
+  int32 grams = 3;
+}
+
+message WeekMenuSummary {
+  double calories = 1;
+  int64 estimated_cost_minor = 2;
+  string currency = 3;
+  MenuSource source = 4;
+}
+
+enum MenuSource {
+  MENU_SOURCE_UNSPECIFIED = 0;
+  MENU_SOURCE_GENERATED = 1;
+  MENU_SOURCE_CACHE = 2;
+  MENU_SOURCE_FALLBACK = 3;
+}
+
+message WeekMenu {
+  repeated WeekMenuDay days = 1;
+  WeekMenuSummary summary = 2;
+}

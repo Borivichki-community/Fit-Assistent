@@ -3,6 +3,120 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
+Обновлено: 2026-11-21
+
+### Android — ручная проверка сервисов (2026-11-21)
+
+- Skills: `android-compose-feature`, `testing-and-verification`, `contracts-proto-and-avro`. Роль: `implementer`. `diagnose-build-failure` использован для проверки отсутствующего в кеше AAPT2 и настройки Android-генерации Protobuf.
+- В debug APK добавлена отдельная иконка «Проверка сервисов FitAssistant». Profile: GetProfile и UpdateProfile с тестовыми данными. Diary: AddEntry, GetDailyEntries, GetRange, DeleteMeal. Catalog: SearchProducts. Recipe AI: поток GenerateWeekMenu через заданный тестовый HTTPS Envoy Gateway. Для четырёх gRPC-сервисов есть Health.Check, для Keycloak — discovery и проверка существующей сессии.
+- Локальные вызовы идут на 10.0.2.2; порты по умолчанию соответствуют Docker Compose и редактируются на экранах. Diary передаёт идентификатор текущей сессии напрямую на локальный порт, а повтор отправляет тот же payload и idempotency-key. Записаны два теста ожидаемого поведения повторов.
+- PASS: `assembleDebug` и `testDebugUnitTest --tests '*ServiceCheckUpdateTest'` прошли офлайн с AAPT2 из SDK и `--configure-on-demand`. Два теста проверили блокировку двойного запуска, сохранение запроса и ключей при повторах и запрет повторного добавления удалённой записи. В merged release manifest диагностическая Activity отсутствует. `git diff --check` для Android-изменений — без ошибок.
+- PASS: APK установлен на Android-эмулятор, открыты все пять экранов, подготовка тестовой записи сформировала UUID. Проверено отображение сетевых ошибок.
+- BLOCKED: gRPC Health и Keycloak discovery на локальных портах не получили ответа, слушающие процессы не обнаружены, Docker Engine недоступен. Сквозные бизнес-вызовы не подтверждены. Для SearchProducts требуется серверный gRPC-обработчик каталога; для GenerateWeekMenu — работающий тестовый HTTPS Envoy Gateway с маршрутом к Recipe AI.
+
+### T-052 — атомарное сохранение записи и outbox (2026-11-15)
+
+- Skills: spring-grpc-service, testing-and-verification; роль implementer. Работа ведётся в исходной ветке T-052, consumer T-055 не переносится.
+- В DiaryService.addEntry добавлено сохранение CaloriesConsumedEvent в outbox_messages в транзакции IdempotencyService: запись, событие и ответ фиксируются вместе. Проходной UseCase не создаётся; сетевых клиентов в операции нет.
+- Добавлены DiaryOutboxRepository и миграция 004-diary-outbox.yaml, подключён :shared:contracts. Avro-схема не меняется. Событие содержит сохранённые mealId/userId/calories/recordedAt/mealType; partition_key=userId, traceparent сохраняется из metadata. Статус PENDING; публикация относится к T-053.
+- PASS: ./gradlew :backend:diary-service:test --offline --console=plain — BUILD SUCCESSFUL, 7/7 тестов (6 новых gRPC/Spring/PostgreSQL + существующий JPA), 0 failures/errors/skipped. Проверены чтение Avro из BYTEA, traceparent, PENDING/partition_key, повтор, гонка 8 вызовов, конфликт payload/ID, откат при ошибке outbox и после обеих вставок, повтор после отката и валидация.
+- FAIL: общий ktlintCheck — прежние ID-модели, generated protobuf и порядок импортов DiaryEntryPersistenceTest; форматирование нового теста исправлено точечно. Проверки выполнялись только на временной PostgreSQL; рабочие данные, Kafka и Schema Registry не затрагивались. git diff --check — без ошибок. Коммиты и переключения веток не выполнялись.
+
+### T-058–T-065 — неделя меню Recipe AI (2026-11-21)
+
+- Реализовано в ветке KAN-76. Skills: `legacy-migration`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`. Роль: `implementer`.
+- Legacy-источник: AiService из ветки KAN-20, commit `7257a3f`. Перенесён сценарий генерации под бюджет. Catalog API взят из ветки T-048 с теми же сообщениями и RPC.
+- Добавлены GenerateWeekMenu, пересчёт калорий и стоимости по данным Catalog, Gemini LlmClient, корутинные Retry/CircuitBreaker/TimeLimiter, Redis-кэш, прогрев и атомарная квота. Для входного gRPC настроен доверенный канал mTLS от Envoy и Global Rate Limit. Ключ Gemini поступает из env/Secret.
+- PASS: Gradle `check` и `bootJar`, 7 тестов прошли. `buf lint` и `buf breaking` относительно develop прошли. Статическая проверка объединённого Docker Compose и `git diff --check` прошли.
+- BLOCKED: Redis Testcontainers пропущен из-за недоступного Docker Engine. Сквозной запуск с реальным Catalog, Gemini и Envoy не выполнялся. Текущей ветке для рабочего Catalog нужен сервер из T-048 или развёрнутый совместимый сервис.
+
+### Упрощение типов и подключение Diary RPC (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` использован для исправления тестового lifecycle и форматирования. Роль: `implementer`.
+- Scope/StoredResponse вложены в IdempotencyStore; конфликт вложен в IdempotencyService. Ссылки обновлены; четыре отдельных файла удалены, EnableScheduling перенесён в GrpcBootstrapConfiguration.
+- Реализованы DiaryGrpcService/DiaryService, репозиторий и JPA-хранилище, мапперы/валидация, внедряемые диспетчеры и DiaryRequestContextInterceptor.
+- RPC AddEntry/DeleteMeal используют execute с одной JDBC/JPA-транзакцией. Чтение GetDailyEntries/GetRange ограничено текущим пользователем, даты включительны в указанном часовом поясе, запрос БД использует полуоткрытый интервал.
+- Доверенная identity берётся только из x-user-id, выставленного Envoy после JWT-проверки согласно архитектуре; backend должен быть изолирован от прямых внешних запросов. JWT внутри приложения не декодируется и не проверяется.
+- PASS: compileKotlin/compileTestKotlin offline; все 17 тестов diary-service (9 сетевых gRPC/Spring/PostgreSQL, 7 идемпотентности, 1 JPA/Liquibase), 0 failures/errors. Проверены регистрация глобальных interceptor, четыре RPC, повтор/конфликт, гонка 8 запросов, rollback, ownership, снимки стоимости, границы DST и запуск зарегистрированной задачи очистки. Отклонённый тест логирующего interceptor не восстанавливался.
+- Исправлены только тестовые ошибки: ручное закрытие Spring-контекста мешало afterAll listeners; проверка ScheduledMethodRunnable не учитывала OutcomeTrackingRunnable Spring 7. Контекст теперь закрывает Spring, задача проверяется через зарегистрированный Runnable и удаление просроченного ответа.
+- FAIL: общий ktlintCheck — прежнее форматирование четырёх ID-моделей и DiaryEntryPersistenceTest, generated protobuf Kotlin. В изменённых участках ошибок нет; настройки линтера и generated-код не менялись. git diff --check — без ошибок.
+- Цепочка внутри diary-service подключена; рабочая БД не изменялась. Envoy/JWT-периметр и клиентская мобильная синхронизация не проверялись; Kafka/outbox не реализовывались в этой задаче.
+
+### Второй этап T-051 — PostgreSQL-идемпотентность (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Реализованы IdempotencyService/Store и PostgreSQL-адаптер, таблица ключей и очистка по TTL. Отклонённый пользователем тест логирующего interceptor не восстановлен.
+- Ключ ограничен пользователем и RPC; хэш SHA-256 рассчитывается по переданным байтам запроса. Исполнитель передаёт синхронное действие, возвращающее сериализованный ответ; всё действие, ключ и ответ фиксируются одной новой READ COMMITTED транзакцией на том же DataSource. Действие должно содержать только локальные операции БД и формирование ответа, без переключения потока и внешних вызовов.
+- Store использует INSERT ON CONFLICT DO NOTHING и SELECT FOR UPDATE; конкурентная очистка обрабатывается повторной попыткой захвата. TTL по умолчанию 24 часа с начала транзакции; до фактической очистки ответ продолжает возвращаться. Очистка раз в час, порциями до 1000, настройки через diary.idempotency.*.
+- Очистка удаляет только результаты из idempotency_keys; постоянная уникальность (user_id, idempotency_key) в diary_entries сохраняется. После очистки старый ответ не восстанавливается автоматически: обработку такой ситуации предстоит подключить на уровне операции дневника.
+- DiaryGrpcService и DiaryService остаются пустыми: gRPC-проверка обязательного ключа, авторизация, сериализация, отображение IdempotencyConflictException в gRPC-статус и вызов execute из AddEntry/DeleteMeal ещё не подключены. Само добавление/удаление дневника не входит в этот этап; T-051 целиком пока не завершена.
+- PASS: offline Gradle compileKotlin/compileTestKotlin; 7 новых интеграционных тестов и существующий DiaryEntryPersistenceTest — 8/8, 0 failures/errors, PostgreSQL 17 Testcontainers. Проверены миграции, повтор, конфликт тела, гонка 8 запросов, откат, разделение пользователя/RPC, TTL и пустой успешный ответ.
+- FAIL: общий ktlintCheck — ранее существовавшие исходники и generated protobuf; в новых файлах замечаний нет. Линтер и зависимости не менялись. git diff --check — без ошибок.
+- Рабочая PostgreSQL не изменялась. Полный запуск Spring, регистрация расписания в работающем приложении и сквозной gRPC-вызов не проверялись.
+
+### Первый этап T-051 — перехват и логирование (2026-11-15)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` подключён для разбора ktlint. Роль: `implementer`.
+- Создан `DiaryMutationLoggingInterceptor`: глобальная регистрация Spring gRPC, выбор только AddEntry/DeleteMeal по сгенерированным дескрипторам, логирование начала/наличия ключа и итогового статуса. Тела и значения ключей не логируются.
+- Это только логирование: вызовы проходят дальше без проверки обязательности ключа и без защиты от повторов. Store, таблица ключей, хэш, транзакционная координация и TTL пока не реализованы; DiaryGrpcService/DiaryService остаются без изменений.
+- Добавлены четыре теста in-process gRPC: AddEntry с metadata, DeleteMeal без ключа, чтение без логов мутаций, сохранение статуса ошибки.
+- PASS: compileKotlin, compileTestKotlin и четыре теста DiaryMutationLoggingInterceptorTest (0 failures/errors) через offline Gradle.
+- FAIL: общий ktlintCheck — существующие заглушки/форматирование, порядок импортов DiaryEntryPersistenceTest и generated protobuf Kotlin. Ошибка цепочки вызовов в новом тесте исправлена; существующие исходники и настройки линтера не изменены.
+- Полный запуск Spring, рабочая БД и механизмы повторов/TTL не проверялись.
+
+### Дополнение контракта Diary — T-050 (2026-11-15)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification` (проверка генерации и компиляции); роль: `implementer`.
+- Добавлены RPC `DeleteMeal` и `GetRange` с отдельными request/response; существующие RPC, сообщения и номера полей сохранены.
+- `DeleteMealRequest.entry_id` задаёт удаляемую запись; успешный ответ пустой. Ключ удаления передаётся через metadata `idempotency-key`, пользователь определяется авторизацией.
+- `GetRangeRequest`: `start_date` и `end_date` в формате YYYY-MM-DD, обе даты включительно в `time_zone`; ответ содержит список `DiaryEntryProto`. Эти правила должен соблюдать будущий серверный обработчик.
+- PASS: `./gradlew :backend:diary-service:generateProto :backend:diary-service:compileKotlin :backend:diary-service:compileJava --offline --console=plain` — BUILD SUCCESSFUL; `git diff --check` — без ошибок. Diff контракта содержит только добавления.
+- Buf отсутствует в PATH: `buf lint` и `buf breaking` не выполнены. Серверные обработчики и runtime не проверялись и не изменялись.
+
+### Доменные модели Diary (2026-11-14)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Готово: добавлены `DiaryEntry`, `NutritionSummary`, `Money`, `CostSnapshot`, `AddEntryCommand`, `DailyEntries` и enum `Currency.RUB` в domain/model.
+- Новые модели используют существующие typed IDs, деньги в целых копейках, `kotlin.time.Instant`, nullable-снимок неизвестной стоимости; без новых зависимостей, JPA/Protobuf-аннотаций и java-импортов.
+- PASS: `./gradlew :backend:diary-service:compileKotlin :backend:diary-service:test --tests dev.andre.nutritionist.diary.persistence.DiaryEntryPersistenceTest --offline --console=plain` — BUILD SUCCESSFUL. Новые модели скомпилированы, существующий тест хранения прошёл на временной PostgreSQL.
+- Добавлены только модели данных; валидация, расчёт итогов, мапперы и подключение моделей к сервису пока не реализованы.
+
+### Начальная миграция Diary (2026-11-14)
+
+- Активные Skills: `spring-grpc-service`, `testing-and-verification`; роль: `implementer`.
+- Готово: пустой XML удалён; создан `001-init-diary-table.yaml` с таблицей `diary_entries` по README, уникальным ключом повтора, CHECK стоимости, индексом пользователя/времени и rollback удаления таблицы.
+- Миграция подключена через master; `application.yml` уже настроен корректно. Outbox и обработчики не входят в эту задачу.
+- PASS: временный JUnit-тест через Gradle init-script и Testcontainers PostgreSQL 17 — BUILD SUCCESSFUL. Проверены Liquibase validate/update, повторный update без потери трёх записей (один changeset в DATABASECHANGELOG), уникальность, неизвестная/нулевая стоимость, CHECK отрицательной суммы и неполной/нулевой базы цены, индекс recorded_at DESC.
+- Исправлен временный тест: после ожидаемых SQL-ошибок включён autocommit. В проект постоянные тесты/зависимости не добавлялись; проверочные файлы находятся в `/private/tmp/fitassistant-diary-liquibase-check*`, отчёт — `backend/diary-service/build/reports/tests/test/`.
+- Рабочая БД и контейнеры проекта не изменялись; полный старт сервиса не проверялся. PostgreSQL использует named volume `postgres_data` по текущему Compose.
+
+### Gradle-генерация Diary (2026-11-14)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роль: `implementer`.
+- Готово: подключены Protobuf-плагин, protoc, Java/Kotlin messages, gRPC Java/Kotlin и runtime-зависимости через каталог версий. Android Studio Gradle Sync — успешно.
+- Источник: `proto/nutritionist/diary/v1/**`; вывод: `backend/diary-service/build/generated/sources/proto/`.
+- PASS: `./gradlew :backend:diary-service:generateProto :backend:diary-service:compileKotlin :backend:diary-service:compileJava :backend:diary-service:compileTestKotlin --offline --console=plain` — BUILD SUCCESSFUL. Kotlin/Java скомпилированы; тестовых исходников нет (`NO-SOURCE`).
+- Тесты и запуск сервиса не выполнялись; Buf по-прежнему отсутствует.
+
+### Контракт дневника (2026-11-14)
+
+- Активные Skills: `contracts-proto-and-avro`, `testing-and-verification`; роль: `implementer`.
+- Готово: `proto/nutritionist/diary/v1/diary.proto` заполнен по `backend/diary-service/README.md`.
+- Добавлены unary RPC `AddEntry`, `GetDailyEntries`, сообщения записи, КБЖУ и стоимости; исправлен outer class на `DiaryOuterClass`.
+- Сохранены поля и номера из проектной спецификации. Пользователь определяется авторизацией, ключ повтора передаётся в metadata `idempotency-key`; служебная outbox-таблица не публикуется в API.
+- PASS: локальный `protoc` проверил Diary и Profile совместно, создал descriptor set и Java/Kotlin-исходники во временных JAR `/private/tmp/fitassistant-diary-check*` (exit code 0). Это проверка генерации сообщений, не компиляция JVM-кода и не проверка gRPC-stubs.
+- `buf lint` / `buf breaking` не выполнены: Buf отсутствует в PATH. Пустой исходный Diary-файл не был рабочим wire-контрактом; совместимость автоматическим инструментом не подтверждена.
+- Сущности, миграции, обработчики и настройка генерации diary-service не реализовывались; runtime и БД не проверялись.
+
+### Генерация Profile и исправление зависимости (2026-11-13)
+
+- Активированы Skills: `diagnose-build-failure`, `contracts-proto-and-avro`.
+- Проверка с зависимостью `profile-service` от `:mobile:shared` остановилась на несовместимых Android-вариантах. По разрешению пользователя строка зависимости закомментирована.
+- Скачаны необходимые инструменты генерации через Gradle. Buf не найден в PATH; для Gradle-генерации он не требуется.
+- `./gradlew :backend:profile-service:generateProto :backend:profile-service:compileKotlin :backend:profile-service:compileTestKotlin --console=plain` — BUILD SUCCESSFUL.
+- Синхронизация Android Studio — `Sync finished successfully`.
+- Protobuf и gRPC классы сгенерированы в `backend/profile-service/build/generated/sources/proto/`. Основной и тестовый код скомпилированы; тесты и запуск сервиса не выполнялись.
+
 Обновлено: 2026-11-20
 
 ---

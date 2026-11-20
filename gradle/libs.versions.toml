@@ -32,6 +32,8 @@ grpc = "1.69.0"
 grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
+resilience4j = "2.3.0"
+wiremock = "3.13.1"
 uuid-creator = "6.1.1"
 
 grpc-java = "1.69.0"
@@ -92,6 +94,7 @@ androidx-security-crypto = { module = "androidx.security:security-crypto", versi
 appauth = { module = "net.openid:appauth", version.ref = "appauth" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "androidx-datastore" }
 grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "grpc" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
 grpc-protobuf-lite = { module = "io.grpc:grpc-protobuf-lite", version.ref = "grpc" }
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
@@ -109,6 +112,15 @@ postgresql-jdbc = { module = "org.postgresql:postgresql" }
 uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 
 spring-starter-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+spring-starter-jackson = { module = "org.springframework.boot:spring-boot-starter-jackson" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinx-coroutines" }
+micrometer-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
+resilience4j-circuitbreaker = { module = "io.github.resilience4j:resilience4j-circuitbreaker", version.ref = "resilience4j" }
+resilience4j-retry = { module = "io.github.resilience4j:resilience4j-retry", version.ref = "resilience4j" }
+resilience4j-timelimiter = { module = "io.github.resilience4j:resilience4j-timelimiter", version.ref = "resilience4j" }
+resilience4j-kotlin = { module = "io.github.resilience4j:resilience4j-kotlin", version.ref = "resilience4j" }
+resilience4j-micrometer = { module = "io.github.resilience4j:resilience4j-micrometer", version.ref = "resilience4j" }
+wiremock-standalone = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
 
 spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
 avro-runtime = { module = "org.apache.avro:avro", version.ref = "avro" }
