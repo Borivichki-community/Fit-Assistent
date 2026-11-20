@@ -13,6 +13,14 @@
 - PASS: ./gradlew :backend:diary-service:test --offline --console=plain — BUILD SUCCESSFUL, 7/7 тестов (6 новых gRPC/Spring/PostgreSQL + существующий JPA), 0 failures/errors/skipped. Проверены чтение Avro из BYTEA, traceparent, PENDING/partition_key, повтор, гонка 8 вызовов, конфликт payload/ID, откат при ошибке outbox и после обеих вставок, повтор после отката и валидация.
 - FAIL: общий ktlintCheck — прежние ID-модели, generated protobuf и порядок импортов DiaryEntryPersistenceTest; форматирование нового теста исправлено точечно. Проверки выполнялись только на временной PostgreSQL; рабочие данные, Kafka и Schema Registry не затрагивались. git diff --check — без ошибок. Коммиты и переключения веток не выполнялись.
 
+### T-058–T-065 — неделя меню Recipe AI (2026-11-21)
+
+- Реализовано в ветке KAN-76. Skills: `legacy-migration`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`. Роль: `implementer`.
+- Legacy-источник: AiService из ветки KAN-20, commit `7257a3f`. Перенесён сценарий генерации под бюджет. Catalog API взят из ветки T-048 с теми же сообщениями и RPC.
+- Добавлены GenerateWeekMenu, пересчёт калорий и стоимости по данным Catalog, Gemini LlmClient, корутинные Retry/CircuitBreaker/TimeLimiter, Redis-кэш, прогрев и атомарная квота. Для входного gRPC настроен доверенный канал mTLS от Envoy и Global Rate Limit. Ключ Gemini поступает из env/Secret.
+- PASS: Gradle `check` и `bootJar`, 7 тестов прошли. `buf lint` и `buf breaking` относительно develop прошли. Статическая проверка объединённого Docker Compose и `git diff --check` прошли.
+- BLOCKED: Redis Testcontainers пропущен из-за недоступного Docker Engine. Сквозной запуск с реальным Catalog, Gemini и Envoy не выполнялся. Текущей ветке для рабочего Catalog нужен сервер из T-048 или развёрнутый совместимый сервис.
+
 ### Упрощение типов и подключение Diary RPC (2026-11-15)
 
 - Активные Skills: `spring-grpc-service`, `testing-and-verification`; `diagnose-build-failure` использован для исправления тестового lifecycle и форматирования. Роль: `implementer`.
