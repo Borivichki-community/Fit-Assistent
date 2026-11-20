@@ -72,6 +72,9 @@ dependencies {
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.spring.starter.redis)
+    implementation(libs.resilience4j.spring.boot)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly(libs.postgresql.jdbc)
 
     implementation(libs.spring.kafka)

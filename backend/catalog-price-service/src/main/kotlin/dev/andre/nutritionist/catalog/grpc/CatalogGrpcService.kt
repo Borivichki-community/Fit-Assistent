@@ -10,6 +10,9 @@ import com.budgetntr.proto.catalog.v1.SearchProductsRequest
 import com.budgetntr.proto.catalog.v1.SearchProductsResponse
 import com.budgetntr.proto.catalog.v1.UpsertPriceRequest
 import com.budgetntr.proto.catalog.v1.UpsertPriceResponse
+import dev.andre.nutritionist.catalog.cache.CatalogCacheService
+import dev.andre.nutritionist.catalog.cache.model.CachedAveragePriceDto
+import dev.andre.nutritionist.catalog.cache.model.CachedProductDto
 import dev.andre.nutritionist.catalog.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.catalog.grpc.mapper.toProto
 import dev.andre.nutritionist.catalog.grpc.security.currentAuthContext
@@ -26,6 +29,7 @@ import java.util.UUID
 class CatalogGrpcService(
     private val catalogService: CatalogService,
     private val dispatchers: CoroutineDispatchers,
+    private val catalogCacheService: CatalogCacheService? = null,
 ) : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
     private val logger = LoggerFactory.getLogger(CatalogGrpcService::class.java)
 
@@ -54,11 +58,18 @@ class CatalogGrpcService(
 
         return withContext(dispatchers.io) {
             logger.info("getProduct called: productId={}, regionId={}", productId, regionId)
-            val product = catalogService.getProductWithPrices(productId)
-            GetProductResponse
-                .newBuilder()
-                .setProduct(product.toProto(regionId))
-                .build()
+            val cached = catalogCacheService?.getProduct(productId, regionId)
+            if (cached != null) {
+                GetProductResponse.newBuilder().setProduct(cached.toProto()).build()
+            } else {
+                val product = catalogService.getProductWithPrices(productId)
+                val proto = product.toProto(regionId)
+                catalogCacheService?.putProduct(productId, regionId, CachedProductDto.fromProto(proto))
+                GetProductResponse
+                    .newBuilder()
+                    .setProduct(proto)
+                    .build()
+            }
         }
     }
 
@@ -84,21 +95,34 @@ class CatalogGrpcService(
             }
 
         return withContext(dispatchers.io) {
-            val results = catalogService.getAveragePrices(productIds, regionId)
-            val items =
-                results.map {
-                    AveragePriceItem
-                        .newBuilder()
-                        .setProductId(it.productId.toString())
-                        .setAveragePrice(it.averagePrice.toDouble())
-                        .setCurrency(it.currency)
-                        .setRegionCount(it.regionCount)
-                        .build()
-                }
-            GetAveragePricesResponse
-                .newBuilder()
-                .addAllPrices(items)
-                .build()
+            val cached = catalogCacheService?.getAveragePrices(productIds, regionId)
+            if (cached != null) {
+                GetAveragePricesResponse
+                    .newBuilder()
+                    .addAllPrices(cached.map { it.toProto() })
+                    .build()
+            } else {
+                val results = catalogService.getAveragePrices(productIds, regionId)
+                val items =
+                    results.map {
+                        AveragePriceItem
+                            .newBuilder()
+                            .setProductId(it.productId.toString())
+                            .setAveragePrice(it.averagePrice.toDouble())
+                            .setCurrency(it.currency)
+                            .setRegionCount(it.regionCount)
+                            .build()
+                    }
+                catalogCacheService?.putAveragePrices(
+                    productIds,
+                    regionId,
+                    items.map { CachedAveragePriceDto.fromProto(it) },
+                )
+                GetAveragePricesResponse
+                    .newBuilder()
+                    .addAllPrices(items)
+                    .build()
+            }
         }
     }
 

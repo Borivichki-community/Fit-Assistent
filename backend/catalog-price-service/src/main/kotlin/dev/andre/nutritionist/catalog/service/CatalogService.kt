@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.catalog.service
 
+import dev.andre.nutritionist.catalog.cache.CatalogCacheService
 import dev.andre.nutritionist.catalog.persistence.entity.ProductEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionalPriceEntity
@@ -25,6 +26,7 @@ class CatalogService(
     private val productRepository: ProductJpaRepository,
     private val regionRepository: RegionJpaRepository,
     private val regionalPriceRepository: RegionalPriceJpaRepository,
+    private val catalogCacheService: CatalogCacheService? = null,
 ) {
     @Transactional(readOnly = true)
     fun searchProducts(
@@ -133,6 +135,8 @@ class CatalogService(
                     updatedAt = Instant.now(),
                 )
             }
-        return regionalPriceRepository.save(priceEntity)
+        val saved = regionalPriceRepository.save(priceEntity)
+        catalogCacheService?.evictProduct(productId)
+        return saved
     }
 }
