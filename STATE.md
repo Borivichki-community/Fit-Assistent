@@ -3,7 +3,16 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-15
+Обновлено: 2026-11-21
+
+### Android — ручная проверка сервисов (2026-11-21)
+
+- Skills: `android-compose-feature`, `testing-and-verification`, `contracts-proto-and-avro`. Роль: `implementer`. `diagnose-build-failure` использован для проверки отсутствующего в кеше AAPT2 и настройки Android-генерации Protobuf.
+- В debug APK добавлена отдельная иконка «Проверка сервисов FitAssistant». Profile: GetProfile и UpdateProfile с тестовыми данными. Diary: AddEntry, GetDailyEntries, GetRange, DeleteMeal. Catalog: SearchProducts. Recipe AI: поток GenerateWeekMenu через заданный тестовый HTTPS Envoy Gateway. Для четырёх gRPC-сервисов есть Health.Check, для Keycloak — discovery и проверка существующей сессии.
+- Локальные вызовы идут на 10.0.2.2; порты по умолчанию соответствуют Docker Compose и редактируются на экранах. Diary передаёт идентификатор текущей сессии напрямую на локальный порт, а повтор отправляет тот же payload и idempotency-key. Записаны два теста ожидаемого поведения повторов.
+- PASS: `assembleDebug` и `testDebugUnitTest --tests '*ServiceCheckUpdateTest'` прошли офлайн с AAPT2 из SDK и `--configure-on-demand`. Два теста проверили блокировку двойного запуска, сохранение запроса и ключей при повторах и запрет повторного добавления удалённой записи. В merged release manifest диагностическая Activity отсутствует. `git diff --check` для Android-изменений — без ошибок.
+- PASS: APK установлен на Android-эмулятор, открыты все пять экранов, подготовка тестовой записи сформировала UUID. Проверено отображение сетевых ошибок.
+- BLOCKED: gRPC Health и Keycloak discovery на локальных портах не получили ответа, слушающие процессы не обнаружены, Docker Engine недоступен. Сквозные бизнес-вызовы не подтверждены. Для SearchProducts требуется серверный gRPC-обработчик каталога; для GenerateWeekMenu — работающий тестовый HTTPS Envoy Gateway с маршрутом к Recipe AI.
 
 ### T-052 — атомарное сохранение записи и outbox (2026-11-15)
 
