@@ -1,0 +1,150 @@
+# infrastructure/k8s/infra/01-postgres.yaml
+# Развёртывание PostgreSQL 17 для сервисов FitAssistant (profile_db, catalog_db, diary_db, keycloak_db)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: fitassistant
+type: Opaque
+stringData:
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_DB: "profile_db"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb-config
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: fitassistant
+data:
+  01-init.sql: |
+    -- Создание дополнительных баз данных для микросервисов FitAssistant
+    SELECT 'CREATE DATABASE catalog_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'catalog_db')\gexec
+    SELECT 'CREATE DATABASE diary_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'diary_db')\gexec
+    SELECT 'CREATE DATABASE keycloak_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak_db')\gexec
+    GRANT ALL PRIVILEGES ON DATABASE catalog_db TO postgres;
+    GRANT ALL PRIVILEGES ON DATABASE diary_db TO postgres;
+    GRANT ALL PRIVILEGES ON DATABASE keycloak_db TO postgres;
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: budget-nutritionist
+  labels:
+    app: postgres
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: budget-nutritionist
+  labels:
+    app: postgres
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+        - name: initdb
+          configMap:
+            name: postgres-initdb-config

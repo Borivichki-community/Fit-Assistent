@@ -12,10 +12,12 @@ import dev.andre.nutritionist.android.auth.AuthUiStateMapper
 import dev.andre.nutritionist.android.auth.AuthUpdate
 import dev.andre.nutritionist.android.auth.AuthViewModel
 import dev.andre.nutritionist.android.auth.EncryptedPrefsAuthStorage
+import dev.andre.nutritionist.android.auth.AppAuthConnectionBuilder
 import dev.andre.nutritionist.android.auth.TokenExchanger
 import dev.andre.nutritionist.di.androidLocalDataModule
 import dev.andre.nutritionist.di.androidRemoteDataModule
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
+import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthorizationService
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.bind
@@ -23,7 +25,13 @@ import org.koin.dsl.module
 
 val authModule = module {
     single { AuthConfig() }
-    single { AuthorizationService(get()) }
+    single {
+        val appAuthConfig = AppAuthConfiguration.Builder()
+            .setConnectionBuilder(AppAuthConnectionBuilder)
+            .setSkipIssuerHttpsCheck(true)
+            .build()
+        AuthorizationService(get(), appAuthConfig)
+    }
     single<AuthStorage> { EncryptedPrefsAuthStorage(context = get(), dispatchers = get()) }
     single<TokenExchanger> { AppAuthTokenExchanger(authService = get()) }
     single<AuthIntentProvider> {
@@ -31,6 +39,7 @@ val authModule = module {
             authConfig = get(),
             authService = get(),
             dispatchers = get(),
+            connectionBuilder = AppAuthConnectionBuilder,
         )
     }
     single {

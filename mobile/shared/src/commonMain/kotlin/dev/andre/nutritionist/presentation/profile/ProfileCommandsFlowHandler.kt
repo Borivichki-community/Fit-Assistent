@@ -47,6 +47,16 @@ class ProfileCommandsFlowHandler(
                             emit(ProfileEvent.Internal.ProfileLoadFailed(error))
                         }
                 }.flowOn(dispatchers.io)
+                is ProfileCommand.UpdateProfile -> flow {
+                    profileRepository.updateProfile(command.profile)
+                        .onSuccess { updatedProfile ->
+                            emit(ProfileEvent.Internal.ProfileLoaded(updatedProfile))
+                        }
+                        .onFailure { error ->
+                            if (error is CancellationException) throw error
+                            emit(ProfileEvent.Internal.ProfileLoadFailed(error))
+                        }
+                }.flowOn(dispatchers.io)
             }
         }
 }

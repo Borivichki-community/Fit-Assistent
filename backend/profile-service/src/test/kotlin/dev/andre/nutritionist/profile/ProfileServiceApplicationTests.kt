@@ -43,6 +43,7 @@ import java.net.http.HttpResponse
         "management.health.readinessstate.enabled=true",
         "management.health.redis.enabled=false",
         "management.endpoints.web.exposure.include=health",
+        "outbox.enabled=false",
     ],
 )
 class ProfileServiceApplicationTests {

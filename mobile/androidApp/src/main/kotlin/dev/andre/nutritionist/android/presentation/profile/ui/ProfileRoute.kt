@@ -7,11 +7,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileNews
 import dev.andre.nutritionist.presentation.profile.ProfileViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Stateful Route экрана профиля.
@@ -20,16 +22,20 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun ProfileRoute(
     userId: UserId,
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
     onNavigateToEdit: (UserId) -> Unit = {},
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
     viewModel: ProfileViewModel = koinViewModel(),
-    modifier: Modifier = Modifier,
+    authRepository: AuthRepository = koinInject(),
 ) {
     val state by viewModel.profileState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val displayName = remember(authRepository) { authRepository.getUserDisplayName() }
 
-    LaunchedEffect(userId) {
-        viewModel.dispatch(ProfileEvent.Ui.LoadProfile(userId))
+    LaunchedEffect(userId, displayName) {
+        viewModel.dispatch(ProfileEvent.Ui.LoadProfile(userId = userId, displayName = displayName))
     }
 
     LaunchedEffect(Unit) {
@@ -37,6 +43,7 @@ fun ProfileRoute(
             when (news) {
                 is ProfileNews.NavigateToEdit -> onNavigateToEdit(news.userId)
                 is ProfileNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
+                ProfileNews.ProfileSaved -> Unit
             }
         }
     }
@@ -45,5 +52,7 @@ fun ProfileRoute(
         state = state,
         onEvent = viewModel::dispatch,
         modifier = modifier,
+        onLogoutClick = onLogoutClick,
+        isLoggingOut = isLoggingOut,
     )
 }

@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 fun RegistrationWizardRoute(
     onFinish: (OnboardingData) -> Unit,
     onNavigateBack: () -> Unit = {},
+    initialData: OnboardingData = OnboardingData(),
     modifier: Modifier = Modifier,
 ) {
     RegistrationWizardScreen(
         onFinish = onFinish,
+        initialData = initialData,
         modifier = modifier,
     )
 }

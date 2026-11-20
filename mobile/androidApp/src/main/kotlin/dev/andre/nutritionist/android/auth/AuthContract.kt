@@ -25,8 +25,12 @@ data class AuthState(
 sealed interface AuthEvent {
 
     sealed interface Ui : AuthEvent {
-        data object StartLogin : Ui
+        data class StartLogin(
+            val idpHint: String? = null,
+            val prompt: String? = null,
+        ) : Ui
         data class AuthResponseReceived(val intent: Intent) : Ui
+        data object AuthCancelled : Ui
         data object LogoutClicked : Ui
     }
 
@@ -42,7 +46,10 @@ sealed interface AuthEvent {
  * Асинхронные команды авторизации (сайд-эффекты).
  */
 sealed interface AuthCommand {
-    data object LaunchAuthTab : AuthCommand
+    data class LaunchAuthTab(
+        val idpHint: String? = null,
+        val prompt: String? = null,
+    ) : AuthCommand
     data class ProcessAuthResponse(val intent: Intent) : AuthCommand
     data object Logout : AuthCommand
 }
@@ -53,6 +60,7 @@ sealed interface AuthCommand {
 sealed interface AuthNews {
     data class LaunchAuthTab(val intent: Intent) : AuthNews
     data object NavigateToMain : AuthNews
+    data object NavigateToAuth : AuthNews
     data class ShowSnackbar(val message: String) : AuthNews
 }
 
