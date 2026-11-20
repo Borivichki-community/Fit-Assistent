@@ -29,9 +29,7 @@ class CatalogService(
     private val regionalPriceRepository: RegionalPriceJpaRepository,
 ) {
     @Transactional(readOnly = true)
-    fun searchProducts(
-        criteria: ProductSearchCriteria,
-    ): KeysetSearchResult<ProductEntity> = productRepository.searchProducts(criteria)
+    fun searchProducts(criteria: ProductSearchCriteria): KeysetSearchResult<ProductEntity> = productRepository.searchProducts(criteria)
 
     @Transactional(readOnly = true)
     fun findProductsByNutrition(

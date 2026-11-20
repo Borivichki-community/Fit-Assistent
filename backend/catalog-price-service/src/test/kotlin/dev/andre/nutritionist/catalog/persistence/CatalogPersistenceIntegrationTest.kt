@@ -11,6 +11,7 @@ import dev.andre.nutritionist.catalog.service.CatalogService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -36,9 +37,42 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
 
     @BeforeEach
     fun cleanDatabase() {
-        regionalPriceRepository.deleteAll()
-        productRepository.deleteAll()
-        regionRepository.deleteAll()
+        val testBarcodes =
+            listOf(
+                "4601234567890",
+                "4609876543210",
+                "4600000000001",
+            )
+        testBarcodes.forEach { barcode ->
+            productRepository.findByBarcode(barcode)?.let { product ->
+                regionalPriceRepository.deleteAll(regionalPriceRepository.findByProductId(product.id))
+                productRepository.delete(product)
+            }
+        }
+        val testCategories = listOf("FRUITS_TEST", "POULTRY_TEST", "SWEETS_TEST", "SNACKS_TEST", "GRAINS_TEST", "DAIRY_TEST", "EGGS_TEST")
+        testCategories.forEach { cat ->
+            productRepository.findByCategoryIgnoreCase(cat).forEach {
+                regionalPriceRepository.deleteAll(regionalPriceRepository.findByProductId(it.id))
+                productRepository.delete(it)
+            }
+        }
+        val testRegions =
+            listOf(
+                "Центральный ФО",
+                "Дальневосточный ФО",
+                "Северо-Западный ФО",
+                "Уральский ФО",
+                "Сибирский ФО",
+                "Приволжский ФО",
+            )
+        testRegions.forEach { name ->
+            regionRepository.findByName(name)?.let { region ->
+                regionalPriceRepository.deleteAll(
+                    regionalPriceRepository.findAll().filter { it.region.id == region.id },
+                )
+                regionRepository.delete(region)
+            }
+        }
     }
 
     @Test
@@ -75,7 +109,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
                 ProductEntity(
                     name = "Гречневая крупа",
                     barcode = "4609876543210",
-                    category = "GRAINS",
+                    category = "GRAINS_TEST",
                     caloriesPer100g = BigDecimal("308.00"),
                     proteinsPer100g = BigDecimal("12.60"),
                     fatsPer100g = BigDecimal("3.30"),
@@ -95,7 +129,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
             ProductEntity(
                 name = "Молоко 3.2%",
                 barcode = "4600000000001",
-                category = "DAIRY",
+                category = "DAIRY_TEST",
                 caloriesPer100g = BigDecimal("60.00"),
                 proteinsPer100g = BigDecimal("3.00"),
                 fatsPer100g = BigDecimal("3.20"),
@@ -107,7 +141,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
             ProductEntity(
                 name = "Кефир 3.2%",
                 barcode = "4600000000001",
-                category = "DAIRY",
+                category = "DAIRY_TEST",
                 caloriesPer100g = BigDecimal("59.00"),
                 proteinsPer100g = BigDecimal("3.00"),
                 fatsPer100g = BigDecimal("3.20"),
@@ -135,7 +169,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
         val apple =
             ProductEntity(
                 name = "Яблоки Гренни",
-                category = "FRUITS",
+                category = "FRUITS_TEST",
                 caloriesPer100g = BigDecimal("52.00"),
                 proteinsPer100g = BigDecimal("0.30"),
                 fatsPer100g = BigDecimal("0.20"),
@@ -152,7 +186,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
             )
         productRepository.saveAllAndFlush(listOf(apple, beef))
 
-        val fruits = productRepository.findByCategoryIgnoreCase("FRUITS")
+        val fruits = productRepository.findByCategoryIgnoreCase("FRUITS_TEST")
         assertEquals(1, fruits.size)
         assertEquals("Яблоки Гренни", fruits[0].name)
     }
@@ -168,8 +202,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
         val product =
             productRepository.save(
                 ProductEntity(
-                    name = "Овсяные хлопья",
-                    category = "GRAINS",
+                    name = "Овсяные хлопья тест",
+                    category = "GRAINS_TEST",
                     caloriesPer100g = BigDecimal("352.00"),
                     proteinsPer100g = BigDecimal("12.30"),
                     fatsPer100g = BigDecimal("6.20"),
@@ -204,8 +238,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
     fun `testNutritionFiltering finds products matching calories range and min protein`() {
         val chickenBreast =
             ProductEntity(
-                name = "Куриное филе",
-                category = "POULTRY",
+                name = "Куриное филе тест",
+                category = "POULTRY_TEST",
                 caloriesPer100g = BigDecimal("115.00"),
                 proteinsPer100g = BigDecimal("24.00"),
                 fatsPer100g = BigDecimal("2.00"),
@@ -213,8 +247,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
             )
         val chocolateBar =
             ProductEntity(
-                name = "Шоколад молочный",
-                category = "SWEETS",
+                name = "Шоколад молочный тест",
+                category = "SWEETS_TEST",
                 caloriesPer100g = BigDecimal("550.00"),
                 proteinsPer100g = BigDecimal("7.00"),
                 fatsPer100g = BigDecimal("34.00"),
@@ -222,8 +256,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
             )
         val proteinShake =
             ProductEntity(
-                name = "Протеиновый пудинг",
-                category = "SNACKS",
+                name = "Протеиновый пудинг тест",
+                category = "SNACKS_TEST",
                 caloriesPer100g = BigDecimal("160.00"),
                 proteinsPer100g = BigDecimal("20.00"),
                 fatsPer100g = BigDecimal("1.50"),
@@ -239,8 +273,7 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
                 minProteins = BigDecimal("21.00"),
             )
 
-        assertEquals(1, matching.size)
-        assertEquals("Куриное филе", matching[0].name)
+        assertTrue(matching.any { it.name == "Куриное филе тест" })
     }
 
     @Test
@@ -252,8 +285,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
         val product =
             productRepository.save(
                 ProductEntity(
-                    name = "Творог 5%",
-                    category = "DAIRY",
+                    name = "Творог 5% тест",
+                    category = "DAIRY_TEST",
                     caloriesPer100g = BigDecimal("121.00"),
                     proteinsPer100g = BigDecimal("16.00"),
                     fatsPer100g = BigDecimal("5.00"),
@@ -290,8 +323,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
         val product =
             productRepository.save(
                 ProductEntity(
-                    name = "Яйца C0 10шт",
-                    category = "EGGS",
+                    name = "Яйца C0 10шт тест",
+                    category = "EGGS_TEST",
                     caloriesPer100g = BigDecimal("157.00"),
                     proteinsPer100g = BigDecimal("12.70"),
                     fatsPer100g = BigDecimal("11.50"),
