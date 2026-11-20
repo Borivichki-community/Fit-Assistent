@@ -4,6 +4,9 @@ import dev.andre.nutritionist.profile.AbstractPostgresIntegrationTest
 import dev.andre.nutritionist.profile.domain.model.ActivityLevel
 import dev.andre.nutritionist.profile.domain.model.Gender
 import dev.andre.nutritionist.profile.domain.model.GoalType
+import dev.andre.nutritionist.profile.outbox.entity.OutboxMessageEntity
+import dev.andre.nutritionist.profile.outbox.model.OutboxStatus
+import dev.andre.nutritionist.profile.outbox.repository.OutboxJpaRepository
 import dev.andre.nutritionist.profile.persistence.entity.NutritionGoalEmbeddable
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
@@ -14,14 +17,24 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageRequest
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.util.UUID
 
 class ProfilePersistenceTests : AbstractPostgresIntegrationTest() {
-    @Autowired private lateinit var profileRepository: ProfileJpaRepository
+    @Autowired
+    private lateinit var profileRepository: ProfileJpaRepository
+
+    @Autowired
+    private lateinit var outboxRepository: OutboxJpaRepository
+
+    @Autowired
+    private lateinit var transactionTemplate: TransactionTemplate
 
     @BeforeEach
     fun setUp() {
+        outboxRepository.deleteAll()
         profileRepository.deleteAll()
     }
 
@@ -103,5 +116,47 @@ class ProfilePersistenceTests : AbstractPostgresIntegrationTest() {
         assertThrows<DataIntegrityViolationException> {
             profileRepository.saveAndFlush(profile2)
         }
+    }
+
+    @Test
+    fun `outbox messages table created and supports lock, update and failure transitions`() {
+        val outboxId = UUID.randomUUID()
+        val payload = "avro-binary-dummy-payload".toByteArray(Charsets.UTF_8)
+        val message =
+            OutboxMessageEntity(
+                id = outboxId,
+                aggregateType = "UserProfile",
+                aggregateId = "user_outbox_test",
+                topic = "user.registered",
+                payload = payload,
+                status = OutboxStatus.PENDING,
+            )
+        outboxRepository.saveAndFlush(message)
+
+        val pending =
+            transactionTemplate.execute {
+                outboxRepository.findByStatusWithLock(OutboxStatus.PENDING, PageRequest.of(0, 10))
+            }
+        assertNotNull(pending)
+        requireNotNull(pending)
+        assertEquals(1, pending.size)
+        assertEquals(outboxId, pending[0].id)
+        assertEquals("user_outbox_test", pending[0].aggregateId)
+        assertEquals(OutboxStatus.PENDING, pending[0].status)
+
+        outboxRepository.recordFailure(outboxId, maxAttempts = 2)
+        val afterFirstFailure = outboxRepository.findById(outboxId).orElseThrow()
+        assertEquals(1, afterFirstFailure.attempts)
+        assertEquals(OutboxStatus.PENDING, afterFirstFailure.status)
+
+        outboxRepository.recordFailure(outboxId, maxAttempts = 2)
+        val afterSecondFailure = outboxRepository.findById(outboxId).orElseThrow()
+        assertEquals(2, afterSecondFailure.attempts)
+        assertEquals(OutboxStatus.FAILED, afterSecondFailure.status)
+
+        outboxRepository.markPublished(outboxId)
+        val published = outboxRepository.findById(outboxId).orElseThrow()
+        assertEquals(OutboxStatus.PUBLISHED, published.status)
+        assertNotNull(published.publishedAt)
     }
 }

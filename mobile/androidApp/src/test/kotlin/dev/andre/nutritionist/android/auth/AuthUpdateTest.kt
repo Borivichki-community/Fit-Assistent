@@ -18,11 +18,31 @@ class AuthUpdateTest {
     fun `StartLogin transitions state to Loading and issues LaunchAuthTab command`() {
         val initialState = AuthState(content = AuthState.Content.Idle)
 
-        val next = update.update(initialState, AuthEvent.Ui.StartLogin)
+        val next = update.update(initialState, AuthEvent.Ui.StartLogin())
 
         assertEquals(AuthState.Content.Loading, next.state?.content)
-        assertEquals(listOf(AuthCommand.LaunchAuthTab), next.commands)
+        assertEquals(listOf(AuthCommand.LaunchAuthTab()), next.commands)
         assertTrue(next.news.isEmpty())
+    }
+
+    @Test
+    fun `StartLogin with google idpHint issues LaunchAuthTab with idpHint`() {
+        val initialState = AuthState(content = AuthState.Content.Idle)
+
+        val next = update.update(initialState, AuthEvent.Ui.StartLogin(idpHint = "google"))
+
+        assertEquals(AuthState.Content.Loading, next.state?.content)
+        assertEquals(listOf(AuthCommand.LaunchAuthTab(idpHint = "google")), next.commands)
+    }
+
+    @Test
+    fun `StartLogin with prompt create issues LaunchAuthTab with prompt create`() {
+        val initialState = AuthState(content = AuthState.Content.Idle)
+
+        val next = update.update(initialState, AuthEvent.Ui.StartLogin(prompt = "create"))
+
+        assertEquals(AuthState.Content.Loading, next.state?.content)
+        assertEquals(listOf(AuthCommand.LaunchAuthTab(prompt = "create")), next.commands)
     }
 
     @Test
@@ -69,10 +89,21 @@ class AuthUpdateTest {
     }
 
     @Test
-    fun `LoggedOut transitions state to Idle`() {
+    fun `LoggedOut transitions state to Idle and emits NavigateToAuth news`() {
         val initialState = AuthState(content = AuthState.Content.Loading)
 
         val next = update.update(initialState, AuthEvent.Internal.LoggedOut)
+
+        assertEquals(AuthState.Content.Idle, next.state?.content)
+        assertTrue(next.commands.isEmpty())
+        assertEquals(listOf(AuthNews.NavigateToAuth), next.news)
+    }
+
+    @Test
+    fun `AuthCancelled transitions state to Idle with no commands or news`() {
+        val initialState = AuthState(content = AuthState.Content.Loading)
+
+        val next = update.update(initialState, AuthEvent.Ui.AuthCancelled)
 
         assertEquals(AuthState.Content.Idle, next.state?.content)
         assertTrue(next.commands.isEmpty())

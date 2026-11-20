@@ -8,16 +8,16 @@ import dev.andre.nutritionist.profile.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toProto
 import dev.andre.nutritionist.profile.domain.model.UserId
-import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyServerInterceptor
-import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
+import dev.andre.nutritionist.profile.grpc.security.currentAuthContext
 import dev.andre.nutritionist.profile.grpc.validation.ProfileRequestValidator
 import dev.andre.nutritionist.profile.service.ProfileService
+import io.grpc.Status
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.grpc.server.service.GrpcService
 
-@GrpcService(interceptors = [GrpcExceptionInterceptor::class, IdempotencyServerInterceptor::class])
+@GrpcService
 class ProfileGrpcService(
     private val profileService: ProfileService,
     private val validator: ProfileRequestValidator,
@@ -27,6 +27,7 @@ class ProfileGrpcService(
 
     override suspend fun getProfile(request: GetProfileRequest): ProfileProto {
         validator.validate(request)
+        checkAccess(request.userId)
 
         return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
             logger.info("getProfile called: userId={}", request.userId)
@@ -42,6 +43,7 @@ class ProfileGrpcService(
 
     override suspend fun updateProfile(request: UpdateProfileRequest): ProfileProto {
         validator.validate(request)
+        checkAccess(request.userId)
 
         return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
             logger.info(
@@ -57,6 +59,32 @@ class ProfileGrpcService(
 
             logger.info("updateProfile completed successfully: id={}, userId={}", profile.id, profile.userId)
             profile.toProto()
+        }
+    }
+
+    /**
+     * Проверка прав доступа к профилю (T-021).
+     *
+     * Правило:
+     * 1. Неаутентифицированный пользователь получает [Status.UNAUTHENTICATED].
+     * 2. Администратор ([AuthContext.isAdmin]) имеет доступ к любому профилю.
+     * 3. Обычный пользователь имеет доступ строго к своему профилю ([targetUserId] == [auth.userId]).
+     *    Попытка доступа к чужому профилю немедленно отклоняется с [Status.PERMISSION_DENIED].
+     */
+    private fun checkAccess(targetUserId: String) {
+        val auth = currentAuthContext()
+        if (!auth.isAuthenticated || auth.userId.isNullOrBlank()) {
+            throw Status.UNAUTHENTICATED
+                .withDescription("Missing or invalid authentication credentials")
+                .asException()
+        }
+        if (auth.isAdmin) {
+            return
+        }
+        if (auth.userId != targetUserId) {
+            throw Status.PERMISSION_DENIED
+                .withDescription("Access denied: you can only access your own profile")
+                .asException()
         }
     }
 }
