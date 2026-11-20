@@ -229,6 +229,15 @@
 
 ### Выполнено
 
+- [x] **[T-045] Keyset-пагинация и индексированный поиск:**
+  - Реализован `ProductSearchCriteria` и `KeysetCursor` с Base64-кодированием курсора `(lastValue, lastId)`.
+  - Разработан `ProductSearchRepository` и `ProductSearchRepositoryImpl` на JPA Criteria API без использования `OFFSET`, с динамической фильтрацией по query (триграммный индекс `idx_products_name_trgm`), category (`idx_products_category`), диапазонам калорий и белков (`idx_products_calories_proteins`), сортировками по имени, калориям и белкам.
+  - Настроен `ProductEntity` с `@BatchSize(size = 50)` для предотвращения N+1 при выборке связанных сущностей цен.
+  - Метод `searchProducts` в `CatalogGrpcService` и `CatalogService` полностью интегрирован с keyset-пагинацией.
+  - Разработан интеграционный бенчмарк-тест `ProductSearchBenchmarkIntegrationTest` на 10 000 записей (наполнение batch insert'ом, верификация последовательных непересекающихся страниц, стабильность курсора при параллельных вставках перед курсором, `EXPLAIN ANALYZE` подтверждающий выборку по индексам `idx_products_name` и `idx_products_category`).
+  - Все 21 тест модуля зеленые, `ktlintCheck` пройден без замечаний.
+  - Коммит: `feat(catalog): T-045 implement keyset pagination and indexed search with benchmark`.
+
 - [x] **[T-044] Protobuf-контракты и базовая реализация gRPC-сервиса:**
   - Создан gRPC-контракт `proto/nutritionist/catalog/v1/catalog.proto` (`SearchProducts`, `GetProduct`, `GetAveragePrices`, `UpsertPrice`, сообщения `NutritionFacts`, `ProductItem`, `RegionalPriceItem`, `AveragePriceItem`, пагинация `page_size`/`page_token`).
   - Обновлен `proto/buf.gen.yaml` с правилом для `CatalogOuterClass`.

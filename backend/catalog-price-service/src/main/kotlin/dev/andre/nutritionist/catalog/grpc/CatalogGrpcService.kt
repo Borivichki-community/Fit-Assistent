@@ -169,24 +169,26 @@ class CatalogGrpcService(
                 null
             }
 
-        return withContext(dispatchers.io) {
-            val products =
-                if (request.category.isNotBlank()) {
-                    catalogService.findProductsByCategory(request.category)
-                } else if (request.hasMinCalories() && request.hasMaxCalories() && request.hasMinProteins()) {
-                    catalogService.findProductsByNutrition(
-                        minCalories = BigDecimal.valueOf(request.minCalories),
-                        maxCalories = BigDecimal.valueOf(request.maxCalories),
-                        minProteins = BigDecimal.valueOf(request.minProteins),
-                    )
-                } else {
-                    emptyList()
-                }
+        val criteria =
+            dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria(
+                query = request.query.takeIf { it.isNotBlank() },
+                category = request.category.takeIf { it.isNotBlank() },
+                minCalories = if (request.hasMinCalories()) BigDecimal.valueOf(request.minCalories) else null,
+                maxCalories = if (request.hasMaxCalories()) BigDecimal.valueOf(request.maxCalories) else null,
+                minProteins = if (request.hasMinProteins()) BigDecimal.valueOf(request.minProteins) else null,
+                maxProteins = if (request.hasMaxProteins()) BigDecimal.valueOf(request.maxProteins) else null,
+                pageSize = if (request.pageSize > 0) request.pageSize else 20,
+                pageToken = request.pageToken.takeIf { it.isNotBlank() },
+                sortBy = if (request.hasSortBy() && request.sortBy.isNotBlank()) request.sortBy else "name",
+            )
 
-            val items = products.map { it.toProto(regionId) }
+        return withContext(dispatchers.io) {
+            val result = catalogService.searchProducts(criteria)
+            val items = result.items.map { it.toProto(regionId) }
             SearchProductsResponse
                 .newBuilder()
                 .addAllProducts(items)
+                .setNextPageToken(result.nextPageToken)
                 .build()
         }
     }

@@ -27,6 +27,11 @@ class CatalogService(
     private val regionalPriceRepository: RegionalPriceJpaRepository,
 ) {
     @Transactional(readOnly = true)
+    fun searchProducts(
+        criteria: dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria,
+    ): dev.andre.nutritionist.catalog.persistence.repository.KeysetSearchResult<ProductEntity> = productRepository.searchProducts(criteria)
+
+    @Transactional(readOnly = true)
     fun findProductsByNutrition(
         minCalories: BigDecimal,
         maxCalories: BigDecimal,
