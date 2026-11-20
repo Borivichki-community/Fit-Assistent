@@ -65,6 +65,8 @@ message SearchProductsRequest {
   optional string region_id = 6;
   int32 page_size = 7;
   string page_token = 8;
+  optional double max_proteins = 9;
+  optional string sort_by = 10;
 }
 
 // Ответ со списком найденных продуктов и токеном следующей страницы.
