@@ -56,10 +56,10 @@ fun LoginRoute(
     LoginScreen(
         state = state,
         onLoginClick = {
-            viewModel.dispatch(AuthEvent.Ui.StartLogin())
+            viewModel.dispatch(AuthEvent.Ui.StartLogin(prompt = "login"))
         },
         onGoogleClick = {
-            viewModel.dispatch(AuthEvent.Ui.StartLogin(idpHint = "google"))
+            viewModel.dispatch(AuthEvent.Ui.StartLogin(idpHint = "google", prompt = "login"))
         },
         onCreateAccountClick = onNavigateToSignUp,
         modifier = modifier,

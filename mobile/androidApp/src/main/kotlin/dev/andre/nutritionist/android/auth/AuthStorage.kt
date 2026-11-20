@@ -5,6 +5,7 @@ package dev.andre.nutritionist.android.auth
  * Позволяет изолировать доменную логику и тесты от системного Android Keystore с помощью Fakes.
  */
 interface AuthStorage {
+    fun getAuthStateJsonSync(): String?
     suspend fun getAuthStateJson(): String?
     suspend fun saveAuthStateJson(json: String)
     suspend fun clear()

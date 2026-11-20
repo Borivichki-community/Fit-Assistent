@@ -49,14 +49,18 @@ class AppAuthIntentProvider(
             .setScope(authConfig.scope)
             .setCodeVerifier(codeVerifier)
 
-        if (!prompt.isNullOrBlank()) {
-            requestBuilder.setPrompt(prompt)
-        }
-
         val additionalParams = mutableMapOf<String, String>()
         if (!idpHint.isNullOrBlank()) {
             additionalParams["kc_idp_hint"] = idpHint
         }
+
+        if (prompt == "create") {
+            additionalParams["kc_action"] = "register"
+            requestBuilder.setPrompt("login")
+        } else if (!prompt.isNullOrBlank()) {
+            requestBuilder.setPrompt(prompt)
+        }
+
         if (additionalParams.isNotEmpty()) {
             requestBuilder.setAdditionalParameters(additionalParams)
         }

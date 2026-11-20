@@ -5,6 +5,8 @@
     <string name="loading_content_description">Loading data…</string>
     <string name="retry_button">Retry</string>
     <string name="error_default_message">An error occurred while loading data</string>
+    <string name="profile_not_found_message">User profile not found. Please set up your body parameters and nutrition goals.</string>
+    <string name="profile_create_button">Set up profile</string>
 
     <!-- Navigation -->
     <string name="nav_dashboard">Dashboard</string>
@@ -34,6 +36,12 @@
     <string name="btn_ai_generate">✦ Generate with AI</string>
     <string name="btn_create_plan">Create Plan</string>
 
+    <!-- Complete Profile Banner -->
+    <string name="banner_complete_profile_title">Complete your profile</string>
+    <string name="banner_complete_profile_subtitle">Specify height, weight and nutrition goals for accurate meal planning</string>
+    <string name="banner_complete_profile_button">Set up profile</string>
+    <string name="profile_fill_survey_again">Fill profile again</string>
+
     <!-- Profile Screen -->
     <string name="profile_title">Profile</string>
     <string name="profile_edit_button">Edit Profile</string>
@@ -43,10 +51,12 @@
     <string name="content_avatar">User avatar</string>
     <string name="profile_default_user_name">John</string>
     <string name="profile_label_weight">Weight</string>
+    <string name="profile_label_height">Height</string>
     <string name="profile_label_activity">Activity</string>
     <string name="profile_label_goal">Goal</string>
     <string name="profile_label_budget">Budget</string>
     <string name="profile_default_weight">70 kg</string>
+    <string name="profile_default_height">170 cm</string>
     <string name="profile_default_activity">Light activity</string>
     <string name="profile_default_goal">Weight loss</string>
     <string name="profile_default_budget">500 ₽</string>
@@ -80,12 +90,12 @@
     <string name="onboarding_first_name_hint">First name</string>
     <string name="onboarding_last_name_hint">Last name</string>
     <string name="onboarding_title_about_format">%1$s, tell us about yourself</string>
-    <string name="onboarding_label_height">Your height</string>
-    <string name="onboarding_hint_height">Height (cm)</string>
-    <string name="onboarding_label_weight">Your weight</string>
-    <string name="onboarding_hint_weight">Weight (kg)</string>
-    <string name="onboarding_label_age">Your age</string>
-    <string name="onboarding_hint_age">Age (years)</string>
+    <string name="onboarding_label_height">Your height (cm)</string>
+    <string name="onboarding_hint_height">Height in cm, e.g. 175</string>
+    <string name="onboarding_label_weight">Your weight (kg)</string>
+    <string name="onboarding_hint_weight">Weight in kg, e.g. 70</string>
+    <string name="onboarding_label_age">Your age (years)</string>
+    <string name="onboarding_hint_age">Age in years, e.g. 25</string>
     <string name="onboarding_gender_male">Male</string>
     <string name="onboarding_gender_female">Female</string>
     <string name="onboarding_title_activity_format">%1$s, what is your activity level?</string>
@@ -141,4 +151,41 @@
     <!-- Splash Screen -->
     <string name="splash_logo_title">fit-assistent</string>
     <string name="splash_greeting">Здравствуйте!</string>
+
+    <!-- Profile Edit Dialogs -->
+    <string name="dialog_edit_weight_title">Edit Weight</string>
+    <string name="dialog_edit_activity_title">Activity Level</string>
+    <string name="dialog_edit_goal_title">Nutrition Goal</string>
+    <string name="dialog_edit_budget_title">Weekly Budget</string>
+    <string name="common_save">Save</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="validation_invalid_weight">Weight must be between 20 and 300 kg</string>
+    <string name="validation_invalid_budget">Budget must be greater than 0</string>
+    <string name="activity_sedentary_desc">Sedentary (little to no exercise)</string>
+    <string name="activity_light_desc">Light activity (1–3 days a week)</string>
+    <string name="activity_moderate_desc">Moderate activity (3–5 days a week)</string>
+    <string name="activity_very_active_desc">High activity (6–7 days a week)</string>
+    <string name="goal_lose_desc">Weight loss</string>
+    <string name="goal_maintain_desc">Maintain shape</string>
+    <string name="goal_gain_desc">Muscle gain</string>
+
+    <!-- Dashboard & Meals -->
+    <string name="dashboard_today">Today</string>
+    <string name="meal_breakfast">Breakfast</string>
+    <string name="meal_lunch">Lunch</string>
+    <string name="meal_dinner">Dinner</string>
+    <string name="meal_snack">Snack/Other</string>
+    <string name="macro_fats">Fats</string>
+    <string name="macro_carbs">Carbs</string>
+    <string name="macro_proteins">Protein</string>
+    <string name="macro_goal_percent">Goal</string>
+    <string name="macro_calories">Calories</string>
+    <string name="streak_format">Logging streak: %1$d d.</string>
+    <string name="streak_full_format">Logging streak for %1$d day</string>
+    <string name="btn_add_exercise_sleep">+ Add Exercise/Sleep</string>
+    <string name="btn_quick_camera">+ Camera</string>
+    <string name="btn_quick_save_food">+ Save Food</string>
+    <string name="btn_quick_copy">Copy</string>
+    <string name="dashboard_empty_meal">Empty</string>
+    <string name="portion_format">%1$d serving</string>
 </resources>

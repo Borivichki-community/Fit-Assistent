@@ -7,7 +7,6 @@ import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
-import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -32,7 +31,7 @@ class ProfileUpdateTest {
             targetWeightKg = 70.0,
         ),
         weeklyBudget = 5000.0,
-        updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+        updatedAt = kotlin.time.Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
 
     @Test
@@ -144,4 +143,105 @@ class ProfileUpdateTest {
         assertEquals(emptyList(), next.commands)
         assertEquals(emptyList(), next.news)
     }
+
+    @Test
+    fun `SaveOnboardingProfile event produces UpdateProfile command and sets Loading state with isSaving true`() {
+        val initialState = ProfileState()
+        val onboardingData = dev.andre.nutritionist.domain.model.OnboardingData(
+            firstName = "Aleksey",
+            lastName = "Codintsev",
+            heightCm = "180",
+            weightKg = "80.0",
+            age = "25",
+        )
+
+        val next = update.update(initialState, ProfileEvent.Ui.SaveOnboardingProfile(onboardingData, testUserId))
+
+        assertIs<ProfileState.Content.Loading>(next.state?.content)
+        assertEquals(testUserId, next.state?.currentUserId)
+        assertEquals(true, next.state?.isSaving)
+        assertEquals("Aleksey Codintsev", next.state?.displayName)
+        assertEquals("25", next.state?.age)
+        assertEquals(1, next.commands.size)
+        assertIs<ProfileCommand.UpdateProfile>(next.commands.first())
+    }
+
+    @Test
+    fun `ProfileLoaded event when isSaving true produces ProfileSaved news`() {
+        val savingState = ProfileState(
+            content = ProfileState.Content.Loading,
+            currentUserId = testUserId,
+            isSaving = true,
+            displayName = "Aleksey",
+        )
+
+        val next = update.update(savingState, ProfileEvent.Internal.ProfileLoaded(testProfile))
+
+        assertIs<ProfileState.Content.Success>(next.state?.content)
+        assertEquals(false, next.state?.isSaving)
+        assertEquals("Aleksey", (next.state?.content as ProfileState.Content.Success).displayName)
+        assertEquals(listOf(ProfileNews.ProfileSaved), next.news)
+    }
+
+    @Test
+    fun `UpdateProfile event produces UpdateProfile command and sets Loading state`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+
+        val next = update.update(state, ProfileEvent.Ui.UpdateProfile(testProfile))
+
+        assertIs<ProfileState.Content.Loading>(next.state?.content)
+        assertEquals(true, next.state?.isSaving)
+        assertEquals(listOf(ProfileCommand.UpdateProfile(testProfile)), next.commands)
+    }
+
+    @Test
+    fun `ChangeWeight event produces UpdateProfile command with mutated weightKg and sets isSaving true`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+
+        val next = update.update(state, ProfileEvent.Ui.ChangeWeight(80.5))
+
+        assertEquals(true, next.state?.isSaving)
+        assertEquals(1, next.commands.size)
+        val command = next.commands.first() as ProfileCommand.UpdateProfile
+        assertEquals(80.5, command.profile.weightKg)
+        assertEquals(testProfile.activityLevel, command.profile.activityLevel)
+    }
+
+    @Test
+    fun `ChangeActivity event produces UpdateProfile command with mutated activityLevel and sets isSaving true`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+
+        val next = update.update(state, ProfileEvent.Ui.ChangeActivity(ActivityLevel.VERY_ACTIVE))
+
+        assertEquals(true, next.state?.isSaving)
+        assertEquals(1, next.commands.size)
+        val command = next.commands.first() as ProfileCommand.UpdateProfile
+        assertEquals(ActivityLevel.VERY_ACTIVE, command.profile.activityLevel)
+        assertEquals(testProfile.weightKg, command.profile.weightKg)
+    }
+
+    @Test
+    fun `ChangeGoal event produces UpdateProfile command with mutated goalType and sets isSaving true`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+
+        val next = update.update(state, ProfileEvent.Ui.ChangeGoal(GoalType.GAIN_WEIGHT))
+
+        assertEquals(true, next.state?.isSaving)
+        assertEquals(1, next.commands.size)
+        val command = next.commands.first() as ProfileCommand.UpdateProfile
+        assertEquals(GoalType.GAIN_WEIGHT, command.profile.goalType)
+    }
+
+    @Test
+    fun `ChangeBudget event produces UpdateProfile command with mutated weeklyBudget and sets isSaving true`() {
+        val state = ProfileState(content = ProfileState.Content.Success(testProfile))
+
+        val next = update.update(state, ProfileEvent.Ui.ChangeBudget(7500.0))
+
+        assertEquals(true, next.state?.isSaving)
+        assertEquals(1, next.commands.size)
+        val command = next.commands.first() as ProfileCommand.UpdateProfile
+        assertEquals(7500.0, command.profile.weeklyBudget)
+    }
 }
+
