@@ -92,3 +92,34 @@ releases:
                 CREATE DATABASE catalog_db;
                 CREATE DATABASE diary_db;
                 CREATE DATABASE keycloak_db;
+
+  # ── 5. Catalog Price Service (Микросервис каталога и региональных цен) ─────
+  - name: catalog-price-service
+    namespace: budget-nutritionist
+    chart: ../apps/catalog-price-service
+    installed: false # Манифесты развёртываются через apps/catalog-price-service/
+
+  # ── 6. Profile Service (Микросервис профилей пользователей) ────────────────
+  - name: profile-service
+    namespace: budget-nutritionist
+    chart: ../apps/profile-service
+    installed: false # Манифесты развёртываются через apps/profile-service/
+
+  # ── 7. Diary Service (Микросервис дневника питания) ────────────────────────
+  - name: diary-service
+    namespace: budget-nutritionist
+    chart: ../apps/diary-service
+    installed: false # Манифесты развёртываются через apps/diary-service/
+
+  # ── 8. Recipe AI Service (Генерация рецептов и рекомендаций) ───────────────
+  - name: recipe-ai-service
+    namespace: budget-nutritionist
+    chart: ../apps/recipe-ai-service
+    installed: false # Манифесты развёртываются через apps/recipe-ai-service/
+
+  # ── 9. Food CV Service (Распознавание блюд по фото) ────────────────────────
+  - name: food-cv-service
+    namespace: budget-nutritionist
+    chart: ../apps/food-cv-service
+    installed: false # Манифесты развёртываются через apps/food-cv-service/
+

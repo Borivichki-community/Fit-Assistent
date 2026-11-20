@@ -94,13 +94,13 @@ else
     echo "    Realm FitAssistant уже существует."
 fi
 
-# 7. Применение сетевого периметра и profile-service
-echo "--> [5/7] Применение сетевого периметра и profile-service..."
+# 7. Применение сетевого периметра и микросервисов
+echo "--> [5/7] Применение сетевого периметра и микросервисов (profile-service, catalog-price-service)..."
 kubectl apply -f "${K8S_DIR}/gateway/01-gateway-class.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/02-tls-secret.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/02-gateway.yaml"
-kubectl apply -f "${K8S_DIR}/gateway/03-profile-service.yaml"
-kubectl apply -f "${K8S_DIR}/gateway/04-profile-grpc-route.yaml"
+kubectl apply -f "${K8S_DIR}/apps/profile-service/"
+kubectl apply -f "${K8S_DIR}/apps/catalog-price-service/"
 kubectl apply -f "${K8S_DIR}/gateway/05-security-policy.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/06-backend-traffic-policy.yaml"
 
