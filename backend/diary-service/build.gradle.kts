@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.spring.starter.liquibase)
     runtimeOnly(libs.postgresql.jdbc)
 
+    implementation(project(":shared:contracts"))
     implementation(libs.spring.kafka)
     implementation(libs.avro.runtime)
     implementation(libs.confluent.avro.serializer) {

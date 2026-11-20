@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-diary-outbox
+      author: team
+      dbms: postgresql
+      changes:
+        - createTable:
+            tableName: outbox_messages
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_outbox_messages
+                    nullable: false
+              - column:
+                  name: aggregate_type
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: aggregate_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: partition_key
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: BYTEA
+                  constraints:
+                    nullable: false
+              - column:
+                  name: traceparent
+                  type: VARCHAR(256)
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempts
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_at
+                  type: TIMESTAMPTZ
+        - addUniqueConstraint:
+            tableName: outbox_messages
+            columnNames: aggregate_type, aggregate_id, topic
+            constraintName: uq_outbox_diary_event
+        - createIndex:
+            tableName: outbox_messages
+            indexName: idx_outbox_pending
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: created_at
+      rollback:
+        - dropTable:
+            tableName: outbox_messages
