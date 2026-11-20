@@ -49,7 +49,7 @@ import dev.andre.nutritionist.diary.domain.model.NutritionSummary as DomainNutri
 @SpringBootTest(
     classes = [DiaryApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    properties = ["spring.grpc.server.port=0"],
+    properties = ["spring.grpc.server.port=0", "diary.outbox.enabled=false"],
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DirtiesContext

@@ -21,6 +21,8 @@ class DiaryOutboxRepository(
         entry: DiaryEntry,
         traceparent: String?,
     ) {
+        val userKey = UUID.fromString(entry.userId.raw).toString()
+        jdbc.queryForList("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", "diary.entry.created:$userKey")
         val event =
             CaloriesConsumedEvent
                 .newBuilder()
@@ -45,7 +47,7 @@ class DiaryOutboxRepository(
             """.trimIndent(),
             UUID.randomUUID(),
             entry.id.raw.toString(),
-            entry.userId.raw,
+            userKey,
             payload,
             traceparent,
         )

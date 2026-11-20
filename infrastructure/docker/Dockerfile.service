@@ -12,6 +12,8 @@ COPY gradle/ gradle/
 COPY proto/ proto/
 COPY shared/ shared/
 COPY backend/ backend/
+COPY shared/contracts/ shared/contracts/
+COPY proto/ proto/
 
 RUN chmod +x gradlew
 

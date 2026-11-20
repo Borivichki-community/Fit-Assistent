@@ -3,7 +3,41 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-15
+Обновлено: 2026-11-16
+
+### T-053 — оформление коммитов после восстановления файла
+
+- По поручению пользователя изменения разделены на четыре коммита: общий outbox; интеграция Diary и тесты; Docker; документация.
+- Первый коммит Avro сохранён: 4aa9ff8. Потерянный backend/outbox/build.gradle.kts восстановлен пользователем из 38189db после конфликта инструмента IDE. Остальные изменения T-053 сохранились.
+- PASS после восстановления: :backend:diary-service:compileKotlin и :backend:outbox:ktlintCheck (offline); состав индекса и git diff --cached --check проверены перед каждым коммитом.
+- Созданы 91dcf11 (общий outbox), da45026 (Diary и тесты), a28325d (Docker). README, архитектурное описание и этот журнал включены в заключительный коммит документации. Сообщения на русском без служебных префиксов. Push не выполнялся.
+
+### T-053 — реализация завершена: автоматическая доставка и порядок
+
+- Активны spring-grpc-service и testing-and-verification; роль implementer. Поручено завершить всю T-053.
+- План: общий JDBC store/processor, session advisory lock одного отправителя, sequence и сериализация append одного пользователя, канонический UUID key, ACK/PUBLISHED и retry/backoff/FAILED, интеграционные проверки, Docker и документация.
+- Существующие принятые изменения сохраняются; shared/contracts/build.gradle.kts не переписывается. Проверки используют временные контейнеры.
+- Созданы общий JDBC store/processor/settings, Diary scheduler и миграция 005; append использует transaction advisory lock пользователя и канонический UUID key. PASS: compileKotlin и расширенный набор Diary с Kafka/Schema Registry outage, ACK/replay, конкурентными appends и обработчиками.
+- Усилен случай потери DB-соединения: стабильный transactional.id с suffix cache=1, reset producer под advisory lock и Kafka fencing; потребители read_committed. По независимому ревью добавлен verifyOwnership callback внутри Kafka-транзакции после init/begin до send: исходное соединение и точный advisory lock проверяются через pg_locks. Тест задержки старого владельца до Kafka init и takeover PASS; замечание P1 закрыто ревьюером.
+- PASS: все 24 Diary теста (17 publishing + 6 T-052 + 1 JPA), 0 failures/errors/skipped; bootJar. Проверены миграция существующего backlog 004→005, FIFO, canonical key, traceparent, scheduler, реальные Kafka/Schema Registry outages, ACK gate, конкуренция обработчиков/appends, backoff/FAILED/manual retry, повтор после ACK/DB failure и takeover/fencing. Финальное форматирование нового кода завершено: общий outbox ktlint PASS, в изменённых Diary-файлах нарушений нет. Общий Diary lint остаётся FAIL на прежних ID/JPA/generated файлах.
+- BLOCKED (проверка среды): полная Docker-сборка из исходников дошла до Gradle, но Maven Central и Google Maven не ответили при загрузке зависимостей (repo.maven.apache.org:443 и dl.google.com:443 failed to respond). Зависимости/репозитории не менялись ради обхода. COPY backend/shared/contracts/proto и передача контекста выполнены успешно; сборка исходников внутри Docker требует доступных репозиториев.
+- PASS: runtime-образ fitassistant/diary-service:t053-runtime-check собран из локального проверенного bootJar без Gradle/network. Временный Dockerfile находится в игнорируемом backend/diary-service/build/t053-runtime/. Проверен запуск образа с отдельной временной PostgreSQL 17: Started DiaryApplicationKt, gRPC 9093, UID 10001, миграция 005 подтверждена запросом databasechangelog. Эта проверка не подменяет полную Docker-сборку из исходников; Kafka-доставка отдельно подтверждена 24 интеграционными тестами.
+- Временные runtime-контейнеры приложения/PostgreSQL, их анонимные volumes и отдельная сеть удалены. Рабочие данные не затрагивались. Независимое ревью после исправления гонки владения — без блокирующих замечаний. Коммитов/push нет.
+- T-053 реализована целиком; незавершённых исходников по задаче нет. Эксплуатационные условия: общий transaction-id-prefix всем репликам одной очереди и отдельный для независимых очередей; потребители read_committed; неизменное число партиций; при первом обновлении остановить старые writers на время миграции. Гарантия at least once, дедупликация потребителем по (userId, mealId).
+
+### T-053 — этап 1 завершён: общий контракт и Kafka-публикатор
+
+- Skills: spring-grpc-service, testing-and-verification; diagnose-build-failure для сбоев проверок. Роль implementer, независимое read-only ревью test-reviewer завершено без оставшихся блокирующих замечаний.
+- Реализованы пункты 1–4 раздела «Логика и смысл»: общий JVM-модуль :backend:outbox с OutboxMessage/OutboxMessageId и OutboxPublisher, Diary-публикатор и явная конфигурация producer. Сохранение T-052 и Avro-схема не изменены.
+- Публикатор восстанавливает CaloriesConsumedEvent из сохранённого бинарного Avro; KafkaAvroSerializer добавляет Confluent-обрамление/schema ID вне транзакции БД. Topic diary.entry.created, key — сохранённый partition_key, traceparent — сохранённый входящий заголовок. В producer включены acks=all и enable.idempotence=true.
+- Вызов внутри DB-транзакции, неправильный topic/user key, обрезанный payload и лишние байты отклоняются до отправки. UUID сравниваются по значению: uppercase UUID допустим, исходный partition_key при отправке сохраняется.
+- Публикация вызывается явно; даже после успешного future строка остаётся PENDING, статусом будет управлять следующий этап. Автоматического запуска нет. T-053 целиком не закрыта.
+- PASS: compileKotlin; финальный полный :backend:diary-service:test — 12/12, 0 failures/errors/skipped (5 новых Kafka-тестов, 6 T-052 и 1 JPA). Проверены реальный RPC, идемпотентный повтор, чтение specific Avro из Kafka, user key/traceparent, отсутствие заголовка, сохранённый снимок после удаления meal, uppercase UUID и отказы до отправки.
+- PASS: :backend:outbox:ktlintCheck, форматирование новых Diary-файлов (нет замечаний в свежих отчётах ktlint), Android Studio Gradle Sync, IDE inspections без ошибок, git diff --check.
+- FAIL: общий :backend:diary-service:ktlintCheck — прежние четыре ID-модели, порядок импортов DiaryEntryPersistenceTest и generated protobuf. Линтеры и старые файлы не менялись.
+- Диагностика: Testcontainers отклонил tag@digest при проверке совместимости образа; исправлено на digest-only того же образа из Compose. Отдельный запуск Diary lint также падал в :shared:contracts:processResources с ConcurrentModificationException при разрешении SourceDirectorySet; полный запуск test затем lint проходит этот шаг. Пользовательский shared/contracts/build.gradle.kts не менялся. Финальная команда: ./gradlew -PbackendOnly=true :backend:diary-service:test :backend:outbox:ktlintCheck :backend:diary-service:ktlintCheck --continue --offline --console=plain --no-daemon --max-workers=1; exit 1 только из-за прежних lint-нарушений.
+- Проверки выполнялись на временных PostgreSQL/Kafka/Schema Registry; рабочие данные и внешние сервисы не затрагивались. Коммитов нет.
+- Следующая атомарная задача (этап 2): общий JDBC store и процессор очереди, фиксация PUBLISHED после Kafka ACK, повторы/backoff, порядок событий пользователя и координация обработчиков. Учесть каноническое представление user key при проектировании строгого порядка; затем сквозная проверка рестартов/ошибок, поставка Docker и закрытие T-053.
 
 ### T-052 — атомарное сохранение записи и outbox (2026-11-15)
 

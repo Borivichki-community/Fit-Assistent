@@ -40,15 +40,9 @@ avro {
     stringType.set("String")
 }
 
-
-tasks.named("compileTestKotlin") {
-    dependsOn("generateTestAvroJava")
-}
-
-tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
-    dependsOn("generateAvroJava")
-    if (name.contains("Test", ignoreCase = true)) {
-        dependsOn("generateTestAvroJava")
+sourceSets {
+    main {
+        java.srcDir(tasks.named("generateAvroJava"))
     }
 }
 
