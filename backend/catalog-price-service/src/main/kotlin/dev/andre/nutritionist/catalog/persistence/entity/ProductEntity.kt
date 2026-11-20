@@ -49,6 +49,7 @@ class ProductEntity(
     var version: Long = 0L,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+    @org.hibernate.annotations.BatchSize(size = 50)
     @OneToMany(
         mappedBy = "product",
         fetch = FetchType.LAZY,

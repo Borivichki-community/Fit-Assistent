@@ -8,6 +8,9 @@ managed:
     - file_option: java_outer_classname
       value: ProfileOuterClass
       path: nutritionist/profile/v1/profile.proto
+    - file_option: java_outer_classname
+      value: CatalogOuterClass
+      path: nutritionist/catalog/v1/catalog.proto
 plugins:
   - remote: buf.build/protocolbuffers/java
     out: ../backend/profile-service/build/generated/sources/buf/java

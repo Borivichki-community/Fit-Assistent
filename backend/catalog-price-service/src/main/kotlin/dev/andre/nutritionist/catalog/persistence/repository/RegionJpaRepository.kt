@@ -9,5 +9,7 @@ import java.util.UUID
 interface RegionJpaRepository : JpaRepository<RegionEntity, UUID> {
     fun findByIsActiveTrue(): List<RegionEntity>
 
+    fun findByName(name: String): RegionEntity?
+
     fun findByNameIgnoreCase(name: String): RegionEntity?
 }

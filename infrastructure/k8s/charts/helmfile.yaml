@@ -92,3 +92,10 @@ releases:
                 CREATE DATABASE catalog_db;
                 CREATE DATABASE diary_db;
                 CREATE DATABASE keycloak_db;
+
+  # ── 5. Catalog Price Service (Микросервис каталога и региональных цен) ─────
+  - name: catalog-price-service
+    namespace: budget-nutritionist
+    chart: ../apps/catalog-price-service
+    installed: false # Манифесты развёртываются через apps/catalog-price-service/
+

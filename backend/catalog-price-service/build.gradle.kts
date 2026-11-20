@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinSpring)
     alias(libs.plugins.kotlinJpa)
     alias(libs.plugins.springBoot)
+    alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
 }
 
@@ -16,6 +17,44 @@ allOpen {
     annotation("jakarta.persistence.Embeddable")
 }
 
+protobuf {
+    protoc {
+        artifact =
+            libs.codegen.protoc
+                .get()
+                .toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact =
+                libs.codegen.grpc.java
+                    .get()
+                    .toString()
+        }
+        create("grpckt") {
+            artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins {
+                create("grpckt")
+            }
+            task.builtins {
+                create("kotlin")
+            }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir("../../proto")
+        }
+    }
+}
+
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
@@ -26,16 +65,22 @@ dependencies {
     implementation(libs.kotlin.reflect)
 
     implementation(libs.spring.starter.grpc)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.slf4j)
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.spring.starter.redis)
+    implementation(libs.resilience4j.spring.boot)
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly(libs.postgresql.jdbc)
 
     implementation(libs.spring.kafka)
     implementation(libs.avro.runtime)
     implementation(libs.confluent.avro.serializer) {
-
         exclude(group = "org.apache.kafka", module = "kafka-clients")
     }
 
@@ -62,6 +107,12 @@ val ktlintEngineVersion =
 
 ktlint {
     version.set(ktlintEngineVersion)
+    filter {
+        exclude { element ->
+            val path = element.file.absolutePath.replace('\\', '/')
+            path.contains("/build/") || path.contains("/generated/")
+        }
+    }
 }
 
 tasks.withType<Test>().configureEach {
