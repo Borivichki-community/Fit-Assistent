@@ -8,6 +8,5 @@ import org.springframework.context.annotation.Configuration
 @Configuration(proxyBeanMethods = false)
 class GrpcBootstrapConfiguration {
     @Bean
-    fun bootstrapGrpcHealthService(healthStatusManager: HealthStatusManager): BindableService =
-        healthStatusManager.healthService
+    fun bootstrapGrpcHealthService(healthStatusManager: HealthStatusManager): BindableService = healthStatusManager.healthService
 }

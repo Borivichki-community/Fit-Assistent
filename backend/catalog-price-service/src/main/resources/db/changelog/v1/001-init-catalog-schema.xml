@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="001-create-regions-table" author="implementer">
+        <createTable tableName="regions">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" primaryKeyName="pk_regions" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_regions_name"/>
+            </column>
+            <column name="is_active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="002-create-products-table" author="implementer">
+        <createTable tableName="products">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" primaryKeyName="pk_products" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="barcode" type="varchar(64)"/>
+            <column name="category" type="varchar(64)" defaultValue="OTHER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calories_per_100g" type="numeric(6, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="proteins_per_100g" type="numeric(6, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fats_per_100g" type="numeric(6, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="carbs_per_100g" type="numeric(6, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="products"
+                             columnNames="barcode"
+                             constraintName="uq_products_barcode"/>
+
+        <createIndex tableName="products" indexName="idx_products_category">
+            <column name="category"/>
+        </createIndex>
+
+        <createIndex tableName="products" indexName="idx_products_nutrition">
+            <column name="calories_per_100g"/>
+            <column name="proteins_per_100g"/>
+            <column name="fats_per_100g"/>
+            <column name="carbs_per_100g"/>
+        </createIndex>
+
+        <createIndex tableName="products" indexName="idx_products_calories_proteins">
+            <column name="calories_per_100g"/>
+            <column name="proteins_per_100g"/>
+        </createIndex>
+
+        <createIndex tableName="products" indexName="idx_products_barcode">
+            <column name="barcode"/>
+        </createIndex>
+
+        <createIndex tableName="products" indexName="idx_products_name">
+            <column name="name"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="003-create-regional-prices-table" author="implementer">
+        <createTable tableName="regional_prices">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" primaryKeyName="pk_regional_prices" nullable="false"/>
+            </column>
+            <column name="product_id" type="uuid">
+                <constraints nullable="false"
+                             foreignKeyName="fk_regional_prices_product_id"
+                             references="products(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="region_id" type="uuid">
+                <constraints nullable="false"
+                             foreignKeyName="fk_regional_prices_region_id"
+                             references="regions(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="price" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency" type="varchar(3)" defaultValue="RUB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit" type="varchar(32)" defaultValue="PIECE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamptz" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="regional_prices"
+                             columnNames="product_id, region_id"
+                             constraintName="uq_product_region"/>
+
+        <createIndex tableName="regional_prices" indexName="idx_regional_prices_region_product">
+            <column name="region_id"/>
+            <column name="product_id"/>
+        </createIndex>
+
+        <createIndex tableName="regional_prices" indexName="idx_regional_prices_updated_at">
+            <column name="updated_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="004-pg-trgm-extension-and-index" author="implementer">
+        <preConditions onFail="MARK_RAN">
+            <or>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN current_setting('is_superuser') = 'on' THEN 1 ELSE 0 END
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT count(1) FROM pg_extension WHERE extname = 'pg_trgm'
+                </sqlCheck>
+            </or>
+        </preConditions>
+        <sql>
+            CREATE EXTENSION IF NOT EXISTS pg_trgm;
+            CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin (name gin_trgm_ops);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
