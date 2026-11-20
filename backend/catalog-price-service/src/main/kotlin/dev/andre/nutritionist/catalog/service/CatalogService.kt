@@ -31,7 +31,15 @@ class CatalogService(
     @Transactional(readOnly = true)
     fun searchProducts(
         criteria: dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria,
-    ): dev.andre.nutritionist.catalog.persistence.repository.KeysetSearchResult<ProductEntity> = productRepository.searchProducts(criteria)
+    ): dev.andre.nutritionist.catalog.persistence.repository.KeysetSearchResult<ProductEntity> {
+        val searchResult = productRepository.searchProducts(criteria)
+        if (searchResult.items.isEmpty()) return searchResult
+
+        val productIds = searchResult.items.map { it.id }
+        val productsWithPrices = productRepository.findWithPricesAndRegionsByIdIn(productIds).associateBy { it.id }
+        val hydratedItems = searchResult.items.map { productsWithPrices[it.id] ?: it }
+        return searchResult.copy(items = hydratedItems)
+    }
 
     @Transactional(readOnly = true)
     fun findProductsByNutrition(
