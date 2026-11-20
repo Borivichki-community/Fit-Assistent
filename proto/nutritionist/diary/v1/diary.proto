@@ -11,6 +11,8 @@ option java_outer_classname = "DiaryOuterClass";
 service DiaryService {
   rpc AddEntry(AddEntryRequest) returns (AddEntryResponse);
   rpc GetDailyEntries(GetDailyEntriesRequest) returns (GetDailyEntriesResponse);
+  rpc DeleteMeal(DeleteMealRequest) returns (DeleteMealResponse);
+  rpc GetRange(GetRangeRequest) returns (GetRangeResponse);
 }
 
 message Money {
@@ -65,4 +67,20 @@ message DiaryEntryProto {
   google.protobuf.Timestamp recorded_at = 6;
   string meal_type = 7;
   CostSnapshot cost = 8;
+}
+
+message DeleteMealRequest {
+  string entry_id = 1;
+}
+
+message DeleteMealResponse {}
+
+message GetRangeRequest {
+  string start_date = 1;
+  string end_date = 2;
+  string time_zone = 3;
+}
+
+message GetRangeResponse {
+  repeated DiaryEntryProto entries = 1;
 }
