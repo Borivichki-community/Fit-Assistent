@@ -1,4 +1,4 @@
-package dev.andre.nutritionist.diary
+package dev.andre.nutritionist.diary.config
 
 import io.grpc.BindableService
 import io.grpc.protobuf.services.HealthStatusManager

@@ -1,0 +1,111 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-init-diary-table
+      author: team
+      dbms: postgresql
+      changes:
+        - createTable:
+            tableName: diary_entries
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_diary_entries
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: idempotency_key
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: food_item_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: food_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity_grams
+                  type: NUMERIC(10,3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: calories
+                  type: NUMERIC(7,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: proteins
+                  type: NUMERIC(6,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fats
+                  type: NUMERIC(6,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: carbs
+                  type: NUMERIC(6,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: NUMERIC(10,2)
+              - column:
+                  name: unit_price_minor
+                  type: BIGINT
+              - column:
+                  name: price_basis_milligrams
+                  type: BIGINT
+              - column:
+                  name: meal_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: recorded_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: diary_entries
+            columnNames: user_id, idempotency_key
+            constraintName: uq_diary_request
+        - sql:
+            sql: >-
+              ALTER TABLE diary_entries
+              ADD CONSTRAINT ck_diary_price CHECK (price IS NULL OR price >= 0),
+              ADD CONSTRAINT ck_diary_price_basis CHECK (
+                (unit_price_minor IS NULL AND price_basis_milligrams IS NULL) OR
+                (unit_price_minor IS NOT NULL AND price_basis_milligrams IS NOT NULL
+                 AND unit_price_minor >= 0 AND price_basis_milligrams > 0 AND price IS NOT NULL)
+              )
+        - createIndex:
+            tableName: diary_entries
+            indexName: idx_diary_entries_user_date
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: recorded_at
+                  descending: true
+      rollback:
+        - dropTable:
+            tableName: diary_entries
