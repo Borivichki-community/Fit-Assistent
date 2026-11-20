@@ -60,6 +60,8 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
 
+    implementation(project(":shared:contracts"))
+
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.starter.web)
     implementation(libs.spring.starter.actuator)

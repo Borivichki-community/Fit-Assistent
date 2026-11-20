@@ -7,5 +7,6 @@
 
     <include file="v1/001-init-profile-table.xml" relativeToChangelogFile="true"/>
     <include file="v1/002-add-version-column.xml" relativeToChangelogFile="true"/>
+    <include file="v1/003-create-outbox-table.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

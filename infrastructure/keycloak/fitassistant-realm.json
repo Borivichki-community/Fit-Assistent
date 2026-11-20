@@ -52,6 +52,7 @@
       "fullScopeAllowed": true,
       "redirectUris": [
         "com.budgetntr.fitassistant://oauth2redirect/*",
+        "com.budgetntr.fitassistant://oauth2redirect",
         "http://localhost:*"
       ],
       "webOrigins": [
@@ -59,7 +60,7 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "com.budgetntr.fitassistant://oauth2redirect/*"
+        "post.logout.redirect.uris": "com.budgetntr.fitassistant://oauth2redirect/*##com.budgetntr.fitassistant://oauth2redirect"
       }
     },
     {

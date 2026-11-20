@@ -9,6 +9,7 @@ import dev.andre.nutritionist.android.fake.FakeAuthStorage
 import dev.andre.nutritionist.android.fake.FakeTokenExchanger
 import dev.andre.nutritionist.android.fake.TestCoroutineDispatchers
 import kotlinx.coroutines.test.runTest
+import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
 import net.openid.appauth.AuthorizationResponse
@@ -218,5 +219,109 @@ class AuthRepositoryImplTest {
         // Assert
         assertTrue(result.isSuccess)
         assertEquals(expectedToken, result.getOrNull())
+    }
+
+    @Test
+    fun `getUserDisplayName returns null when not authorized`() {
+        assertNull(repository.getUserDisplayName())
+    }
+
+    @Test
+    fun `getUserDisplayName extracts given_name from id token jwt payload`() = runTest {
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+
+        val mockIdToken = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyLTQyIiwiZ2l2ZW5fbmFtZSI6IkFsZWtzZXkiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhbGV4In0."
+
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("test-access-token")
+            .setIdToken(mockIdToken)
+            .setTokenType("Bearer")
+            .build()
+
+        repository.processAuthResponse(validIntent)
+        assertTrue(repository.isAuthenticated())
+
+        assertEquals("Aleksey", repository.getUserDisplayName())
+    }
+
+    @Test
+    fun `getUserDisplayName falls back to preferred_username when given_name is missing`() = runTest {
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+
+        val mockIdToken = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyLTQyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiYWxleDk5In0."
+
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("test-access-token")
+            .setIdToken(mockIdToken)
+            .setTokenType("Bearer")
+            .build()
+
+        repository.processAuthResponse(validIntent)
+        assertTrue(repository.isAuthenticated())
+
+        assertEquals("alex99", repository.getUserDisplayName())
+    }
+
+    @Test
+    fun `initialization restores cached session synchronously from authStorage without runBlocking`() = runTest {
+        val authState = AuthState(serviceConfig)
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .build()
+        val tokenResponse = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("cached-token-12345")
+            .setTokenType("Bearer")
+            .build()
+        authState.update(authResponse, null)
+        authState.update(tokenResponse, null)
+
+        val storageWithSession = FakeAuthStorage(initialJson = authState.jsonSerializeString())
+        val repo = AuthRepositoryImpl(
+            authStorage = storageWithSession,
+            tokenExchanger = fakeTokenExchanger,
+            authService = authService,
+            dispatchers = dispatchers,
+        )
+
+        assertTrue(repo.isAuthenticated())
+        assertEquals("cached-token-12345", repo.getAccessToken())
+        repo.observeAuthState().test {
+            assertEquals(true, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

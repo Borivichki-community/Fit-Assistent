@@ -15,6 +15,8 @@ class FakeAuthStorage(initialJson: String? = null) : AuthStorage {
     var saveCallCount: Int = 0
     var clearCallCount: Int = 0
 
+    override fun getAuthStateJsonSync(): String? = savedJson
+
     override suspend fun getAuthStateJson(): String? = savedJson
 
     override suspend fun saveAuthStateJson(json: String) {

@@ -11,6 +11,7 @@ import dev.andre.nutritionist.domain.model.UserId
 data class ProfileUiModel(
     val id: ProfileId,
     val userId: UserId,
+    val displayName: String = "",
     val heightLabel: String,
     val weightLabel: String,
     val genderLabel: String,
@@ -22,6 +23,11 @@ data class ProfileUiModel(
     val carbsGoalLabel: String,
     val weightGoalLabel: String,
     val weeklyBudgetLabel: String,
+    val isComplete: Boolean = true,
+    val rawWeightKg: Double = 0.0,
+    val rawActivityLevel: ActivityLevel = ActivityLevel.MODERATE,
+    val rawGoalType: GoalType = GoalType.LOSE_WEIGHT,
+    val rawWeeklyBudget: Double = 0.0,
 )
 
 data class ProfileUiState(
@@ -61,7 +67,11 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
                 targetWeight = content.targetWeight,
                 dailyCalories = content.dailyCalories,
             )
-            is ProfileState.Content.Success -> ProfileUiState.Content.Success(content.profile.toUiModel())
+            is ProfileState.Content.Success -> {
+                val resolvedName = (content.displayName ?: state.displayName)?.takeIf { it.isNotBlank() }
+                    ?: content.profile.userId.raw
+                ProfileUiState.Content.Success(content.profile.toUiModel(resolvedName))
+            }
             is ProfileState.Content.Error -> ProfileUiState.Content.Error(content.message)
             is ProfileState.Content.ValidationError -> ProfileUiState.Content.ValidationError(
                 name = content.name,
@@ -77,7 +87,7 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
         return ProfileUiState(content = uiContent)
     }
 
-    private fun Profile.toUiModel(): ProfileUiModel {
+    private fun Profile.toUiModel(displayName: String): ProfileUiModel {
         val genderText = when (gender) {
             Gender.MALE -> "Мужской"
             Gender.FEMALE -> "Женский"
@@ -99,9 +109,12 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
             GoalType.UNKNOWN -> "Не указано"
         }
 
+        val isComplete = heightCm > 0 && weightKg > 0.0
+
         return ProfileUiModel(
             id = id,
             userId = userId,
+            displayName = displayName,
             heightLabel = "$heightCm см",
             weightLabel = "$weightKg кг",
             genderLabel = genderText,
@@ -113,6 +126,11 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
             carbsGoalLabel = "${nutritionGoal.targetCarbsGrams.toInt()} г",
             weightGoalLabel = "${nutritionGoal.targetWeightKg.toInt()} кг",
             weeklyBudgetLabel = "${weeklyBudget.toInt()} ₽ / нед.",
+            isComplete = isComplete,
+            rawWeightKg = weightKg,
+            rawActivityLevel = activityLevel,
+            rawGoalType = goalType,
+            rawWeeklyBudget = weeklyBudget,
         )
     }
 }
