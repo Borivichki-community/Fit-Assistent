@@ -7,15 +7,32 @@
 
 ---
 
-## Статус проекта: [T-044] Развёртывание базовой инфраструктуры в Kubernetes (PostgreSQL 17, Redis State/Cache, Keycloak 26, Envoy Gateway, ProfileService)
+## Статус проекта: [T-043] Реализован скелет catalog-price-service, Liquibase-миграции, сущности JPA и интеграционные тесты
 
-Ветка: `feature/KAN-45-gateway`
+Ветка: `feature/KAN-61-catalog-skelet`
 Роли: `implementer` + `test-reviewer`
 Активированные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`
 
 ---
 
 ### Выполнено
+
+- [x] **[T-044] Protobuf-контракты и базовая реализация gRPC-сервиса:**
+  - Создан gRPC-контракт `proto/nutritionist/catalog/v1/catalog.proto` (`SearchProducts`, `GetProduct`, `GetAveragePrices`, `UpsertPrice`, сообщения `NutritionFacts`, `ProductItem`, `RegionalPriceItem`, `AveragePriceItem`, пагинация `page_size`/`page_token`).
+  - Обновлен `proto/buf.gen.yaml` с правилом для `CatalogOuterClass`.
+  - В `backend/catalog-price-service/build.gradle.kts` настроен плагин `com.google.protobuf` (генерация Java + Kotlin coroutines stubs из `proto/`), корректно изолирован `ktlint` от сгенерированных protobuf файлов.
+  - Разработан `CatalogDtoMapper` для конвертации JPA-сущностей в Protobuf-сообщения.
+  - Реализован `CatalogGrpcService` на Kotlin coroutines gRPC (`CatalogServiceCoroutineImplBase`): методы `searchProducts`, `getProduct`, `getAveragePrices`, `upsertPrice` с проверкой прав `ROLE_ADMIN` / `ROLE_SERVICE` через `AuthContext`.
+  - Тестирование: `CatalogGrpcServiceSecurityTest` на Testcontainers PostgreSQL (6 интеграционных тестов: запрет неавторизованным на `upsertPrice`, запрет обычному пользователю, успешный апсерт от ADMIN/SERVICE, анонимное чтение `getProduct` и `getAveragePrices`). Все 16 тестов зеленые, `ktlintCheck` чист.
+  - Коммит: `feat(catalog): T-044 define catalog.proto contract and implement gRPC service stub`.
+
+- [x] **[T-043] Скелет catalog-price-service + Liquibase-миграции:**
+  - Создана Liquibase-схема (`db/changelog/v1/001-init-catalog-schema.xml`, `db.changelog-master.xml`) для таблиц `regions`, `products`, `regional_prices` с версионированием `version BIGINT` и безопасным подключением расширения `pg_trgm` и GIN-индекса.
+  - Разработаны JPA-сущности `RegionEntity`, `ProductEntity` с `@Version` и `@NamedEntityGraph("Product.withPricesAndRegions")`, `RegionalPriceEntity` со связями `LAZY`.
+  - Разработаны репозитории `ProductJpaRepository`, `RegionJpaRepository`, `RegionalPriceJpaRepository` и сервис `CatalogService` с методом `upsertRegionalPrice`.
+  - Инфраструктура: `CoroutineDispatchers`, `AuthContext`, `SecurityGrpcInterceptor`, `GrpcExceptionInterceptor`.
+  - Тестирование: `CatalogPersistenceIntegrationTest` на Testcontainers PostgreSQL 17 (10 тестов: сохранение, `@Version` инкремент, уникальность штрихкода, уникальность региональных цен, уникальность названий регионов, выборка по нутриентам, выборка по категориям, отсутствие N+1 через `@NamedEntityGraph`). Все проверки `ktlintCheck` пройдены.
+  - Коммит: `24b4850 feat(catalog): T-043 setup catalog schema, entities and indexes with Liquibase`.
 
 - [x] **Базовая инфраструктура в Kubernetes (`infrastructure/k8s/infra/`) и связка с Envoy Gateway:**
   - **PostgreSQL 17 (`infrastructure/k8s/infra/01-postgres.yaml`):**
