@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.andre.nutritionist.core.kotea.KoteaStoreFactory
 import dev.andre.nutritionist.core.kotea.Store
+import dev.andre.nutritionist.domain.model.OnboardingData
+import dev.andre.nutritionist.domain.model.Profile
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,5 +42,13 @@ class ProfileViewModel(
 
     fun dispatch(event: ProfileEvent.Ui) {
         store.dispatch(event)
+    }
+
+    fun saveOnboardingProfile(data: OnboardingData, userId: UserId) {
+        dispatch(ProfileEvent.Ui.SaveOnboardingProfile(data = data, userId = userId))
+    }
+
+    fun updateProfile(profile: Profile) {
+        dispatch(ProfileEvent.Ui.UpdateProfile(profile = profile))
     }
 }

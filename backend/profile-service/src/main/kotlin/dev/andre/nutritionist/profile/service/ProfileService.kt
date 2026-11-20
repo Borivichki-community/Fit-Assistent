@@ -1,20 +1,27 @@
 package dev.andre.nutritionist.profile.service
 
+import dev.andre.nutritionist.contracts.avro.UserRegisteredEvent
 import dev.andre.nutritionist.profile.domain.calculator.NutritionGoalCalculator
 import dev.andre.nutritionist.profile.domain.mapper.toNewEntity
 import dev.andre.nutritionist.profile.domain.mapper.updateFrom
 import dev.andre.nutritionist.profile.domain.model.NutritionGoal
 import dev.andre.nutritionist.profile.domain.model.UpsertProfileCommand
 import dev.andre.nutritionist.profile.domain.model.UserId
+import dev.andre.nutritionist.profile.outbox.processor.OutboxProcessor.Companion.USER_REGISTERED_TOPIC
+import dev.andre.nutritionist.profile.outbox.service.OutboxPayloadConverter
+import dev.andre.nutritionist.profile.outbox.service.OutboxService
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.Instant
+import java.util.UUID
 
 @Service
 class ProfileService(
     private val profileRepository: ProfileJpaRepository,
+    private val outboxService: OutboxService,
 ) {
     @Transactional(readOnly = true)
     fun getProfileByUserId(userId: UserId): ProfileEntity? = profileRepository.findByUserId(userId.raw)
@@ -22,9 +29,45 @@ class ProfileService(
     @Transactional
     fun upsertProfile(command: UpsertProfileCommand): ProfileEntity {
         val existing = profileRepository.findByUserId(command.userId.raw)
+        val isNewProfile = existing == null
         val finalGoal = resolveNutritionGoal(command)
         val entity = existing?.updateFrom(command, finalGoal) ?: command.toNewEntity(finalGoal)
-        return profileRepository.save(entity)
+        val saved = profileRepository.save(entity)
+
+        if (isNewProfile) {
+            publishUserRegisteredOutbox(saved, command)
+        }
+
+        return saved
+    }
+
+    private fun publishUserRegisteredOutbox(
+        entity: ProfileEntity,
+        command: UpsertProfileCommand,
+    ) {
+        val userUuid =
+            runCatching { UUID.fromString(command.userId.raw) }
+                .getOrElse { entity.id }
+
+        val email = command.email ?: "${command.userId.raw}@budgetntr.app"
+
+        val event =
+            UserRegisteredEvent
+                .newBuilder()
+                .setId(userUuid)
+                .setEmail(email)
+                .setRegistrationTimestamp(Instant.now())
+                .setSource("profile-service")
+                .build()
+
+        val payload = OutboxPayloadConverter.serialize(event)
+
+        outboxService.save(
+            aggregateType = "UserProfile",
+            aggregateId = entity.userId,
+            topic = USER_REGISTERED_TOPIC,
+            payload = payload,
+        )
     }
 
     private fun resolveNutritionGoal(command: UpsertProfileCommand): NutritionGoal {

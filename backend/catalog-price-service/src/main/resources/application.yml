@@ -2,26 +2,44 @@ spring:
   application:
     name: catalog-price-service
 
+  # ── gRPC Server ──────────────────────────────────────────────────────────────
   grpc:
     server:
-      address: 127.0.0.1
+      address: "0.0.0.0"
       port: ${CATALOG_GRPC_PORT:9192}
       health:
         enabled: true
+      shutdown-timeout: 0s
 
+  # ── Database ─────────────────────────────────────────────────────────────────
   datasource:
-    url: ${CATALOG_DB_URL:jdbc:postgresql://localhost:5432/catalog_db}
+    url: ${CATALOG_DB_URL:jdbc:postgresql://localhost:5433/catalog_db}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      pool-name: CatalogPriceServiceHikariPool
+      maximum-pool-size: 10
+      connection-timeout: 3000
 
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: "none"
+    properties:
+      hibernate:
+        default_schema: public
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+          order_inserts: true
+          order_updates: true
 
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.yaml
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    enabled: true
+    default-schema: public
 
+  # ── Kafka ─────────────────────────────────────────────────────────────────────
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     properties:
@@ -35,3 +53,50 @@ spring:
       value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
       properties:
         "[specific.avro.reader]": true
+
+  # ── Lifecycle ────────────────────────────────────────────────────────────────
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+
+server:
+  port: ${SERVER_PORT:8086}
+
+# ── Actuator ──────────────────────────────────────────────────────────────────
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8086}
+
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+  tracing:
+    sampling:
+      probability: 1.0
+
+# ── Logging (JSON format) ─────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    dev.andre.nutritionist: INFO
+  pattern:
+    console: >-
+      {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}","level":"%level","service":"${spring.application.name}","traceId":"%X{traceId}","spanId":"%X{spanId}","userId":"%X{userId}","message":"%msg"}%n

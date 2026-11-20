@@ -9,13 +9,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -26,8 +30,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.ErrorContent
+import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.FitTopBar
 import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.OfflineBanner
@@ -45,6 +51,8 @@ fun ProfileScreen(
     state: ProfileState,
     onEvent: (ProfileEvent.Ui) -> Unit,
     modifier: Modifier = Modifier,
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -91,6 +99,8 @@ fun ProfileScreen(
                             targetWeightError = null,
                             dailyCaloriesError = null,
                             onEvent = onEvent,
+                            onLogoutClick = onLogoutClick,
+                            isLoggingOut = isLoggingOut,
                         )
                     }
                     is ProfileState.Content.ValidationError -> {
@@ -104,12 +114,17 @@ fun ProfileScreen(
                             targetWeightError = content.targetWeightError,
                             dailyCaloriesError = content.dailyCaloriesError,
                             onEvent = onEvent,
+                            onLogoutClick = onLogoutClick,
+                            isLoggingOut = isLoggingOut,
                         )
                     }
                     is ProfileState.Content.Success -> {
+                        val displayName = (content.displayName ?: state.displayName)?.takeIf { it.isNotBlank() }
+                            ?: content.profile.userId.raw
+                        val age = (content.age ?: state.age)?.takeIf { it.isNotBlank() } ?: ""
                         ProfileFormContent(
-                            name = stringResource(R.string.profile_default_user_name),
-                            age = "28",
+                            name = displayName,
+                            age = age,
                             targetWeight = "${content.profile.nutritionGoal.targetWeightKg.toInt()}",
                             dailyCalories = "${content.profile.nutritionGoal.targetCalories}",
                             nameError = null,
@@ -117,6 +132,8 @@ fun ProfileScreen(
                             targetWeightError = null,
                             dailyCaloriesError = null,
                             onEvent = onEvent,
+                            onLogoutClick = onLogoutClick,
+                            isLoggingOut = isLoggingOut,
                         )
                     }
                 }
@@ -137,6 +154,8 @@ private fun ProfileFormContent(
     dailyCaloriesError: String?,
     onEvent: (ProfileEvent.Ui) -> Unit,
     modifier: Modifier = Modifier,
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
 
@@ -292,6 +311,32 @@ private fun ProfileFormContent(
         ) {
             Text(
                 text = stringResource(R.string.profile_save_button),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.small))
+
+        // Кнопка выхода из аккаунта
+        OutlinedButton(
+            onClick = onLogoutClick,
+            enabled = !isLoggingOut,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Spacing.buttonHeight),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+            shape = RoundedCornerShape(Spacing.cardRadius),
+        ) {
+            Icon(
+                imageVector = FitIcons.Logout,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(Spacing.small))
+            Text(
+                text = stringResource(R.string.profile_logout_button),
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
             )
         }

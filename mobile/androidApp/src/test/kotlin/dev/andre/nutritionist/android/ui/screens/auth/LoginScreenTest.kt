@@ -6,10 +6,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
-import org.junit.Assert.assertEquals
+import dev.andre.nutritionist.android.auth.AuthUiState
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +30,8 @@ class LoginScreenTest {
     fun `login screen renders all primary elements properly`() {
         composeTestRule.setContent {
             LoginScreen(
-                onLoginClick = { _, _ -> },
+                state = AuthUiState(content = AuthUiState.Content.Idle),
+                onLoginClick = {},
                 onCreateAccountClick = {},
                 onTelegramClick = {},
                 onGoogleClick = {},
@@ -39,16 +39,58 @@ class LoginScreenTest {
         }
 
         val titleText = context.getString(R.string.auth_title)
-        val loginBtnText = context.getString(R.string.auth_login_button)
+        val subtitleText = context.getString(R.string.auth_subtitle)
+        val loginKeycloakText = context.getString(R.string.auth_login_keycloak)
+        val googleText = context.getString(R.string.auth_via_google)
         val createAccountText = context.getString(R.string.auth_create_account)
         val telegramText = context.getString(R.string.auth_via_telegram)
-        val googleText = context.getString(R.string.auth_via_google)
 
         composeTestRule.onNodeWithText(titleText).assertIsDisplayed()
-        composeTestRule.onNodeWithText(loginBtnText).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(subtitleText).assertIsDisplayed()
+        composeTestRule.onNodeWithText(loginKeycloakText).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(googleText).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(createAccountText).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(telegramText).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(googleText).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `login click triggers onLoginClick callback`() {
+        var loginClicked = false
+
+        composeTestRule.setContent {
+            LoginScreen(
+                state = AuthUiState(content = AuthUiState.Content.Idle),
+                onLoginClick = { loginClicked = true },
+                onCreateAccountClick = {},
+                onTelegramClick = {},
+                onGoogleClick = {},
+            )
+        }
+
+        val loginKeycloakText = context.getString(R.string.auth_login_keycloak)
+        composeTestRule.onNodeWithText(loginKeycloakText).performScrollTo().performClick()
+
+        assertTrue(loginClicked)
+    }
+
+    @Test
+    fun `google click triggers onGoogleClick callback`() {
+        var googleClicked = false
+
+        composeTestRule.setContent {
+            LoginScreen(
+                state = AuthUiState(content = AuthUiState.Content.Idle),
+                onLoginClick = {},
+                onCreateAccountClick = {},
+                onTelegramClick = {},
+                onGoogleClick = { googleClicked = true },
+            )
+        }
+
+        val googleText = context.getString(R.string.auth_via_google)
+        composeTestRule.onNodeWithText(googleText).performScrollTo().performClick()
+
+        assertTrue(googleClicked)
     }
 
     @Test
@@ -57,7 +99,8 @@ class LoginScreenTest {
 
         composeTestRule.setContent {
             LoginScreen(
-                onLoginClick = { _, _ -> },
+                state = AuthUiState(content = AuthUiState.Content.Idle),
+                onLoginClick = {},
                 onCreateAccountClick = { createAccountClicked = true },
                 onTelegramClick = {},
                 onGoogleClick = {},
@@ -71,52 +114,39 @@ class LoginScreenTest {
     }
 
     @Test
-    fun `invalid email or short password displays validation error`() {
-        var loginCalled = false
-
+    fun `loading state displays progress indicator and loading text`() {
         composeTestRule.setContent {
             LoginScreen(
-                onLoginClick = { _, _ -> loginCalled = true },
+                state = AuthUiState(content = AuthUiState.Content.Loading),
+                onLoginClick = {},
                 onCreateAccountClick = {},
                 onTelegramClick = {},
                 onGoogleClick = {},
             )
         }
 
-        val loginBtnText = context.getString(R.string.auth_login_button)
-        composeTestRule.onNodeWithText(loginBtnText).performScrollTo().performClick()
-
-        val invalidEmailText = context.getString(R.string.validation_error_invalid_email)
-        composeTestRule.onNodeWithText(invalidEmailText).performScrollTo().assertIsDisplayed()
-        assertEquals(false, loginCalled)
+        val loadingText = context.getString(R.string.auth_loading)
+        composeTestRule.onNodeWithText(loadingText).assertIsDisplayed()
     }
 
     @Test
-    fun `valid credentials triggers login callback`() {
-        var loggedEmail = ""
-        var loggedPassword = ""
+    fun `error state displays error message and retry button`() {
+        var retryClicked = false
 
         composeTestRule.setContent {
             LoginScreen(
-                onLoginClick = { email, pass ->
-                    loggedEmail = email
-                    loggedPassword = pass
-                },
+                state = AuthUiState(content = AuthUiState.Content.Error("Keycloak unreachable")),
+                onLoginClick = { retryClicked = true },
                 onCreateAccountClick = {},
                 onTelegramClick = {},
                 onGoogleClick = {},
             )
         }
 
-        val emailHint = context.getString(R.string.auth_email_hint)
-        val passHint = context.getString(R.string.auth_password_hint)
-        val loginBtnText = context.getString(R.string.auth_login_button)
+        val retryBtnText = context.getString(R.string.retry_button)
+        composeTestRule.onNodeWithText("Keycloak unreachable").assertIsDisplayed()
+        composeTestRule.onNodeWithText(retryBtnText).performClick()
 
-        composeTestRule.onNodeWithText(emailHint).performScrollTo().performTextInput("test@mail.com")
-        composeTestRule.onNodeWithText(passHint).performScrollTo().performTextInput("secret123")
-        composeTestRule.onNodeWithText(loginBtnText).performScrollTo().performClick()
-
-        assertEquals("test@mail.com", loggedEmail)
-        assertEquals("secret123", loggedPassword)
+        assertTrue(retryClicked)
     }
 }
