@@ -45,12 +45,13 @@ class DiaryGrpcService(
     override suspend fun addEntry(request: AddEntryRequest): AddEntryResponse {
         val userId = DiaryRequestContextInterceptor.currentUserId()
         val key = DiaryRequestContextInterceptor.currentKey()
+        val traceparent = DiaryRequestContextInterceptor.currentTraceparent()
         return execute(userId) {
             validator.validate(request)
             val scope = IdempotencyScope(userId, DiaryServiceGrpc.getAddEntryMethod().fullMethodName, key)
             val response =
                 idempotency.execute(scope, request.toByteArray()) {
-                    val entry = diaryService.addEntry(mapper.toCommand(request, userId, key))
+                    val entry = diaryService.addEntry(mapper.toCommand(request, userId, key), traceparent)
                     AddEntryResponse
                         .newBuilder()
                         .setEntry(mapper.toProto(entry))

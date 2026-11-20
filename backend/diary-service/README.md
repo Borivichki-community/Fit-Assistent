@@ -210,6 +210,10 @@ message DiaryEntryProto {
 
 ## 5. Межсервисные события
 
+T-052: действующий AddEntry сохраняет запись питания, событие в outbox_messages и ответ идемпотентности в одной транзакции PostgreSQL. Координация находится в DiaryService, отдельный проходной UseCase не вводится. Outbox содержит локально сериализованный Avro CaloriesConsumedEvent со статусом PENDING, aggregate_id=entry_id, partition_key=userId и входящим traceparent. Повтор возвращает сохранённый ответ, не создавая нового события. Ошибка записи события или формирования ответа откатывает всю операцию. Сохранённый контракт Avro требует UUID пользователя.
+
+Миграция 004-diary-outbox.yaml не пересекается с 003-diary-registration-consumer.yaml из отдельной ветки T-055. Публикация, Schema Registry и переход в PUBLISHED относятся к T-053; в транзакции добавления нет Kafka/HTTP/gRPC-вызовов.
+
 Существующая [CaloriesConsumedEvent](../../shared/contracts/src/main/avro/CaloriesConsumedEvent.avsc) содержит `userId`, `mealId`, `calories`, `timestamp`, `mealType`, `notes`. Её целевое назначение — факт потребления, а не денежный расход. При будущей публикации `mealId = entry_id`, `timestamp = recorded_at`, `calories` берётся из сохранённой записи; доставка через outbox. Потребитель дедуплицирует создание по `(userId, mealId)`.
 
 `diary.entry.created` не используется Recipe AI для ведения баланса. Поле стоимости в Avro не добавляется; новый обязательный потребитель не вводится. Дневник не потребляет `food.price.updated`: цены каталога не меняют исторические снимки.
