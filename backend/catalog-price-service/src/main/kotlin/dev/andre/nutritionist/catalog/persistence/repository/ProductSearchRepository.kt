@@ -94,13 +94,18 @@ class ProductSearchRepositoryImpl(
 
         val boundedPageSize = criteria.pageSize.coerceIn(1, 100)
         val query = entityManager.createQuery(cq)
-        val entityGraph = entityManager.getEntityGraph("Product.withPricesAndRegions")
-        query.setHint("jakarta.persistence.loadgraph", entityGraph)
         query.maxResults = boundedPageSize + 1
 
         val resultList = query.resultList
         val hasMore = resultList.size > boundedPageSize
         val pageItems = if (hasMore) resultList.subList(0, boundedPageSize) else resultList
+
+        // Batch-initialize lazy collections within open transaction via @BatchSize(50)
+        pageItems.forEach { product ->
+            product.prices.forEach { price ->
+                price.region.name
+            }
+        }
 
         val nextToken =
             if (hasMore && pageItems.isNotEmpty()) {

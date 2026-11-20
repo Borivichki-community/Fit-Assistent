@@ -49,7 +49,8 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
                 productRepository.delete(product)
             }
         }
-        val testCategories = listOf("FRUITS_TEST", "POULTRY_TEST", "SWEETS_TEST", "SNACKS_TEST", "GRAINS_TEST", "DAIRY_TEST", "EGGS_TEST")
+        val testCategories =
+            listOf("FRUITS_TEST", "POULTRY_TEST", "SWEETS_TEST", "SNACKS_TEST", "GRAINS_TEST", "DAIRY_TEST", "EGGS_TEST", "PAGINATION_TEST")
         testCategories.forEach { cat ->
             productRepository.findByCategoryIgnoreCase(cat).forEach {
                 regionalPriceRepository.deleteAll(regionalPriceRepository.findByProductId(it.id))
@@ -353,5 +354,83 @@ class CatalogPersistenceIntegrationTest : AbstractPostgresIntegrationTest() {
         val allPrices = regionalPriceRepository.findByProductId(product.id)
         assertEquals(1, allPrices.size)
         assertEquals(BigDecimal("109.99"), allPrices[0].price)
+    }
+
+    @Test
+    fun `testSearchProductsHonestPaginationWithPricesAndNoLazyInitializationException`() {
+        val region1 =
+            regionRepository.findByName("Центральный ФО")
+                ?: regionRepository.save(RegionEntity(name = "Центральный ФО"))
+        val region2 =
+            regionRepository.findByName("Северо-Западный ФО")
+                ?: regionRepository.save(RegionEntity(name = "Северо-Западный ФО"))
+
+        // Create 5 products with 2 regional prices each
+        (1..5).forEach { idx ->
+            val product =
+                productRepository.save(
+                    ProductEntity(
+                        name = "Продукт пагинации %02d".format(idx),
+                        category = "PAGINATION_TEST",
+                        caloriesPer100g = BigDecimal("100.00").add(BigDecimal.valueOf(idx.toLong())),
+                        proteinsPer100g = BigDecimal("10.00"),
+                        fatsPer100g = BigDecimal("5.00"),
+                        carbsPer100g = BigDecimal("20.00"),
+                    ),
+                )
+            catalogService.upsertRegionalPrice(
+                productId = product.id,
+                regionId = region1.id,
+                price = BigDecimal("100.00").add(BigDecimal.valueOf(idx.toLong())),
+            )
+            catalogService.upsertRegionalPrice(
+                productId = product.id,
+                regionId = region2.id,
+                price = BigDecimal("110.00").add(BigDecimal.valueOf(idx.toLong())),
+            )
+        }
+
+        // Search page 1 with pageSize = 2 outside any transaction
+        val criteria1 =
+            dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria(
+                category = "PAGINATION_TEST",
+                pageSize = 2,
+                sortBy = "name",
+            )
+        val page1 = catalogService.searchProducts(criteria1)
+
+        assertEquals(2, page1.items.size)
+        assertTrue(page1.hasMore)
+        assertTrue(page1.nextPageToken.isNotBlank())
+
+        // Verify lazy collections outside transaction without LazyInitializationException
+        page1.items.forEach { product ->
+            assertNotNull(product.name)
+            assertEquals(2, product.prices.size)
+            product.prices.forEach { price ->
+                assertNotNull(price.price)
+                assertNotNull(price.region)
+                assertTrue(price.region.name.isNotBlank())
+            }
+        }
+
+        // Fetch page 2 using cursor
+        val criteria2 =
+            dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria(
+                category = "PAGINATION_TEST",
+                pageSize = 2,
+                pageToken = page1.nextPageToken,
+                sortBy = "name",
+            )
+        val page2 = catalogService.searchProducts(criteria2)
+
+        assertEquals(2, page2.items.size)
+        assertTrue(page2.hasMore)
+        page2.items.forEach { product ->
+            assertEquals(2, product.prices.size)
+            product.prices.forEach { price ->
+                assertTrue(price.region.name.isNotBlank())
+            }
+        }
     }
 }
