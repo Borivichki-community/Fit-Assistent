@@ -27,6 +27,8 @@ spec:
       labels:
         app: profile-service
         service: profile
+        app.kubernetes.io/name: profile-service
+        app.kubernetes.io/part-of: fitassistant
     spec:
       securityContext:
         runAsNonRoot: true
@@ -53,30 +55,52 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "dev"
+            - name: SPRING_GRPC_SERVER_ADDRESS
+              value: "0.0.0.0"
             - name: PROFILE_GRPC_PORT
               value: "9090"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: MANAGEMENT_PORT
+              value: "8080"
             - name: PROFILE_DB_URL
               value: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db"
             - name: DB_USERNAME
-              value: "postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
             - name: DB_PASSWORD
-              value: "postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
             - name: SPRING_DATA_REDIS_HOST
-              value: "redis.budget-nutritionist.svc.cluster.local"
+              value: "redis-state.budget-nutritionist.svc.cluster.local"
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+              value: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 200m
+              memory: 384Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 20
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
@@ -84,7 +108,7 @@ spec:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 15
+            initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
@@ -97,6 +121,8 @@ metadata:
   labels:
     app: profile-service
     service: profile
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
 spec:
   type: ClusterIP
   ports:

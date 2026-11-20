@@ -45,8 +45,21 @@ kubectl wait --namespace envoy-gateway-system \
   --selector=control-plane=envoy-gateway \
   --timeout=180s
 
-# 5. Применение манифестов GatewayClass, TLS Secret, Gateway, Profile Service, Route, SecurityPolicy, RateLimit
-echo "--> 3. Применение манифестов сетевого периметра и profile-service..."
+# 5. Применение манифестов базовой инфраструктуры (PostgreSQL, Redis, Keycloak)
+echo "--> 3. Применение манифестов базовой инфраструктуры..."
+kubectl create namespace budget-nutritionist --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f "${K8S_DIR}/infra/01-postgres.yaml"
+kubectl apply -f "${K8S_DIR}/infra/02-redis.yaml"
+kubectl apply -f "${K8S_DIR}/infra/03-keycloak.yaml"
+
+echo "--> Ожидание готовности подов базовой инфраструктуры..."
+kubectl wait --namespace budget-nutritionist --for=condition=ready pod --selector=app=postgres --timeout=120s || true
+kubectl wait --namespace budget-nutritionist --for=condition=ready pod --selector=app=redis-state --timeout=120s || true
+kubectl wait --namespace budget-nutritionist --for=condition=ready pod --selector=app=redis-cache --timeout=120s || true
+kubectl wait --namespace budget-nutritionist --for=condition=ready pod --selector=app=keycloak --timeout=180s || true
+
+# 6. Применение манифестов GatewayClass, TLS Secret, Gateway, Profile Service, Route, SecurityPolicy, RateLimit
+echo "--> 4. Применение манифестов сетевого периметра и profile-service..."
 kubectl apply -f "${K8S_DIR}/gateway/01-gateway-class.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/02-tls-secret.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/02-gateway.yaml"
@@ -55,8 +68,8 @@ kubectl apply -f "${K8S_DIR}/gateway/04-profile-grpc-route.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/05-security-policy.yaml"
 kubectl apply -f "${K8S_DIR}/gateway/06-backend-traffic-policy.yaml"
 
-# 6. Ожидание готовности подов
-echo "--> 4. Ожидание готовности profile-service и Envoy Proxy..."
+# 7. Ожидание готовности подов
+echo "--> 5. Ожидание готовности profile-service и Envoy Proxy..."
 kubectl wait --namespace budget-nutritionist \
   --for=condition=available deployment/profile-service \
   --timeout=120s || echo "Ожидание пода profile-service..."

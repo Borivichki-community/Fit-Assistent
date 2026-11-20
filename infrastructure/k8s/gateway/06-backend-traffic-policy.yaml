@@ -14,7 +14,7 @@ spec:
     kind: GRPCRoute
     name: profile-grpc-route
   rateLimit:
-    type: Global
+    type: Local
     # ── 1. Local Rate Limiting (Token Bucket in-memory per Envoy instance) ────────
     # Защита от спама и DoS без сетевых задержек: 20 req/s с burst до 50
     local:
@@ -33,17 +33,3 @@ spec:
           limit:
             requests: 100
             unit: Minute
----
-# Опциональная конфигурация EnvoyProxy для указания Redis бэкенда Rate Limiter
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyProxy
-metadata:
-  name: profile-gateway-proxy-config
-  namespace: envoy-gateway-system
-spec:
-  provider:
-    type: Kubernetes
-    kubernetes:
-      rateLimit:
-        redis:
-          url: "redis.budget-nutritionist.svc.cluster.local:6379"

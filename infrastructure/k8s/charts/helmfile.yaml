@@ -1,10 +1,13 @@
 # infrastructure/k8s/charts/helmfile.yaml
-# Helmfile для декларативного управления установкой Envoy Gateway v1.2.x в кластере Kubernetes
+# Helmfile для декларативного управления установкой Envoy Gateway v1.2.x и базовой инфраструктуры
 repositories:
   - name: envoy-gateway
     url: https://helm.envoyproxy.io
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
 
 releases:
+  # ── 1. Envoy Gateway Ingress Controller v1.2.4 ─────────────────────────────
   - name: envoy-gateway
     namespace: envoy-gateway-system
     createNamespace: true
@@ -21,4 +24,71 @@ releases:
               backend:
                 type: Redis
                 redis:
-                  url: "redis.budget-nutritionist.svc.cluster.local:6379"
+                  url: "redis-state.budget-nutritionist.svc.cluster.local:6379"
+
+  # ── 2. Redis State (Идемпотентность gRPC + Global Rate Limiting) ───────────
+  - name: redis-state
+    namespace: budget-nutritionist
+    createNamespace: true
+    chart: bitnami/redis
+    version: "20.6.1"
+    installed: false # По умолчанию используются декларативные манифесты infra/02-redis.yaml
+    values:
+      - architecture: standalone
+      - auth:
+          enabled: false
+      - master:
+          command: ["redis-server"]
+          args: ["--maxmemory", "128mb", "--maxmemory-policy", "volatile-ttl", "--appendonly", "yes"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 192Mi
+
+  # ── 3. Redis Cache (L2 кэширование профилей и каталога) ────────────────────
+  - name: redis-cache
+    namespace: budget-nutritionist
+    createNamespace: true
+    chart: bitnami/redis
+    version: "20.6.1"
+    installed: false # По умолчанию используются декларативные манифесты infra/02-redis.yaml
+    values:
+      - architecture: standalone
+      - auth:
+          enabled: false
+      - master:
+          command: ["redis-server"]
+          args: ["--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 384Mi
+
+  # ── 4. PostgreSQL 17 (profile_db, catalog_db, diary_db, keycloak_db) ───────
+  - name: postgresql
+    namespace: budget-nutritionist
+    createNamespace: true
+    chart: bitnami/postgresql
+    version: "16.4.5"
+    installed: false # По умолчанию используются декларативные манифесты infra/01-postgres.yaml
+    values:
+      - image:
+          tag: "17.2.0-debian-12-r2"
+      - auth:
+          postgresPassword: "postgres"
+          database: "profile_db"
+      - primary:
+          persistence:
+            enabled: false
+          initdb:
+            scripts:
+              01-init.sql: |
+                CREATE DATABASE catalog_db;
+                CREATE DATABASE diary_db;
+                CREATE DATABASE keycloak_db;

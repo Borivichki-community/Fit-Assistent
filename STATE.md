@@ -3,18 +3,84 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-15
+Обновлено: 2026-11-20
 
 ---
 
-## Статус проекта: [T-042] Демо среза №1 завершено: сквозная цепочка Авторизация (Keycloak OAuth 2.1 PKCE) → Envoy Gateway (JWT Validation + Rate Limiting) → profile-service (gRPC + Security Interceptor) → PostgreSQL (profile_db)
+## Статус проекта: [T-044] Развёртывание базовой инфраструктуры в Kubernetes (PostgreSQL 17, Redis State/Cache, Keycloak 26, Envoy Gateway, ProfileService)
 
-Ветка: `feature/KAN-45-gateway` (Ключи задач: T-042, KAN-57, KAN-59)
+Ветка: `feature/KAN-45-gateway`
 Роли: `implementer` + `test-reviewer`
+Активированные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`
 
 ---
 
 ### Выполнено
+
+- [x] **Базовая инфраструктура в Kubernetes (`infrastructure/k8s/infra/`) и связка с Envoy Gateway:**
+  - **PostgreSQL 17 (`infrastructure/k8s/infra/01-postgres.yaml`):**
+    - Создан StatefulSet и сервис `postgres` (порт 5432) в неймспейсе `budget-nutritionist`.
+    - Секрет `postgres-secret` (`POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, `POSTGRES_DB=profile_db`).
+    - ConfigMap `postgres-initdb-config` со скриптом инициализации баз данных `catalog_db`, `diary_db`, `keycloak_db`.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 70` (UID пользователя postgres в Alpine), `allowPrivilegeEscalation: false`, сброс capabilities ALL.
+    - Health probes: `livenessProbe` и `readinessProbe` через `pg_isready`.
+    - Ресурсы: requests 100m/128Mi, limits 500m/512Mi.
+  - **Redis State & Redis Cache (`infrastructure/k8s/infra/02-redis.yaml`):**
+    - Архитектурное разделение согласно `docs/architecture/05-highload-kafka-redis-sizing.md`:
+      - `redis-state`: для идемпотентности gRPC (`IdempotencyServerInterceptor`) и Global Rate Limiting (`BackendTrafficPolicy`), аргументы `--maxmemory 128mb --maxmemory-policy volatile-ttl --appendonly yes`.
+      - `redis-cache`: для L2 кэширования профилей/каталога/рецептов, аргументы `--maxmemory 256mb --maxmemory-policy allkeys-lru`.
+    - Сервисы `redis-state` и `redis-cache` (порт 6379) в неймспейсе `budget-nutritionist`.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 999` (UID redis), `allowPrivilegeEscalation: false`.
+    - Health probes: `livenessProbe` и `readinessProbe` через `redis-cli ping`.
+    - Ресурсы: requests 50m/64Mi, limits 250m/192Mi (state) и 250m/384Mi (cache).
+  - **Keycloak 26 (`infrastructure/k8s/infra/03-keycloak.yaml`):**
+    - Деплоймент и сервис `keycloak` (порт 8080 для HTTP, 9000 для management) в неймспейсе `budget-nutritionist`.
+    - Образ `quay.io/keycloak/keycloak:26.0` в режиме `start-dev --import-realm`.
+    - ConfigMap `keycloak-realm-config` с монтированием `fitassistant-realm.json` в `/opt/keycloak/data/import/`.
+    - Подключение к БД: `KC_DB=postgres`, `KC_DB_URL=jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/keycloak_db`.
+    - Секрет `keycloak-secret` для учетных данных администратора.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 1000`, `allowPrivilegeEscalation: false`.
+    - Health probes: `livenessProbe` (`/realms/master`) и `readinessProbe` (`/realms/FitAssistant`) на порту 8080.
+  - **Обновление Helmfile и политик сетевого периметра:**
+    - `infrastructure/k8s/charts/helmfile.yaml`: перенаправлен Envoy Gateway Rate Limiter на `redis-state.budget-nutritionist.svc.cluster.local:6379`, добавлены декларативные описания инфры.
+    - `infrastructure/k8s/gateway/06-backend-traffic-policy.yaml`: EnvoyProxy redis url обновлен на `redis-state.budget-nutritionist.svc.cluster.local:6379`.
+    - `infrastructure/k8s/gateway/05-security-policy.yaml`: `remoteJWKS.uri` обновлен на межнеймспейсный FQDN `http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs`.
+  - **Связка и конфигурация `profile-service` (`infrastructure/k8s/gateway/03-profile-service.yaml`):**
+    - `PROFILE_DB_URL`: `jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db`
+    - `DB_USERNAME` и `DB_PASSWORD`: маппинг из `postgres-secret`.
+    - `SPRING_DATA_REDIS_HOST`: `redis-state.budget-nutritionist.svc.cluster.local` (порт `6379`).
+    - `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI`: `http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs`.
+    - `SPRING_GRPC_SERVER_ADDRESS`: `0.0.0.0` (разрешено прослушивание gRPC со всех интерфейсов).
+    - `SERVER_PORT` и `MANAGEMENT_PORT`: `8080` (соответствие `containerPort` и HTTP health probes).
+  - **Скрипты автоматического запуска и проверки:**
+    - Разработан `infrastructure/k8s/verify-cluster.sh` (Bash).
+    - Разработан `infrastructure/k8s/verify-cluster.ps1` (PowerShell).
+    - Обновлен `scripts/verify-envoy-gateway.sh` с учетом применения манифестов `infrastructure/k8s/infra/`.
+
+- [x] **Единый KMP-валидатор профиля пользователя и онбординга (`ProfileValidator` в `:mobile:shared`):**
+  - **Доменный слой (`:mobile:shared/src/commonMain`):**
+    - Создан чистый sealed-интерфейс ошибок `FieldValidationError` (`Empty`, `NotANumber`, `NegativeOrZero`, `OutOfRange`, `TooShort`) в пакете `dev.andre.nutritionist.domain.validation`.
+    - Реализован `ProfileValidator` с чистыми функциями валидации (`validateName`, `validateHeight`, `validateWeight`, `validateTargetWeight`, `validateAge`, `validateWeeklyBudget`, `validateDailyCalories`).
+    - Границы синхронизированы с серверным `ProfileRequestValidator`:
+      - Рост: `50 .. 300` см
+      - Вес: `20.0 .. 500.0` кг (поддержка запятой и точки как десятичных разделителей)
+      - Возраст: `14 .. 120` лет
+      - Недельный бюджет: `1.0 .. 1_000_000.0`
+      - Длина имени: `>= 2` символов
+    - Реализована комплексная валидация онбординга `ProfileValidator.validateOnboarding(OnboardingData)`.
+    - Чистота KMP: ни одной платформенной зависимости (`android.*`, `androidx.*`, `java.*`, `R.string`), запрет `!!`.
+  - **UI-слой (`:mobile:androidApp`):**
+    - Создан маппер ошибок `FieldValidationError.toMessageRes(): Int` с исчерпывающим `when` без `else`.
+    - Удалён устаревший платформенный класс `ProfileFieldsValidation.kt`.
+    - Очищен `RegistrationWizardScreen.kt`: заменены разрозненные inline-проверки на доменный `ProfileValidator`. Ошибки хранятся как типизированные `FieldValidationError?` и разрешаются в `@Composable` через `toMessageRes()`.
+    - Диалоги редактирования `EditWeightDialog.kt` и `EditBudgetDialog.kt` переведены на вызовы `ProfileValidator`.
+    - Обновлён `ProfileScreenUnitTest.kt` на тестирование `ProfileValidator` и `toMessageRes()`.
+    - Добавлены тесты в `RegistrationWizardScreenTest.kt` на блокировку перехода при некорректном росте и бюджете.
+  - **Тестирование и верификация:**
+    - Разработан исчерпывающий набор юнит-тестов `ProfileValidatorTest.kt` в `commonTest` (17 тестов, граничные значения, некорректные типы, пустые строки, комплексный онбординг).
+    - `:mobile:shared:allTests` (`testAndroidHostTest`): 111 passed, 0 failed.
+    - `:mobile:androidApp:testDebugUnitTest`: 72 passed, 0 failed.
+    - `:mobile:androidApp:assembleDebug` и `:mobile:shared:assemble`: BUILD SUCCESSFUL.
 
 - [x] **Устранение дублирования бизнес-логики и переход на SSOT на бэкенде (profile-service) для норм КБЖУ:**
   - **Ликвидация клиентской формулы Миффлина — Сан-Жеора (`:mobile:shared`):**
