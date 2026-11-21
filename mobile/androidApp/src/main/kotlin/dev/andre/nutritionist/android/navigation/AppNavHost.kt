@@ -21,6 +21,7 @@ import dev.andre.nutritionist.android.ui.screens.MainScreen
 import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
+import dev.andre.nutritionist.android.ui.screens.catalog.CatalogRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.android.ui.screens.splash.SplashRoute
 import dev.andre.nutritionist.domain.model.UserId
@@ -182,7 +183,7 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Recipes.route) {
-            MainScreen(
+            CatalogRoute(
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true

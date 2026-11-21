@@ -5,6 +5,31 @@
 
 Обновлено: 2026-11-21
 
+### T-053 — Каталог рационов питания (Catalog & Meal Plans) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Презентация и доменный слой в `:mobile:shared`:
+  - Доменная модель `MealPlan` с `MealPlanId`, БЖУ, калориями, ориентировочным бюджетом, рейтингом, тегами и признаком избранного.
+  - Контракт `MealPlanRepository` и реализация `MealPlanRepositoryImpl` с 6 сбалансированными планами (Средиземноморский, Студенческий, Сушка, Массонабор, Детокс, Кето) и потокобезопасным переключением избранного.
+  - KoTEA Store: `CatalogState` (`sealed interface Content: Loading, Success, Error`), `CatalogEvent` (`Ui` и `Internal`), `CatalogCommand` (`LoadPlans`, `ToggleFavorite`), `CatalogNews` (`ShowSnackbar`, `NavigateToAiGenerator`, `NavigateToPlanDetail`).
+  - Чистый `CatalogUpdate` без сайд-эффектов и без `else`, с фильтрацией по поисковому запросу и категориям («Все», «Баланс», «Эконом», «Похудение», «Набор массы», «Веган», «Кето»).
+  - `CatalogCommandsFlowHandler` с безопасным исполнением через `CoroutineDispatchers.io`.
+  - `CatalogUiState` и `CatalogUiStateMapper` с формированием моделей карточек планов, чипсов категорий и данных AI-баннера.
+  - `CatalogViewModel` с предоставлением `StateFlow<CatalogUiState>` и регистрация в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `MealPlanCard`: карточка плана питания Level 1 Glass (`surfaceContainerLow`, `GlassBorderLevel1`), с изумрудным бейджем калорийности, золотым бейджем дневного бюджета, кнопкой добавления в избранное (Soft Rose) и кнопкой выбора рациона.
+  - `CatalogSuccessContent`: вертикальный скролл с баннером генерации персонального AI-рациона (светящаяся неоновая рамка Ion Cyan, иконка искр), строкой поиска pill-формы с очисткой и горизонтальной лентой чипсов категорий.
+  - `CatalogScreen`: тонкий stateless-экран с фирменной `FitTopBar`, `FitBottomNavigationBar` и обработкой состояний `Loading`, `Error`, `Success`.
+  - `CatalogRoute`: связывание с `CatalogViewModel` и обработкой News (переход к AI генератору, деталям рациона, снэкбарам).
+  - Интеграция в `AppNavHost`: вкладка рецептов/рационов подключена к `CatalogRoute`.
+- Тестирование и верификация:
+  - `CatalogUpdateTest`: 8 тестов редьюсера KoTEA (инициализация, фильтрация по категориям и поисковым строкам, переключение избранного, навигация).
+  - `CatalogCommandsFlowHandlerTest`: 3 теста с `Turbine` на загрузку и обновление избранного.
+  - `CatalogScreenTest`: 7 тестов Compose UI (индикатор загрузки, экран ошибки с повтором, AI баннер с кликом, поисковая строка, чипсы категорий, пустой список, клик выбора плана и клик по избранному).
+  - PASS: `:mobile:shared:allTests` — 150 тестов без ошибок.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 91 тест без ошибок.
+  - PASS: `:mobile:androidApp:assembleDebug` — сборка APK успешна.
+
 ### T-052 — Модальная шторка добавления блюда (Add Meal BottomSheet) в стиле Aether Zero-G Luxury (2026-11-21)
 
 - Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.

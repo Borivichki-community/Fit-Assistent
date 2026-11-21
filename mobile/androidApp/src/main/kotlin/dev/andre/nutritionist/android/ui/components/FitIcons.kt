@@ -941,4 +941,82 @@ object FitIcons {
             }
         }.build()
     }
+
+    val Heart: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitHeart",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(20.84f, 4.61f)
+                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 13.07f, 4.61f)
+                lineTo(12f, 5.67f)
+                lineTo(10.93f, 4.61f)
+                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 3.16f, 12.38f)
+                lineTo(4.22f, 13.44f)
+                lineTo(12f, 21.23f)
+                lineTo(19.78f, 13.44f)
+                lineTo(20.84f, 12.38f)
+                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20.84f, 4.61f)
+                close()
+            }
+        }.build()
+    }
+
+    val HeartFilled: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitHeartFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+            ) {
+                moveTo(12f, 21.35f)
+                lineTo(10.55f, 20.03f)
+                arcTo(9.08f, 9.08f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5.2f, 15.65f)
+                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = true, 12f, 5.09f)
+                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18.8f, 15.65f)
+                arcTo(9.08f, 9.08f, 0f, isMoreThanHalf = false, isPositiveArc = true, 13.45f, 20.03f)
+                close()
+            }
+        }.build()
+    }
+
+    val Sparkles: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitSparkles",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(12f, 2f)
+                lineTo(14f, 9f)
+                lineTo(21f, 11f)
+                lineTo(14f, 13f)
+                lineTo(12f, 20f)
+                lineTo(10f, 13f)
+                lineTo(3f, 11f)
+                lineTo(10f, 9f)
+                close()
+            }
+        }.build()
+    }
 }
