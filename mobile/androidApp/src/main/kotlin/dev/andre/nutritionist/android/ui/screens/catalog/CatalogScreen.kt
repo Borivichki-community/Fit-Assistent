@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
 import dev.andre.nutritionist.android.ui.components.FitTopBar
+import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.domain.model.MealPlanId
 import dev.andre.nutritionist.presentation.catalog.CatalogUiState
@@ -41,6 +42,7 @@ fun CatalogScreen(
     onRetryClick: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
     onDestinationSelected: (AppDestination) -> Unit = {},
+    isOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -65,11 +67,19 @@ fun CatalogScreen(
             )
         },
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            if (isOffline) {
+                OfflineBanner()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+            ) {
             when (val content = state.content) {
                 CatalogUiState.Content.Loading -> {
                     Box(
@@ -127,4 +137,5 @@ fun CatalogScreen(
             }
         }
     }
+}
 }

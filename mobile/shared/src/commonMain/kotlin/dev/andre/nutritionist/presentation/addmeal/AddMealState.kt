@@ -16,6 +16,7 @@ data class AddMealState(
     val selectedCategory: String = "Все",
     val selectedFoodItem: FoodItem? = null,
     val portionGrams: Double = 100.0,
+    val isOnline: Boolean = true,
     val content: Content = Content.Loading,
 ) {
     sealed interface Content {

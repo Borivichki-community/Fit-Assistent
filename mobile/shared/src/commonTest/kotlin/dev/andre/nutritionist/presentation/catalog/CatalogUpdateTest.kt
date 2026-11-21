@@ -45,6 +45,26 @@ class CatalogUpdateTest {
     }
 
     @Test
+    fun `SearchQueryChanged when offline emits snackbar`() {
+        val initial = CatalogState(isOnline = false)
+        val next = update.update(initial, CatalogEvent.Ui.SearchQueryChanged("рыба"))
+
+        assertEquals(
+            listOf(CatalogNews.ShowSnackbar("Поиск в онлайн-каталоге недоступен без интернета")),
+            next.news,
+        )
+    }
+
+    @Test
+    fun `NetworkStatusChanged updates isOnline in state`() {
+        val initial = CatalogState(isOnline = true)
+        val next = update.update(initial, CatalogEvent.Ui.NetworkStatusChanged(false))
+
+        val state = requireNotNull(next.state)
+        assertEquals(false, state.isOnline)
+    }
+
+    @Test
     fun `CategorySelected updates category and emits LoadPlans command`() {
         val initial = CatalogState(query = "сушка")
         val next = update.update(initial, CatalogEvent.Ui.CategorySelected("Похудение"))

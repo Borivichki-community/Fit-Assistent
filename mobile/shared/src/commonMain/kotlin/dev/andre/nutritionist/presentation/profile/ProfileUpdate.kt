@@ -62,39 +62,59 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                 commands(ProfileCommand.UpdateProfile(profile))
             }
             is ProfileEvent.Ui.UpdateProfile -> {
-                state { copy(content = ProfileState.Content.Loading, isSaving = true) }
-                commands(ProfileCommand.UpdateProfile(event.profile))
+                if (state.isOffline) {
+                    news(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет"))
+                } else {
+                    state { copy(content = ProfileState.Content.Loading, isSaving = true) }
+                    commands(ProfileCommand.UpdateProfile(event.profile))
+                }
             }
             is ProfileEvent.Ui.ChangeWeight -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(weightKg = event.weightKg)
-                    state { copy(isSaving = true) }
-                    commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    if (state.isOffline) {
+                        news(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет"))
+                    } else {
+                        val updatedProfile = currentContent.profile.copy(weightKg = event.weightKg)
+                        state { copy(isSaving = true) }
+                        commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    }
                 }
             }
             is ProfileEvent.Ui.ChangeActivity -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(activityLevel = event.activityLevel)
-                    state { copy(isSaving = true) }
-                    commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    if (state.isOffline) {
+                        news(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет"))
+                    } else {
+                        val updatedProfile = currentContent.profile.copy(activityLevel = event.activityLevel)
+                        state { copy(isSaving = true) }
+                        commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    }
                 }
             }
             is ProfileEvent.Ui.ChangeGoal -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(goalType = event.goalType)
-                    state { copy(isSaving = true) }
-                    commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    if (state.isOffline) {
+                        news(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет"))
+                    } else {
+                        val updatedProfile = currentContent.profile.copy(goalType = event.goalType)
+                        state { copy(isSaving = true) }
+                        commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    }
                 }
             }
             is ProfileEvent.Ui.ChangeBudget -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(weeklyBudget = event.weeklyBudget)
-                    state { copy(isSaving = true) }
-                    commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    if (state.isOffline) {
+                        news(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет"))
+                    } else {
+                        val updatedProfile = currentContent.profile.copy(weeklyBudget = event.weeklyBudget)
+                        state { copy(isSaving = true) }
+                        commands(ProfileCommand.UpdateProfile(updatedProfile))
+                    }
                 }
             }
             is ProfileEvent.Ui.NameChanged -> {
@@ -141,6 +161,9 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                     }
                 }
             }
+            is ProfileEvent.Ui.NetworkStatusChanged -> {
+                state { copy(isOffline = !event.isConnected) }
+            }
             is ProfileEvent.Internal.ProfileLoaded -> {
                 val wasSaving = state.isSaving
                 val currentSuccess = state.content as? ProfileState.Content.Success
@@ -159,7 +182,7 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                     )
                 }
                 if (wasSaving) {
-                    news(ProfileNews.ProfileSaved)
+                    news(ProfileNews.ProfileSaved, ProfileNews.ShowSnackbar("Профиль успешно обновлён"))
                 }
             }
             is ProfileEvent.Internal.ProfileLoadFailed -> {

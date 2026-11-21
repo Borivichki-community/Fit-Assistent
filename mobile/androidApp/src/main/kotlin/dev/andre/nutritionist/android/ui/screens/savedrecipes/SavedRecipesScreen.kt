@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.ui.components.FitIcons
+import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.domain.model.RecipeId
@@ -48,6 +49,7 @@ fun SavedRecipesScreen(
     onRetryClicked: () -> Unit = {},
     onGenerateRecipeClicked: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
+    isOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -98,11 +100,19 @@ fun SavedRecipesScreen(
             }
         },
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            if (isOffline) {
+                OfflineBanner()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+            ) {
             when (val content = state.content) {
                 is SavedRecipesUiState.Content.Loading -> {
                     Box(
@@ -184,4 +194,5 @@ fun SavedRecipesScreen(
             }
         }
     }
+}
 }

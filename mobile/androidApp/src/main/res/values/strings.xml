@@ -208,4 +208,14 @@
     <string name="plan_manager_empty_subtitle">Choose a balanced meal plan from our catalog or generate recipes with AI</string>
     <string name="plan_manager_empty_btn">Browse Catalog</string>
     <string name="plan_manager_day_target">Daily Target</string>
+
+    <!-- Snackbars & Offline Notifications -->
+    <string name="snackbar_meal_added">Meal added to diary</string>
+    <string name="snackbar_meal_saved_offline">Saved locally. Will sync when back online</string>
+    <string name="snackbar_offline_ai_blocked">AI recipe generation is unavailable offline</string>
+    <string name="snackbar_offline_goal_blocked">Internet connection required to update goals</string>
+    <string name="snackbar_offline_catalog_blocked">Online catalog search is unavailable offline</string>
+    <string name="snackbar_recipe_favorited">Recipe added to favorites</string>
+    <string name="snackbar_recipe_unfavorited">Recipe removed from favorites</string>
+    <string name="snackbar_profile_updated">Profile updated successfully</string>
 </resources>

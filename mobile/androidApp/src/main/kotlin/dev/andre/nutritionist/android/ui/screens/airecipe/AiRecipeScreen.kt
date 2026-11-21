@@ -17,6 +17,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.ui.components.FitIcons
+import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeUiState
@@ -48,10 +51,16 @@ fun AiRecipeScreen(
     onRetryClicked: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = {
+            if (snackbarHostState != null) {
+                SnackbarHost(hostState = snackbarHostState)
+            }
+        },
         topBar = {
             Row(
                 modifier = Modifier
@@ -80,11 +89,19 @@ fun AiRecipeScreen(
             }
         },
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
+            if (!state.isOnline) {
+                OfflineBanner()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+            ) {
             when (val content = state.content) {
                 is AiRecipeUiState.Content.Configuring -> {
                     AiRecipeConfiguringContent(
@@ -147,4 +164,5 @@ fun AiRecipeScreen(
             }
         }
     }
+}
 }

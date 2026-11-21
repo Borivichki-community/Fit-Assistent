@@ -10,6 +10,7 @@ data class CatalogState(
     val query: String = "",
     val selectedCategory: String = "Все",
     val selectedPlanId: MealPlanId? = null,
+    val isOnline: Boolean = true,
     val content: Content = Content.Loading,
 ) {
     sealed interface Content {

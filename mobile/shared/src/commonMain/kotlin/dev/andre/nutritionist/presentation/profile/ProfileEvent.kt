@@ -42,6 +42,7 @@ sealed interface ProfileEvent {
         data class AgeChanged(val age: String) : Ui
         data class TargetWeightChanged(val targetWeight: String) : Ui
         data class DailyCaloriesChanged(val dailyCalories: String) : Ui
+        data class NetworkStatusChanged(val isConnected: Boolean) : Ui
     }
 
     /** Внутренние события, приходящие из CommandsFlowHandler. */

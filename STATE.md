@@ -3,7 +3,37 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-21
+Обновлено: 2026-11-22
+
+### T-059 — Ликвидация заглушек, удаление servicecheck, умный Offline-First режим и сквозная система Snackbars (2026-11-22)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Блок 1: Полное удаление модуля `servicecheck`:
+  - Удалены все файлы пакета `dev.andre.nutritionist.android.servicecheck` в `mobile/androidApp/src/debug/`.
+  - Удален тест `ServiceCheckUpdateTest.kt` в `mobile/androidApp/src/testDebug/`.
+  - Удалены ресурсы `service_check.xml` (en, values-ru).
+  - Очищен `mobile/androidApp/src/debug/AndroidManifest.xml` (оставлена только пустая секция манифеста).
+- Блок 2: Мониторинг сети, Room KMP Offline-First дневника и матрица ограничений:
+  - Создан интерфейс `ConnectivityObserver` в `:mobile:shared` и реализация `AndroidConnectivityObserver` на `ConnectivityManager.NetworkCallback` в `:mobile:androidApp`.
+  - Room KMP 2.8.x: сущность `DiaryEntryEntity` (`dev.andre.nutritionist.data.local.entity`), DAO `DiaryDao`, маппер `DiaryEntityMapper`, обновление схемы `AppDatabase` до версии 2 с поддержкой `syncStatus` (`SYNC_PENDING`, `SYNCED`, `FAILED`).
+  - `DiaryRepositoryImpl`: прозрачное кэширование записей дневника в Room KMP со статусом `SYNC_PENDING` и fallback-механизмом.
+  - Фоновая синхронизация: контракт `DiaryRemoteDataSource` в `:mobile:shared`, `SyncDiaryWorker` (`CoroutineWorker` + `KoinComponent` с `BackoffPolicy.EXPONENTIAL`) и планировщик `WorkManagerSyncScheduler`.
+  - Матрица Online/Offline: отображение `OfflineBanner` на экранах дневника (`MainScreen`), ИИ-рецептов (`AiRecipeScreen`), каталога (`CatalogScreen`), профиля (`ProfileScreen`) и сохранённых рецептов (`SavedRecipesScreen`).
+  - Блокировка операций в офлайн-режиме с информативными снэкбарами: генерация ИИ-рецептов, поиск по онлайн-каталогу, пересчёт целей КБЖУ в профиле. Оптимистичное сохранение приёмов пищи локально с последующей синхронизацией.
+- Блок 3: Сквозная система Snackbars:
+  - Глобальный `SnackbarHost` в `AppNavHost` в стиле Aether Zero-G Luxury (`SurfaceContainerHigh #272A31`, скругление `16.dp`, текст `OnSurfaceDark #E1E2EB`, действие `PrimaryContainerDark #00F5A0`).
+  - Проброс `snackbarHostState` во все `*Route` и обработка событий `ShowSnackbar` из KoTEA News.
+  - Локализация 8 строковых ключей в `strings.xml` и `values-ru/strings.xml` (`snackbar_meal_added`, `snackbar_meal_saved_offline`, `snackbar_offline_ai_blocked`, `snackbar_offline_goal_blocked`, `snackbar_offline_catalog_blocked`, `snackbar_recipe_favorited`, `snackbar_recipe_unfavorited`, `snackbar_profile_updated`).
+- Блок 4: Ликвидация `testuser` и заглушек:
+  - Полное удаление заглушек `UserId("testuser")` из всех слоёв (репозитории, мапперы, Route).
+  - Безопасная маршрутизация с редиректом неавторизованных пользователей на `AppDestination.Auth.route`.
+- Тестирование и верификация:
+  - Создан `DiaryDaoTest` (Robolectric + Turbine) в `mobile/shared/src/androidHostTest/`.
+  - Добавлены тесты онлайн/офлайн поведения в `AddMealUpdateTest`, `AiRecipeUpdateTest`, `CatalogUpdateTest`, `ProfileUpdateTest`.
+  - Исправлено сохранение `streakDays` в `DashboardUiStateMapper`.
+  - PASS: `:mobile:shared:allTests` — 221 тест успешно пройден.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 121 тест успешно пройден.
+  - PASS: `:mobile:androidApp:assembleDebug` — сборка APK успешна.
 
 ### T-058 — Финализация стилизации экрана профиля (Profile Screen Styling) в стиле Aether Zero-G Luxury (2026-11-21)
 

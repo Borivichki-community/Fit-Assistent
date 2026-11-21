@@ -22,6 +22,8 @@ sealed interface CatalogEvent {
         data object GenerateAiPlanClick : Ui
 
         data object Retry : Ui
+
+        data class NetworkStatusChanged(val isConnected: Boolean) : Ui
     }
 
     sealed interface Internal : CatalogEvent {

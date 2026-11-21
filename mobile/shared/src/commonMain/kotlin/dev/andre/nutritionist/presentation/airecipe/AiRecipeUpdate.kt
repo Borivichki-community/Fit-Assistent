@@ -51,16 +51,20 @@ class AiRecipeUpdate : DslUpdate<AiRecipeState, AiRecipeEvent, AiRecipeCommand, 
             AiRecipeEvent.Ui.GenerateClicked -> {
                 val current = state.content
                 if (current is AiRecipeState.Content.Configuring) {
-                    state {
-                        copy(
-                            content = AiRecipeState.Content.Generating(
-                                prompt = current.prompt,
-                                phaseText = "Анализируем нутриенты...",
-                                progress = 0.2f,
-                            ),
-                        )
+                    if (!state.isOnline) {
+                        news(AiRecipeNews.ShowSnackbar("Генерация рецептов недоступна без интернета"))
+                    } else {
+                        state {
+                            copy(
+                                content = AiRecipeState.Content.Generating(
+                                    prompt = current.prompt,
+                                    phaseText = "Анализируем нутриенты...",
+                                    progress = 0.2f,
+                                ),
+                            )
+                        }
+                        commands(AiRecipeCommand.Generate(current.prompt))
                     }
-                    commands(AiRecipeCommand.Generate(current.prompt))
                 }
             }
             AiRecipeEvent.Ui.SaveRecipeClicked -> {
@@ -93,6 +97,9 @@ class AiRecipeUpdate : DslUpdate<AiRecipeState, AiRecipeEvent, AiRecipeCommand, 
                     }
                     commands(AiRecipeCommand.Generate(prompt))
                 }
+            }
+            is AiRecipeEvent.Ui.NetworkStatusChanged -> {
+                state { copy(isOnline = event.isConnected) }
             }
         }
     }

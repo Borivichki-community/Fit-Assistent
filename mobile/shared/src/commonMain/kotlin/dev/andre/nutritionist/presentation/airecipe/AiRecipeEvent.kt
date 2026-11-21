@@ -19,6 +19,7 @@ sealed interface AiRecipeEvent {
         data object AddRecipeToDiaryClicked : Ui
         data object ResetClicked : Ui
         data object RetryClicked : Ui
+        data class NetworkStatusChanged(val isConnected: Boolean) : Ui
     }
 
     sealed interface Internal : AiRecipeEvent {

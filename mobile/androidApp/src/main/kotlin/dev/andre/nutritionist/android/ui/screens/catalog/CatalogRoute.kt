@@ -9,10 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.domain.model.MealPlanId
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
 import dev.andre.nutritionist.presentation.catalog.CatalogEvent
 import dev.andre.nutritionist.presentation.catalog.CatalogNews
 import dev.andre.nutritionist.presentation.catalog.CatalogViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Stateful Route для экрана каталога рационов питания.
@@ -26,9 +28,17 @@ fun CatalogRoute(
     onNavigateToPlanDetail: (MealPlanId) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CatalogViewModel = koinViewModel(),
+    connectivityObserver: ConnectivityObserver = koinInject(),
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val effectiveSnackbarHostState = snackbarHostState ?: localSnackbarHostState
+    val isOnline by connectivityObserver.isConnected.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isOnline) {
+        viewModel.dispatch(CatalogEvent.Ui.NetworkStatusChanged(isOnline))
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.dispatch(CatalogEvent.Ui.Load)
@@ -38,7 +48,7 @@ fun CatalogRoute(
         viewModel.news.collect { news ->
             when (news) {
                 is CatalogNews.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(news.message)
+                    effectiveSnackbarHostState.showSnackbar(news.message)
                 }
                 CatalogNews.NavigateToAiGenerator -> {
                     onNavigateToAiGenerator()
@@ -52,6 +62,7 @@ fun CatalogRoute(
 
     CatalogScreen(
         state = state,
+        isOffline = !isOnline,
         onSearchQueryChanged = { query ->
             viewModel.dispatch(CatalogEvent.Ui.SearchQueryChanged(query))
         },

@@ -208,4 +208,14 @@
     <string name="plan_manager_empty_subtitle">Выберите сбалансированный рацион в каталоге или создайте рецепт с помощью ИИ</string>
     <string name="plan_manager_empty_btn">Перейти в каталог</string>
     <string name="plan_manager_day_target">Цель на день</string>
+
+    <!-- Snackbars & Offline Notifications -->
+    <string name="snackbar_meal_added">Блюдо добавлено в дневник</string>
+    <string name="snackbar_meal_saved_offline">Сохранено локально. Отправится при появлении сети</string>
+    <string name="snackbar_offline_ai_blocked">Генерация рецептов недоступна без интернета</string>
+    <string name="snackbar_offline_goal_blocked">Для пересчёта целей требуется интернет</string>
+    <string name="snackbar_offline_catalog_blocked">Поиск в онлайн-каталоге недоступен без интернета</string>
+    <string name="snackbar_recipe_favorited">Рецепт добавлен в избранное</string>
+    <string name="snackbar_recipe_unfavorited">Рецепт удалён из избранного</string>
+    <string name="snackbar_profile_updated">Профиль успешно обновлён</string>
 </resources>

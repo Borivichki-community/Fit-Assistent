@@ -14,9 +14,13 @@ import dev.andre.nutritionist.android.auth.AuthViewModel
 import dev.andre.nutritionist.android.auth.EncryptedPrefsAuthStorage
 import dev.andre.nutritionist.android.auth.AppAuthConnectionBuilder
 import dev.andre.nutritionist.android.auth.TokenExchanger
+import dev.andre.nutritionist.android.network.AndroidConnectivityObserver
+import dev.andre.nutritionist.android.work.WorkManagerSyncScheduler
 import dev.andre.nutritionist.di.androidLocalDataModule
 import dev.andre.nutritionist.di.androidRemoteDataModule
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
+import dev.andre.nutritionist.domain.sync.SyncScheduler
 import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthorizationService
 import org.koin.core.module.dsl.viewModel
@@ -69,6 +73,14 @@ val authModule = module {
     }
 }
 
+val networkModule = module {
+    single<ConnectivityObserver> { AndroidConnectivityObserver(context = get()) }
+}
+
+val syncModule = module {
+    single<SyncScheduler> { WorkManagerSyncScheduler(context = get()) }
+}
+
 val androidAppModule = module {
-    includes(androidLocalDataModule, authModule, androidRemoteDataModule)
+    includes(androidLocalDataModule, authModule, androidRemoteDataModule, networkModule, syncModule)
 }

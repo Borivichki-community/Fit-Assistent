@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.screens
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,7 +12,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.domain.model.MealType
-import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
+import dev.andre.nutritionist.domain.sync.SyncScheduler
 import dev.andre.nutritionist.presentation.addmeal.AddMealEvent
 import dev.andre.nutritionist.presentation.addmeal.AddMealNews
 import dev.andre.nutritionist.presentation.addmeal.AddMealState
@@ -35,12 +37,29 @@ fun DashboardRoute(
     onAddMealClick: (MealType) -> Unit = {},
     onMealItemClick: (String) -> Unit = {},
     onAddExerciseSleepClick: () -> Unit = {},
+    onNavigateToAuth: () -> Unit = {},
     modifier: Modifier = Modifier,
     dashboardViewModel: DashboardViewModel = koinViewModel(),
     addMealViewModel: AddMealViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
+    connectivityObserver: ConnectivityObserver = koinInject(),
+    syncScheduler: SyncScheduler = koinInject(),
+    snackbarHostState: SnackbarHostState? = null,
 ) {
-    val currentUserId = authRepository.getUserId() ?: UserId("testuser")
+    val currentUserId = remember(authRepository) { authRepository.getUserId() }
+    if (currentUserId == null) {
+        LaunchedEffect(Unit) {
+            onNavigateToAuth()
+        }
+        return
+    }
+
+    val isOnline by connectivityObserver.isConnected.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isOnline) {
+        addMealViewModel.dispatch(AddMealEvent.Ui.NetworkStatusChanged(isOnline))
+    }
+
     val today = remember {
         LocalDate.fromEpochDays(System.currentTimeMillis() / (24 * 60 * 60 * 1000L))
     }
@@ -74,7 +93,7 @@ fun DashboardRoute(
         dashboardViewModel.news.collect { news ->
             when (news) {
                 is DashboardNews.ShowSnackbar -> {
-                    // Обработка уведомления
+                    snackbarHostState?.showSnackbar(news.message)
                 }
                 is DashboardNews.NavigateToMealDetail -> {
                     onMealItemClick(news.mealId)
@@ -89,12 +108,13 @@ fun DashboardRoute(
                 is AddMealNews.MealAddedSuccess -> {
                     dashboardViewModel.dispatch(DashboardEvent.Ui.AddMealOptimistic(news.entry))
                     activeAddMealType = null
+                    syncScheduler.scheduleDiarySync()
                 }
                 AddMealNews.Dismiss -> {
                     activeAddMealType = null
                 }
                 is AddMealNews.ShowSnackbar -> {
-                    // Обработка уведомления
+                    snackbarHostState?.showSnackbar(news.message)
                 }
                 AddMealNews.OpenBarcodeScanner -> {
                     // Обработка сканера штрихкодов
@@ -110,6 +130,7 @@ fun DashboardRoute(
 
     MainScreen(
         state = dashboardUiState,
+        isOffline = !isOnline,
         onAddMealClick = { mealType ->
             activeAddMealType = mealType
             onAddMealClick(mealType)

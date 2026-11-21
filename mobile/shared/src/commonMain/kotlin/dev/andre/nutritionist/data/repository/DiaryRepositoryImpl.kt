@@ -1,9 +1,13 @@
 package dev.andre.nutritionist.data.repository
 
+import dev.andre.nutritionist.data.local.dao.DiaryDao
+import dev.andre.nutritionist.data.mapper.toDomain
+import dev.andre.nutritionist.data.mapper.toEntity
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.DailyDiary
 import dev.andre.nutritionist.domain.model.DiaryEntry
 import dev.andre.nutritionist.domain.model.DiaryEntryId
+import dev.andre.nutritionist.domain.model.SyncStatus
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.repository.DiaryRepository
 import kotlinx.coroutines.flow.Flow
@@ -14,19 +18,24 @@ import kotlinx.datetime.LocalDate
 
 /**
  * Реализация [DiaryRepository] для мобильного приложения.
- * Обеспечивает потокобезопасное хранение записей дневника в памяти
- * с поддержкой подписки Flow.
+ * Обеспечивает Room KMP хранение записей дневника питания (Local-First)
+ * с поддержкой подписки Flow и fallback в память.
  */
 class DiaryRepositoryImpl(
     private val dispatchers: CoroutineDispatchers,
+    private val diaryDao: DiaryDao? = null,
 ) : DiaryRepository {
 
-    private val entriesFlow = MutableStateFlow<List<DiaryEntry>>(emptyList())
+    private val inMemoryEntriesFlow = MutableStateFlow<List<DiaryEntry>>(emptyList())
 
     override suspend fun getDailyDiary(userId: UserId, date: LocalDate): Result<DailyDiary> =
         withContext(dispatchers.io) {
             runCatching {
-                val dayEntries = entriesFlow.value.filter { it.userId == userId && it.date == date }
+                val dayEntries = if (diaryDao != null) {
+                    diaryDao.getDailyEntries(userId.raw, date.toEpochDays().toLong()).map { it.toDomain() }
+                } else {
+                    inMemoryEntriesFlow.value.filter { it.userId == userId && it.date == date }
+                }
                 DailyDiary(
                     userId = userId,
                     date = date,
@@ -37,37 +46,62 @@ class DiaryRepositoryImpl(
         }
 
     override fun observeDailyDiary(userId: UserId, date: LocalDate): Flow<DailyDiary> =
-        entriesFlow.map { allEntries ->
-            val dayEntries = allEntries.filter { it.userId == userId && it.date == date }
-            DailyDiary(
-                userId = userId,
-                date = date,
-                entries = dayEntries,
-                streakDays = 1,
-            )
+        if (diaryDao != null) {
+            diaryDao.observeDailyEntries(userId.raw, date.toEpochDays().toLong()).map { entities ->
+                DailyDiary(
+                    userId = userId,
+                    date = date,
+                    entries = entities.map { it.toDomain() },
+                    streakDays = 1,
+                )
+            }
+        } else {
+            inMemoryEntriesFlow.map { allEntries ->
+                val dayEntries = allEntries.filter { it.userId == userId && it.date == date }
+                DailyDiary(
+                    userId = userId,
+                    date = date,
+                    entries = dayEntries,
+                    streakDays = 1,
+                )
+            }
         }
 
     override suspend fun addEntry(entry: DiaryEntry): Result<DiaryEntry> =
         withContext(dispatchers.io) {
             runCatching {
-                val current = entriesFlow.value.toMutableList()
-                val index = current.indexOfFirst { it.id == entry.id }
-                if (index >= 0) {
-                    current[index] = entry
+                val entryToSave = if (entry.syncStatus == SyncStatus.SYNCED) {
+                    entry
                 } else {
-                    current.add(entry)
+                    entry.copy(syncStatus = SyncStatus.PENDING)
                 }
-                entriesFlow.value = current
-                entry
+
+                if (diaryDao != null) {
+                    diaryDao.insertOrReplace(entryToSave.toEntity(SyncStatus.STATUS_SYNC_PENDING))
+                } else {
+                    val current = inMemoryEntriesFlow.value.toMutableList()
+                    val index = current.indexOfFirst { it.id == entry.id }
+                    if (index >= 0) {
+                        current[index] = entryToSave
+                    } else {
+                        current.add(entryToSave)
+                    }
+                    inMemoryEntriesFlow.value = current
+                }
+                entryToSave
             }
         }
 
     override suspend fun deleteEntry(id: DiaryEntryId): Result<Unit> =
         withContext(dispatchers.io) {
             runCatching {
-                val current = entriesFlow.value.toMutableList()
-                current.removeAll { it.id == id }
-                entriesFlow.value = current
+                if (diaryDao != null) {
+                    diaryDao.deleteById(id.raw)
+                } else {
+                    val current = inMemoryEntriesFlow.value.toMutableList()
+                    current.removeAll { it.id == id }
+                    inMemoryEntriesFlow.value = current
+                }
             }
         }
 }

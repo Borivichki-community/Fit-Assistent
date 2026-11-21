@@ -36,6 +36,7 @@ import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.FitTopBar
 import dev.andre.nutritionist.android.ui.components.LoadingContent
+import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.presentation.dashboard.DashboardSuccessUiModel
@@ -57,6 +58,7 @@ fun MainScreen(
     onDestinationSelected: (AppDestination) -> Unit = {},
     onAddExerciseSleepClick: () -> Unit = {},
     onRetry: () -> Unit = {},
+    isOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -98,6 +100,7 @@ fun MainScreen(
                         onToggleMealSection = onToggleMealSection,
                         onCompleteProfileClick = onCompleteProfileClick,
                         onAddExerciseSleepClick = onAddExerciseSleepClick,
+                        isOffline = isOffline,
                     )
                 }
             }
@@ -116,6 +119,7 @@ fun MainScreenSuccessContent(
     onToggleMealSection: (MealType) -> Unit,
     onCompleteProfileClick: () -> Unit,
     onAddExerciseSleepClick: () -> Unit,
+    isOffline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -130,6 +134,10 @@ fun MainScreenSuccessContent(
             title = "FitApp",
             onMenuClick = { /* открытие меню */ },
         )
+
+        if (isOffline) {
+            OfflineBanner()
+        }
 
         // Баннер предупреждения о незаполненном профиле
         if (data.showCompleteProfileBanner) {

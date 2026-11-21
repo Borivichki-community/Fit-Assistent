@@ -122,7 +122,7 @@ class MealPlanRepositoryImpl(
     )
 
     private val activePlansMap = MutableStateFlow<Map<String, MealPlanId>>(
-        mapOf("testuser" to MealPlanId("plan-mediterranean")),
+        emptyMap(),
     )
 
     private val sampleDays: List<MealPlanDay> = listOf(

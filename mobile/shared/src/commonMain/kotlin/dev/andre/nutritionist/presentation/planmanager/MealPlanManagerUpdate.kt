@@ -17,9 +17,11 @@ class MealPlanManagerUpdate : DslUpdate<MealPlanManagerState, MealPlanManagerEve
                 commands(MealPlanManagerCommand.Load(event.userId))
             }
             MealPlanManagerEvent.Ui.Retry -> {
-                val uid = state.userId ?: UserId("testuser")
-                state { copy(content = MealPlanManagerState.Content.Loading, userId = uid) }
-                commands(MealPlanManagerCommand.Load(uid))
+                val uid = state.userId
+                if (uid != null) {
+                    state { copy(content = MealPlanManagerState.Content.Loading) }
+                    commands(MealPlanManagerCommand.Load(uid))
+                }
             }
             is MealPlanManagerEvent.Ui.SelectTab -> {
                 val currentContent = state.content
@@ -56,8 +58,10 @@ class MealPlanManagerUpdate : DslUpdate<MealPlanManagerState, MealPlanManagerEve
                 }
             }
             MealPlanManagerEvent.Ui.DeactivatePlan -> {
-                val uid = state.userId ?: UserId("testuser")
-                commands(MealPlanManagerCommand.DeactivatePlan(uid))
+                val uid = state.userId
+                if (uid != null) {
+                    commands(MealPlanManagerCommand.DeactivatePlan(uid))
+                }
             }
             MealPlanManagerEvent.Ui.NavigateToCatalog -> {
                 news(MealPlanManagerNews.NavigateToCatalog)

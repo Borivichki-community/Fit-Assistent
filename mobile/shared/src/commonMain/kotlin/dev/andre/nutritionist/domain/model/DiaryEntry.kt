@@ -21,4 +21,5 @@ data class DiaryEntry(
     val recordedAt: Instant,
     val idempotencyKey: IdempotencyKey,
     val portionDescription: String = "1 порция",
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
 )

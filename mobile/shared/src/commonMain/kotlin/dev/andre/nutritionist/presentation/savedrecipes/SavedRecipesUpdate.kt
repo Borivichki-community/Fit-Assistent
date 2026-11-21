@@ -110,15 +110,22 @@ class SavedRecipesUpdate : DslUpdate<SavedRecipesState, SavedRecipesEvent, Saved
 
             is SavedRecipesEvent.Internal.RecipeToggled -> {
                 val status = if (event.recipe.isFavorite) "добавлен в избранное" else "удален из избранного"
-                news(SavedRecipesNews.ShowMessage("Рецепт «${event.recipe.title}» $status"))
+                val snackbarMessage = if (event.recipe.isFavorite) "Рецепт добавлен в избранное" else "Рецепт удалён из избранного"
+                news(
+                    SavedRecipesNews.ShowSnackbar(snackbarMessage),
+                    SavedRecipesNews.ShowMessage("Рецепт «${event.recipe.title}» $status"),
+                )
             }
 
             is SavedRecipesEvent.Internal.ToggleFailed -> {
-                news(SavedRecipesNews.ShowMessage(event.throwable.message ?: "Ошибка изменения статуса"))
+                news(SavedRecipesNews.ShowSnackbar(event.throwable.message ?: "Ошибка изменения статуса"))
             }
 
             is SavedRecipesEvent.Internal.RecipeAddedToDiary -> {
-                news(SavedRecipesNews.ShowMessage("Рецепт добавлен в дневник питания"))
+                news(
+                    SavedRecipesNews.ShowSnackbar("Блюдо добавлено в дневник"),
+                    SavedRecipesNews.ShowMessage("Рецепт добавлен в дневник питания"),
+                )
             }
 
             is SavedRecipesEvent.Internal.AddToDiaryFailed -> {

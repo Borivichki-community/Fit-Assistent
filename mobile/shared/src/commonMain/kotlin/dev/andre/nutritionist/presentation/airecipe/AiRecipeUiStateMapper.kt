@@ -46,7 +46,10 @@ class AiRecipeUiStateMapper {
                 AiRecipeUiState.Content.Error(c.message)
             }
         }
-        return AiRecipeUiState(content = content)
+        return AiRecipeUiState(
+            content = content,
+            isOnline = state.isOnline,
+        )
     }
 
     private fun mapRecipe(recipe: Recipe, isSaved: Boolean): RecipeResultUiModel {

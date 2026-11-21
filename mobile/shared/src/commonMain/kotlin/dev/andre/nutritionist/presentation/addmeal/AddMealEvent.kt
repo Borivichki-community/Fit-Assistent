@@ -33,6 +33,8 @@ sealed interface AddMealEvent {
         data object BarcodeScanClick : Ui
 
         data object AiCameraClick : Ui
+
+        data class NetworkStatusChanged(val isConnected: Boolean) : Ui
     }
 
     sealed interface Internal : AddMealEvent {

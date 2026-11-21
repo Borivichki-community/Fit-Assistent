@@ -93,6 +93,30 @@ class AiRecipeUpdateTest {
     }
 
     @Test
+    fun generateClicked_when_offline_emits_snackbar_and_blocks_command() {
+        val prompt = AiRecipePrompt(query = "Курица", targetCalories = 600)
+        val initial = AiRecipeState(
+            content = AiRecipeState.Content.Configuring(prompt),
+            isOnline = false,
+        )
+        val next = update.update(initial, AiRecipeEvent.Ui.GenerateClicked)
+
+        assertTrue(next.commands.isEmpty())
+        assertEquals(1, next.news.size)
+        val snackbar = assertIs<AiRecipeNews.ShowSnackbar>(next.news.first())
+        assertEquals("Генерация рецептов недоступна без интернета", snackbar.message)
+    }
+
+    @Test
+    fun networkStatusChanged_updates_isOnline_state() {
+        val initial = AiRecipeState(isOnline = true)
+        val next = update.update(initial, AiRecipeEvent.Ui.NetworkStatusChanged(false))
+
+        val state = requireNotNull(next.state)
+        assertEquals(false, state.isOnline)
+    }
+
+    @Test
     fun generationProgressUpdated_updates_phase_and_progress() {
         val prompt = AiRecipePrompt()
         val initial = AiRecipeState(AiRecipeState.Content.Generating(prompt, "Старт", 0.1f))

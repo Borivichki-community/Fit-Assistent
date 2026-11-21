@@ -150,8 +150,17 @@ class AddMealUpdateTest {
     }
 
     @Test
-    fun `Internal EntrySaved emits MealAddedSuccess and Dismiss`() {
-        val initial = AddMealState()
+    fun `NetworkStatusChanged updates isOnline in state`() {
+        val initial = AddMealState(isOnline = true)
+        val next = update.update(initial, AddMealEvent.Ui.NetworkStatusChanged(false))
+
+        val state = requireNotNull(next.state)
+        assertEquals(false, state.isOnline)
+    }
+
+    @Test
+    fun `Internal EntrySaved emits MealAddedSuccess, online ShowSnackbar and Dismiss when online`() {
+        val initial = AddMealState(isOnline = true)
         val entry = DiaryEntry(
             id = DiaryEntryId("e-1"),
             userId = testUserId,
@@ -169,6 +178,43 @@ class AddMealUpdateTest {
         )
 
         val next = update.update(initial, AddMealEvent.Internal.EntrySaved(entry))
-        assertEquals(listOf(AddMealNews.MealAddedSuccess(entry), AddMealNews.Dismiss), next.news)
+        assertEquals(
+            listOf(
+                AddMealNews.MealAddedSuccess(entry),
+                AddMealNews.ShowSnackbar("Блюдо добавлено в дневник"),
+                AddMealNews.Dismiss,
+            ),
+            next.news,
+        )
+    }
+
+    @Test
+    fun `Internal EntrySaved emits MealAddedSuccess, offline ShowSnackbar and Dismiss when offline`() {
+        val initial = AddMealState(isOnline = false)
+        val entry = DiaryEntry(
+            id = DiaryEntryId("e-1"),
+            userId = testUserId,
+            foodItemId = sampleFood.id,
+            foodName = "Курица",
+            portionGrams = 100.0,
+            calories = 165,
+            proteins = 31.0,
+            fats = 3.6,
+            carbs = 0.0,
+            mealType = MealType.LUNCH,
+            date = testDate,
+            recordedAt = Instant.fromEpochMilliseconds(0),
+            idempotencyKey = IdempotencyKey("idem-1"),
+        )
+
+        val next = update.update(initial, AddMealEvent.Internal.EntrySaved(entry))
+        assertEquals(
+            listOf(
+                AddMealNews.MealAddedSuccess(entry),
+                AddMealNews.ShowSnackbar("Сохранено локально. Отправится при появлении сети"),
+                AddMealNews.Dismiss,
+            ),
+            next.news,
+        )
     }
 }

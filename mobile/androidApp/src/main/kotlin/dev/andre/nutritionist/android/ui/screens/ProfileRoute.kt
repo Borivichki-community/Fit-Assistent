@@ -12,6 +12,7 @@ import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.android.auth.AuthViewModel
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileNews
 import dev.andre.nutritionist.presentation.profile.ProfileViewModel
@@ -33,13 +34,21 @@ fun ProfileRoute(
     onLogoutSuccess: () -> Unit = {},
     isLoggingOut: Boolean = false,
     onDestinationSelected: (AppDestination) -> Unit = {},
+    snackbarHostState: SnackbarHostState? = null,
     viewModel: ProfileViewModel = koinViewModel(),
     authViewModel: AuthViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
+    connectivityObserver: ConnectivityObserver = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val effectiveSnackbarHostState = snackbarHostState ?: localSnackbarHostState
+    val isOnline by connectivityObserver.isConnected.collectAsStateWithLifecycle()
     val displayName = remember(authRepository) { authRepository.getUserDisplayName() }
+
+    LaunchedEffect(isOnline) {
+        viewModel.dispatch(ProfileEvent.Ui.NetworkStatusChanged(isOnline))
+    }
 
     LaunchedEffect(userId, displayName) {
         viewModel.dispatch(ProfileEvent.Ui.LoadProfile(userId = userId, displayName = displayName))
@@ -49,7 +58,7 @@ fun ProfileRoute(
         viewModel.news.collect { news ->
             when (news) {
                 is ProfileNews.NavigateToEdit -> onNavigateToEdit(news.userId)
-                is ProfileNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
+                is ProfileNews.ShowSnackbar -> effectiveSnackbarHostState.showSnackbar(news.message)
                 ProfileNews.ProfileSaved -> Unit
             }
         }
@@ -61,7 +70,7 @@ fun ProfileRoute(
                 is AuthNews.NavigateToAuth -> onLogoutSuccess()
                 is AuthNews.LaunchAuthTab -> Unit
                 is AuthNews.NavigateToMain -> Unit
-                is AuthNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
+                is AuthNews.ShowSnackbar -> effectiveSnackbarHostState.showSnackbar(news.message)
             }
         }
     }
@@ -74,6 +83,7 @@ fun ProfileRoute(
         isLoggingOut = isLoggingOut,
         onCreateProfileClick = onCreateProfileClick,
         onDestinationSelected = onDestinationSelected,
-        snackbarHostState = snackbarHostState,
+        snackbarHostState = effectiveSnackbarHostState,
+        isOffline = !isOnline,
     )
 }

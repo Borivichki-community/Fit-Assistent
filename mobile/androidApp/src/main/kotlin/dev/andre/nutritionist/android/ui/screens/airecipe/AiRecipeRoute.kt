@@ -7,10 +7,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeEvent
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeNews
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeViewModel
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * Stateful Route экрана генерации AI-рецептов.
@@ -22,15 +24,23 @@ fun AiRecipeRoute(
     onNavigateToDiary: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AiRecipeViewModel = koinViewModel(),
+    connectivityObserver: ConnectivityObserver = koinInject(),
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val effectiveSnackbarHostState = snackbarHostState ?: localSnackbarHostState
+    val isOnline by connectivityObserver.isConnected.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isOnline) {
+        viewModel.dispatch(AiRecipeEvent.Ui.NetworkStatusChanged(isOnline))
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.news.collect { news ->
             when (news) {
                 is AiRecipeNews.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(news.message)
+                    effectiveSnackbarHostState.showSnackbar(news.message)
                 }
                 AiRecipeNews.RecipeAddedToDiarySuccess -> {
                     onNavigateToDiary()
@@ -55,6 +65,7 @@ fun AiRecipeRoute(
         onResetClicked = { viewModel.dispatch(AiRecipeEvent.Ui.ResetClicked) },
         onRetryClicked = { viewModel.dispatch(AiRecipeEvent.Ui.RetryClicked) },
         onNavigateBack = onNavigateBack,
+        snackbarHostState = effectiveSnackbarHostState,
         modifier = modifier,
     )
 }

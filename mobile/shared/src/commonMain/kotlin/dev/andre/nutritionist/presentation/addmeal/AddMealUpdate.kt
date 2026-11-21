@@ -110,6 +110,10 @@ class AddMealUpdate : DslUpdate<AddMealState, AddMealEvent, AddMealCommand, AddM
                 news(AddMealNews.OpenAiCamera)
             }
 
+            is AddMealEvent.Ui.NetworkStatusChanged -> {
+                state { copy(isOnline = event.isConnected) }
+            }
+
             is AddMealEvent.Internal.FoodsLoaded -> {
                 state { copy(content = AddMealState.Content.Success(event.foods)) }
             }
@@ -125,7 +129,16 @@ class AddMealUpdate : DslUpdate<AddMealState, AddMealEvent, AddMealCommand, AddM
             }
 
             is AddMealEvent.Internal.EntrySaved -> {
-                news(AddMealNews.MealAddedSuccess(event.entry), AddMealNews.Dismiss)
+                val message = if (state.isOnline) {
+                    "Блюдо добавлено в дневник"
+                } else {
+                    "Сохранено локально. Отправится при появлении сети"
+                }
+                news(
+                    AddMealNews.MealAddedSuccess(event.entry),
+                    AddMealNews.ShowSnackbar(message),
+                    AddMealNews.Dismiss,
+                )
             }
 
             is AddMealEvent.Internal.SaveFailed -> {

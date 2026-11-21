@@ -8,6 +8,7 @@ import dev.andre.nutritionist.domain.model.Recipe
  */
 data class AiRecipeState(
     val content: Content = Content.Configuring(AiRecipePrompt()),
+    val isOnline: Boolean = true,
 ) {
     sealed interface Content {
         data class Configuring(

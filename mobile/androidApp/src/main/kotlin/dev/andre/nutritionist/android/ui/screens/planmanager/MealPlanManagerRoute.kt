@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.auth.AuthRepository
-import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerEvent
 import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerNews
 import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerViewModel
@@ -16,7 +15,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 /**
- * Stateful Route для экрана управления планами питания.
+ * Stateful Route экрана управления рационом питания и списком покупок.
  * Связывает [MealPlanManagerViewModel] с stateless экраном [MealPlanManagerScreen].
  */
 @Composable
@@ -26,11 +25,18 @@ fun MealPlanManagerRoute(
     modifier: Modifier = Modifier,
     viewModel: MealPlanManagerViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
+    snackbarHostState: SnackbarHostState? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val currentUserId = remember(authRepository) {
-        authRepository.getUserId() ?: UserId("testuser")
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val effectiveSnackbarHostState = snackbarHostState ?: localSnackbarHostState
+
+    val currentUserId = remember(authRepository) { authRepository.getUserId() }
+    if (currentUserId == null) {
+        LaunchedEffect(Unit) {
+            onNavigateBack()
+        }
+        return
     }
 
     LaunchedEffect(currentUserId) {
@@ -41,7 +47,7 @@ fun MealPlanManagerRoute(
         viewModel.news.collect { news ->
             when (news) {
                 is MealPlanManagerNews.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(news.message)
+                    effectiveSnackbarHostState.showSnackbar(news.message)
                 }
                 MealPlanManagerNews.NavigateToCatalog -> {
                     onNavigateToCatalog()
@@ -71,7 +77,7 @@ fun MealPlanManagerRoute(
             viewModel.dispatch(MealPlanManagerEvent.Ui.Retry)
         },
         onNavigateBack = onNavigateBack,
-        snackbarHostState = snackbarHostState,
+        snackbarHostState = effectiveSnackbarHostState,
         modifier = modifier,
     )
 }

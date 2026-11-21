@@ -70,6 +70,7 @@ data class RecipeResultUiModel(
  */
 data class AiRecipeUiState(
     val content: Content,
+    val isOnline: Boolean = true,
 ) {
     sealed interface Content {
         data class Configuring(val prompt: AiRecipePromptUiModel) : Content

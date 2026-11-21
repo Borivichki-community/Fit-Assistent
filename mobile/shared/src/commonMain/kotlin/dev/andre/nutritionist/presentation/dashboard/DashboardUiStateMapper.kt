@@ -18,7 +18,7 @@ import kotlinx.datetime.LocalDate
 /**
  * Создаёт тестовый дневник с образцовой записью (Йогурт епика) для отображения по умолчанию.
  */
-fun defaultSampleDiary(userId: UserId = UserId("testuser")): DailyDiary = DailyDiary(
+fun defaultSampleDiary(userId: UserId): DailyDiary = DailyDiary(
     userId = userId,
     date = LocalDate(2026, 1, 1),
     streakDays = 1,
@@ -73,7 +73,8 @@ class DashboardUiStateMapper : UiStateMapper<DashboardState, DashboardUiState> {
         selectedDateLabel: String = "Сегодня",
         showCompleteProfileBanner: Boolean = false,
     ): DashboardUiState {
-        val baseDiary = diary ?: defaultSampleDiary(profile?.userId ?: UserId("testuser"))
+        val targetUserId = profile?.userId ?: diary?.userId ?: UserId("")
+        val baseDiary = diary ?: defaultSampleDiary(targetUserId)
         val effectiveDiary = if (baseDiary.streakDays != streakDays) {
             baseDiary.copy(streakDays = streakDays)
         } else {
@@ -99,7 +100,7 @@ class DashboardUiStateMapper : UiStateMapper<DashboardState, DashboardUiState> {
         selectedDateLabel: String = "Сегодня",
     ): DashboardSuccessUiModel {
         val effectiveDiary = if (diary.entries.isEmpty() && customMeals == null) {
-            defaultSampleDiary(diary.userId)
+            defaultSampleDiary(diary.userId).copy(streakDays = diary.streakDays)
         } else {
             diary
         }

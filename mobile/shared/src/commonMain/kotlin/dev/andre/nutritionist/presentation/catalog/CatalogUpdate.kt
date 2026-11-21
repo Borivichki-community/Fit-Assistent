@@ -21,6 +21,9 @@ class CatalogUpdate : DslUpdate<CatalogState, CatalogEvent, CatalogCommand, Cata
                         content = CatalogState.Content.Loading,
                     )
                 }
+                if (!state.isOnline && event.query.isNotBlank()) {
+                    news(CatalogNews.ShowSnackbar("Поиск в онлайн-каталоге недоступен без интернета"))
+                }
                 commands(CatalogCommand.LoadPlans(query = event.query, category = state.selectedCategory))
             }
 
@@ -40,13 +43,25 @@ class CatalogUpdate : DslUpdate<CatalogState, CatalogEvent, CatalogCommand, Cata
             }
 
             is CatalogEvent.Ui.ToggleFavorite -> {
+                var isNowFavorite = false
                 val currentContent = state.content
                 if (currentContent is CatalogState.Content.Success) {
                     val updated = currentContent.plans.map { plan ->
-                        if (plan.id == event.planId) plan.copy(isFavorite = !plan.isFavorite) else plan
+                        if (plan.id == event.planId) {
+                            isNowFavorite = !plan.isFavorite
+                            plan.copy(isFavorite = isNowFavorite)
+                        } else {
+                            plan
+                        }
                     }
                     state { copy(content = CatalogState.Content.Success(updated)) }
                 }
+                val message = if (isNowFavorite) {
+                    "Рецепт добавлен в избранное"
+                } else {
+                    "Рецепт удалён из избранного"
+                }
+                news(CatalogNews.ShowSnackbar(message))
                 commands(CatalogCommand.ToggleFavorite(event.planId))
             }
 
@@ -57,6 +72,10 @@ class CatalogUpdate : DslUpdate<CatalogState, CatalogEvent, CatalogCommand, Cata
             CatalogEvent.Ui.Retry -> {
                 state { copy(content = CatalogState.Content.Loading) }
                 commands(CatalogCommand.LoadPlans(query = state.query, category = state.selectedCategory))
+            }
+
+            is CatalogEvent.Ui.NetworkStatusChanged -> {
+                state { copy(isOnline = event.isConnected) }
             }
 
             is CatalogEvent.Internal.PlansLoaded -> {

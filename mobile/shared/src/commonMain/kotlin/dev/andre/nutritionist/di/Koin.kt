@@ -2,7 +2,10 @@ package dev.andre.nutritionist.di
 
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
+import dev.andre.nutritionist.data.local.dao.DiaryDao
 import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.remote.DefaultDiaryRemoteDataSource
+import dev.andre.nutritionist.data.remote.DiaryRemoteDataSource
 import dev.andre.nutritionist.data.repository.AnalyticsRepositoryImpl
 import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
 import dev.andre.nutritionist.data.repository.FoodCatalogRepositoryImpl
@@ -61,6 +64,7 @@ val domainModule: Module = module {
 val localDataModule: Module = module {
     single<AppDatabase> { get<DatabaseBuilder<AppDatabase>>().build() }
     single<ProfileDao> { get<AppDatabase>().profileDao() }
+    single<DiaryDao> { get<AppDatabase>().diaryDao() }
 }
 
 val dataModule: Module = module {
@@ -73,6 +77,12 @@ val dataModule: Module = module {
     }
     single<DiaryRepository> {
         DiaryRepositoryImpl(
+            dispatchers = get(),
+            diaryDao = get(),
+        )
+    }
+    single<DiaryRemoteDataSource> {
+        DefaultDiaryRemoteDataSource(
             dispatchers = get(),
         )
     }

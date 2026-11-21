@@ -180,7 +180,13 @@ class ProfileUpdateTest {
         assertIs<ProfileState.Content.Success>(next.state?.content)
         assertEquals(false, next.state?.isSaving)
         assertEquals("Aleksey", (next.state?.content as ProfileState.Content.Success).displayName)
-        assertEquals(listOf(ProfileNews.ProfileSaved), next.news)
+        assertEquals(
+            listOf(
+                ProfileNews.ProfileSaved,
+                ProfileNews.ShowSnackbar("Профиль успешно обновлён"),
+            ),
+            next.news,
+        )
     }
 
     @Test
@@ -243,5 +249,27 @@ class ProfileUpdateTest {
         val command = next.commands.first() as ProfileCommand.UpdateProfile
         assertEquals(7500.0, command.profile.weeklyBudget)
     }
+
+    @Test
+    fun `ChangeGoal event when offline blocks and emits snackbar`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Success(testProfile),
+            isOffline = true,
+        )
+
+        val next = update.update(state, ProfileEvent.Ui.ChangeGoal(GoalType.GAIN_WEIGHT))
+
+        assertEquals(emptyList(), next.commands)
+        assertEquals(listOf(ProfileNews.ShowSnackbar("Для пересчёта целей требуется интернет")), next.news)
+    }
+
+    @Test
+    fun `NetworkStatusChanged updates isOffline state`() {
+        val state = ProfileState(isOffline = false)
+        val next = update.update(state, ProfileEvent.Ui.NetworkStatusChanged(false))
+
+        assertEquals(true, next.state?.isOffline)
+    }
 }
+
 
