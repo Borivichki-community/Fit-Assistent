@@ -12,6 +12,10 @@ spec:
   type: ClusterIP
   ports:
     - name: grpc
+      port: 9090
+      targetPort: 9192
+      appProtocol: grpc
+    - name: grpc-legacy
       port: 9192
       targetPort: 9192
       appProtocol: grpc

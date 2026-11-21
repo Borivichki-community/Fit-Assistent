@@ -120,16 +120,34 @@ internal class ServiceCheckClient(
     suspend fun generateWeekMenu(gatewayUrl: String): String {
         val address = URI(gatewayUrl.trim())
         val host = address.host
+        val isPlaintext = address.scheme.equals("http", ignoreCase = true)
         require(
-            address.scheme.equals("https", ignoreCase = true) && host != null &&
+            (address.scheme.equals("https", ignoreCase = true) || isPlaintext) && host != null &&
                 address.rawUserInfo == null && address.rawQuery == null && address.rawFragment == null &&
                 (address.path.isEmpty() || address.path == "/") &&
                 (address.port == -1 || address.port in 1..65535),
-        ) { "Enter the HTTPS address of the test Envoy gateway" }
+        ) { "Enter the HTTP or HTTPS address of the test Envoy gateway" }
         currentUser()
-        val gateway = OkHttpChannelBuilder.forAddress(host, if (address.port == -1) 443 else address.port)
-            .useTransportSecurity()
-            .intercept(authInterceptor, traceInterceptor)
+        val port = if (address.port == -1) (if (isPlaintext) 9090 else 443) else address.port
+        val targetHost = if (host == "10.0.2.2" && isPortReachable("127.0.0.1", port)) "127.0.0.1" else host
+        val builder = if (isPlaintext) {
+            OkHttpChannelBuilder.forAddress(targetHost, port).usePlaintext()
+        } else {
+            val trustAll = arrayOf<javax.net.ssl.TrustManager>(
+                object : javax.net.ssl.X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                    override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+                },
+            )
+            val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply {
+                init(null, trustAll, java.security.SecureRandom())
+            }
+            OkHttpChannelBuilder.forAddress(targetHost, port)
+                .sslSocketFactory(sslContext.socketFactory)
+                .hostnameVerifier { _, _ -> true }
+        }
+        val gateway = builder.intercept(authInterceptor, traceInterceptor)
         return withChannel(gateway) { channel ->
             val request = GenerateWeekMenuRequest.newBuilder()
                 .setDailyCalories(2_000)
@@ -145,7 +163,8 @@ internal class ServiceCheckClient(
     }
 
     fun keycloakDiscovery(): String {
-        val connection = URI(authConfig.discoveryUri.toString()).toURL().openConnection() as HttpURLConnection
+        val targetUri = resolveUri(authConfig.discoveryUri)
+        val connection = URI(targetUri.toString()).toURL().openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = HTTP_TIMEOUT_MILLIS
             connection.readTimeout = HTTP_TIMEOUT_MILLIS
@@ -192,10 +211,39 @@ internal class ServiceCheckClient(
         authenticated: Boolean = false,
         operation: suspend (ManagedChannel) -> T,
     ): T {
-        val builder = OkHttpChannelBuilder.forAddress(HOST, port).usePlaintext()
+        val host = resolveHost(port)
+        val builder = OkHttpChannelBuilder.forAddress(host, port).usePlaintext()
         if (authenticated) builder.intercept(authInterceptor, traceInterceptor)
         return withChannel(builder, operation)
     }
+
+    private fun resolveHost(port: Int): String {
+        if (isPortReachable("127.0.0.1", port)) return "127.0.0.1"
+        return HOST
+    }
+
+    private fun resolveUri(uri: android.net.Uri): android.net.Uri {
+        val host = uri.host
+        val port = if (uri.port != -1) uri.port else 8080
+        if (host == "10.0.2.2" && isPortReachable("127.0.0.1", port)) {
+            return uri.buildUpon().encodedAuthority("127.0.0.1:$port").build()
+        }
+        return uri
+    }
+
+    private fun isPortReachable(host: String, port: Int, timeoutMs: Int = 300): Boolean =
+        runCatching {
+            val oldPolicy = android.os.StrictMode.getThreadPolicy()
+            android.os.StrictMode.setThreadPolicy(android.os.StrictMode.ThreadPolicy.LAX)
+            try {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress(host, port), timeoutMs)
+                    true
+                }
+            } finally {
+                android.os.StrictMode.setThreadPolicy(oldPolicy)
+            }
+        }.getOrDefault(false)
 
     private suspend fun <T> withChannel(
         builder: OkHttpChannelBuilder,

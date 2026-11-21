@@ -34,4 +34,6 @@ class OutboxMessageEntity(
     val createdAt: Instant = Instant.now(),
     @Column(name = "published_at")
     var publishedAt: Instant? = null,
+    @Column(name = "partition_key", nullable = false, length = 64)
+    val partitionKey: String = aggregateId,
 )

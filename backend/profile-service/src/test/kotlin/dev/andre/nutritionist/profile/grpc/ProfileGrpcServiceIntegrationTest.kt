@@ -401,7 +401,7 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
             assertEquals(firstResponse.updatedAt.nanos, secondResponse.updatedAt.nanos)
 
             // Проверяем, что ответ физически лежит в Redis
-            val cachedBytes = idempotencyStore.get("idemp-key-test-123")
+            val cachedBytes = idempotencyStore.get(IdempotencyServerInterceptor.scopedKey("user_idemp_1", "idemp-key-test-123"))
             assertNotNull(cachedBytes, "Ответ должен быть сохранён в RedisIdempotencyStore")
         }
 
@@ -466,7 +466,7 @@ class ProfileGrpcServiceIntegrationTest : AbstractPostgresIntegrationTest() {
             val key = "idemp-key-inflight-test"
             val digest = java.security.MessageDigest.getInstance("SHA-256")
             val dummyHash = digest.digest(request.toByteArray())
-            val acquireResult = idempotencyStore.tryAcquire(key, dummyHash)
+            val acquireResult = idempotencyStore.tryAcquire(IdempotencyServerInterceptor.scopedKey("user_idemp_inflight", key), dummyHash)
             assertEquals(dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyResult.Acquired, acquireResult)
 
             val userStub = stubWithIdempotency(key, userId = "user_idemp_inflight")

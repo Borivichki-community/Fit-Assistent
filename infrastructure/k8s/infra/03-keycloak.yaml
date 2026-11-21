@@ -179,6 +179,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "start-dev"
+            - "--import-realm"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -223,8 +224,6 @@ spec:
               value: "true"
             - name: KC_METRICS_ENABLED
               value: "true"
-            - name: KC_HTTP_RELATIVE_PATH
-              value: "/"
           resources:
             requests:
               cpu: 100m

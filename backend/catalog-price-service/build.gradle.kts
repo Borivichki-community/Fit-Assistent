@@ -47,14 +47,6 @@ protobuf {
     }
 }
 
-sourceSets {
-    main {
-        proto {
-            srcDir("../../proto")
-        }
-    }
-}
-
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     testImplementation(platform(libs.spring.boot.bom))
@@ -74,7 +66,7 @@ dependencies {
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
     implementation(libs.spring.starter.redis)
-    implementation(libs.resilience4j.spring.boot)
+    implementation(libs.resilience4j.circuitbreaker)
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly(libs.postgresql.jdbc)
 

@@ -75,6 +75,7 @@ private suspend fun <Req, Resp> ManagedChannel.unaryCall(
         }
 
         override fun onError(t: Throwable) {
+            android.util.Log.e("FitGrpc", "unaryCall onError for ${method.fullMethodName}: ${t.message}", t)
             continuation.resumeWithException(t)
         }
 

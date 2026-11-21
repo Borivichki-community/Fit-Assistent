@@ -38,6 +38,8 @@ spec:
               value: "9090"
             - name: RECIPE_CATALOG_TARGET
               value: "catalog-price-service.budget-nutritionist.svc.cluster.local:9090"
+            - name: RECIPE_CATALOG_PLAINTEXT
+              value: "true"
             - name: REDIS_HOST
               value: redis-state.budget-nutritionist.svc.cluster.local
             - name: RECIPE_LLM_API_KEY
@@ -130,7 +132,21 @@ spec:
       name: recipes
   jwt:
     providers:
-      - name: keycloak
+      - name: keycloak-loopback
+        issuer: http://127.0.0.1:8080/realms/FitAssistant
+        remoteJWKS:
+          uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+      - name: keycloak-emulator
+        issuer: http://10.0.2.2:8080/realms/FitAssistant
+        remoteJWKS:
+          uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+      - name: keycloak-localhost
         issuer: http://localhost:8080/realms/FitAssistant
         remoteJWKS:
           uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs

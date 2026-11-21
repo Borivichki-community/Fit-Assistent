@@ -5,6 +5,39 @@
 
 Обновлено: 2026-11-21
 
+### Настройка подключения Android-эмулятора и сквозная верификация с бэкендом (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer`.
+- Проблема: На Android 17 (API 37) запросы с эмулятора к хосту по `10.0.2.2:8080` (Keycloak) и gRPC портам падали по таймауту из-за конфликта маршрутизации виртуального Wi-Fi (`wlan0` на подсети `10.0.2.0/24`) и дефолтного запрета cleartext-трафика.
+- Исправлено сетевое окружение и безопасность:
+  - В `network_security_config.xml` добавлен `<base-config cleartextTrafficPermitted="true">` с доверенными сертификатами `system` и `user`, а в `AndroidManifest.xml` включён `android:usesCleartextTraffic="true"`.
+  - В `AppAuthConnectionBuilder.kt` добавлен динамический резолвинг хоста: при обращении к `10.0.2.2` и доступности локального порта через ADB reverse (`127.0.0.1`), адрес прозрачно транслируется на `127.0.0.1`, что устраняет зависания на сетевом стеке эмулятора.
+  - В `AndroidDataModule.kt` реализован `resolveGrpcTarget()` с поддержкой двух режимов: кластерного через Envoy Gateway (`127.0.0.1:9090` / `10.0.2.2:9090`) и прямого Docker Compose (`127.0.0.1:9091` / `10.0.2.2:9091` для `profile-service`). Проверки портов безопасно обёрнуты во временную `StrictMode.ThreadPolicy.LAX` для исключения `NetworkOnMainThreadException` при старте Koin.
+  - Настроены порты `adb reverse`: `tcp:8080 tcp:8080` (Keycloak), `tcp:9091 tcp:9091` (Profile), `tcp:9093 tcp:9093` (Diary), `tcp:9094 tcp:9094` (Recipe AI), `tcp:9192 tcp:9192` (Catalog Price).
+- PASS: Сквозная авторизация OAuth 2.1 PKCE через Keycloak (`testuser`/`password123`) завершилась успешным обменом токена (`FitAuth : Token exchanged successfully! AccessToken present: true`).
+- PASS: При входе на Dashboard gRPC-клиент подключился к `profile-service` (`host=127.0.0.1, port=9091`), корректно обработал `NOT_FOUND` для нового пользователя и отобразил карточку заполнения профиля.
+- PASS: Пройден визард онбординга (рост 180 см, вес 75 кг, возраст 28, пол Male, активность Moderate, бюджет 5000 ₽, цель Maintain). Вызов `UpdateProfile` успешно обработан бэкендом, сохранён в PostgreSQL `profile_db` (id `01a1fb68-bed1-77f5-ba21-df09391d6ca1`, 2720 ккал, 112.5 г белков, 75.56 г жиров, 397.49 г углеводов). Dashboard обновил целевые показатели питания.
+- PASS: Все тесты пройдены: `:mobile:androidApp:testDebugUnitTest` (74/74) и `:mobile:shared:allTests` (`testAndroidHostTest` 111/111), суммарно 185 тестов без ошибок.
+
+### Запуск полного бэкенда в Docker Compose
+
+- Skills: `contracts-proto-and-avro`, `testing-and-verification`. Региональный контракт Catalog восстановлен из родительского коммита в `backend/catalog-price-service/src/main/proto`; Gradle каталога использует эту директорию. Общий контракт `com.budgetntr.catalog.v1` используется клиентами Recipe AI и Android.
+- PASS: все четыре bootJar упакованы существующим `Dockerfile.runtime`. Девять контейнеров `fitassistant-verification` запущены с обеими Compose-конфигурациями и статусом healthy. Ранее запущенные локальные JVM остановлены.
+- PASS: Profile (9091), Catalog (9192), Diary (9093), Recipe AI (9094) ответили `SERVING` на gRPC Health.Check. Keycloak discovery (8080) вернул HTTP 200. Региональный Catalog SearchProducts вернул непустой ответ с `grpc-status: 0`.
+- BLOCKED: Recipe AI и диагностический клиент Android используют другой Catalog RPC-пакет. Генерация меню через Envoy/Gemini и сквозной вход с Android в этом проходе не проверены. Сборка внутри многоэтапного Dockerfile остановлена на этапе подготовки Gradle, для запуска использованы готовые локальные bootJar.
+
+### Проверка локального запуска FitAssistant
+
+- Активные Skills: `testing-and-verification`, `diagnose-build-failure` для ошибки Gradle и `spring-grpc-service` для настройки каталога. Роли: `test-reviewer`, `implementer` при исправлении блокеров.
+- PASS: `assembleDebug` с AAPT2 из SDK, 74 теста `androidApp` и 111 тестов `shared`. APK установлен на emulator-5554 и запущен через SplashActivity до экрана авторизации.
+- PASS: 73 выборочных backend-теста Profile, Diary, Recipe AI и shared/contracts; Profile, Diary и Recipe AI собрали bootJar. Пара Compose-файлов прошла `config --quiet`.
+- Исправлено: Android Profile подключается к порту 9091; локальный Compose использует контейнер Redis для Profile и Catalog и plaintext для Recipe AI → Catalog. В Profile восстановлены проверки доступа и атомарная обработка повторов UpdateProfile с ключом, привязанным к вызывающему пользователю. Интеграционные тесты Profile обновлены под формат ключа.
+- BLOCKED: Gradle больше не падает на отсутствующем алиасе Resilience4j, но офлайн-сборке Catalog нужен отсутствующий `jackson-module-kotlin:2.22.1`. `contracts-proto-and-avro` использован для сверки: Catalog реализует региональный RPC `nutritionist.catalog.v1`, а после слияния в `catalog.proto` объявлен несовместимый `com.budgetntr.catalog.v1` с ценами магазинов. Для полноценного запуска надо согласовать контракт с региональным хранилищем.
+- PASS: После очистки Docker пользователем Engine перезапущен. На стенде `fitassistant-verification` PostgreSQL, Redis, Kafka, Schema Registry и Keycloak прошли healthcheck. Profile и Recipe AI вернули readiness `UP`, порт Diary 9093 открыт, discovery Keycloak с Mac вернул HTTP 200. Сервисы запущены из локальных bootJar; для Recipe AI задан отдельный HTTP-порт 8087.
+- PASS: `ProfileGrpcServiceIntegrationTest` 17/17 и `AddMealFlowIntegrationTest` 4/4 на PostgreSQL, Redis, Kafka и Schema Registry по соответствующим сценариям. В `OutboxMessageEntity` добавлен пропущенный маппинг `partition_key`: до исправления PostgreSQL отклонял создание профиля, поскольку событие регистрации не записывалось в outbox.
+- BLOCKED: Android-запрос Keycloak с эмулятора на `10.0.2.2:8080` дважды завершился по тайм-ауту. Сквозной вход в Android и GenerateWeekMenu через Envoy с Gemini не подтверждены.
+- Диск: после очистки было 53 ГиБ свободно, после загрузок и тестов осталось 44 ГиБ. Docker показывает 3.235 GB образов и 1.331 GB томов нового стенда. До очистки в логе зафиксировано `no space left on device`; разбивка удалённых данных неизвестна.
+
 ### Android — ручная проверка сервисов (2026-11-21)
 
 - Skills: `android-compose-feature`, `testing-and-verification`, `contracts-proto-and-avro`. Роль: `implementer`. `diagnose-build-failure` использован для проверки отсутствующего в кеше AAPT2 и настройки Android-генерации Protobuf.
@@ -1110,6 +1143,38 @@
   - `./gradlew :backend:profile-service:compileKotlin :backend:profile-service:compileTestKotlin` — BUILD SUCCESSFUL.
   - `./gradlew :backend:profile-service:ktlintCheck` — BUILD SUCCESSFUL (0 нарушений).
   - `./gradlew :backend:profile-service:detekt` — BUILD SUCCESSFUL (0 нарушений).
+
+## Checkpoint 2026-11-21 — Развёртывание Envoy Gateway в Kind-кластере, сквозной mTLS и верификация генерации меню из Android приложения
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `android-compose-feature`, `testing-and-verification`.
+- Роль: `implementer`.
+- **Инфраструктура и Gateway API в кластере `fitassistant-cluster` (Kind):**
+  1. Поднят локальный Kubernetes-кластер `fitassistant-cluster` с пробросом портов 80, 443, 9090 на хост (`ExtraPortMapping`).
+  2. Развёрнут Gateway API v1.2.0 и Envoy Gateway v1.2.4 с помощью `kubectl apply --server-side --force-conflicts`.
+  3. Шлюз `main-gateway` в пространстве `envoy-gateway-system` настроен на два слушателя:
+     - `https` (порт 443, TLS terminate, провайдер сертификата `default-cert`);
+     - `grpc-insecure` (порт 9090, plaintext h2c).
+  4. Настроена `SecurityPolicy` (`recipes-jwt`) для валидации JWT токенов Keycloak на входе в Envoy:
+     - Поддержка issuers: `http://127.0.0.1:8080/realms/FitAssistant`, `http://10.0.2.2:8080/realms/FitAssistant`, `http://localhost:8080/realms/FitAssistant`.
+     - JWKS remote fetch через in-cluster сервис и эндпоинты `keycloak.budget-nutritionist.svc.cluster.local:8080` (маппинг на хостовый Keycloak `192.168.65.254:8080`).
+  5. Развёрнуты микросервисы в `budget-nutritionist`:
+     - `postgres-0` (StatefulSet) с базами данных `profile_db` и `catalog_db` (110 продуктов с КБЖУ и ценами);
+     - `redis-cache` и `redis-state` (Deployments);
+     - `profile-service` (1/1 Running);
+     - `catalog-price-service` (1/1 Running) с портами 9090 (gRPC proxy) и 9192;
+     - `recipe-ai-service` (1/1 Running) с защищённым mTLS и интеграцией с Gemini 2.5 Flash / каталогом.
+  6. Настроен взаимный TLS (mTLS) между Envoy Gateway и `recipe-ai-service`:
+     - Сгенерирован корневой CA `CN=recipe-ca`, серверный сертификат `CN=recipe-ai-service.budget-nutritionist.svc.cluster.local`, клиентский сертификат Envoy с точным subject `CN=fitassistant-envoy`.
+     - Секреты `recipe-server-tls`, `recipe-server-ca`, `recipe-envoy-client-tls` подключены через `BackendTrafficPolicy` (`recipe-ai-service-mtls`).
+     - Серверный интерцептор `RecipeIdentityInterceptor` проверяет совпадение X500Principal клиента с `CN=fitassistant-envoy`.
+- **Клиентское Android-приложение (`dev.andre.nutritionist.android`):**
+  1. В `ServiceCheckClient.kt` добавлена поддержка подключения как по `https://` (порт 443), так и по plaintext h2c `http://` (порт 9090) через `OkHttpChannelBuilder.usePlaintext()`.
+  2. Залогинен тестовый пользователь `testuser` (`password123`) через Keycloak OAuth 2.1 PKCE с получением валидного Bearer токена.
+- **Сквозная верификация (End-to-End Verification):**
+  1. В `ServiceCheckActivity` на эмуляторе Pixel 10 Pro XL в поле адреса шлюза введено `http://127.0.0.1:9090`.
+  2. По нажатию `GenerateWeekMenu` выполнен вызов:
+     `Android App` $\xrightarrow{\text{Bearer JWT / h2c:9090}}$ `Envoy Gateway` $\xrightarrow{\text{mTLS (CN=fitassistant-envoy)}}$ `recipe-ai-service` $\xrightarrow{\text{gRPC h2c}}$ `catalog-price-service` & `redis-state`.
+  3. Запрос успешно авторизован шлюзом Envoy Gateway, прошёл валидацию mTLS в `RecipeIdentityInterceptor` и вернул потоковый ответ со всеми 7 днями меню и итоговой сводкой (`MENU_SOURCE_FALLBACK`, 14028 ккал, 10521 коп.).
+  4. Результат отображён на экране `ServiceCheckActivity` со статусом `GenerateWeekMenu — success`.
 
 
 

@@ -32,6 +32,7 @@ services:
       SPRING_GRPC_SERVER_ADDRESS: 0.0.0.0
       SPRING_GRPC_SERVER_PORT: "9090"
       PROFILE_DB_URL: jdbc:postgresql://postgres:5432/profile_db
+      REDIS_HOST: redis
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:?}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -56,6 +57,7 @@ services:
       SPRING_GRPC_SERVER_ADDRESS: 0.0.0.0
       SPRING_GRPC_SERVER_PORT: "9090"
       CATALOG_DB_URL: jdbc:postgresql://postgres:5432/catalog_db
+      REDIS_HOST: redis
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:?}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -104,7 +106,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       RECIPE_CATALOG_TARGET: catalog-price-service:9090
-      RECIPE_CATALOG_PLAINTEXT: ${RECIPE_CATALOG_PLAINTEXT:-false}
+      RECIPE_CATALOG_PLAINTEXT: ${RECIPE_CATALOG_PLAINTEXT:-true}
       RECIPE_LLM_API_KEY: ${RECIPE_LLM_API_KEY:-}
       RECIPE_LLM_MODEL: ${RECIPE_LLM_MODEL:-gemini-2.5-flash}
       RECIPE_WARMUP_TARGETS: ${RECIPE_WARMUP_TARGETS:-}

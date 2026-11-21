@@ -38,6 +38,10 @@ class AuthCommandsFlowHandler(
                             .fold(
                                 onSuccess = { AuthEvent.Internal.AuthSuccess },
                                 onFailure = { error ->
+                                    android.util.Log.e("FitAuth", "ProcessAuthResponse failed: ${error.message}", error)
+                                    if (error is AuthorizationException) {
+                                        android.util.Log.e("FitAuth", "AuthEx type=${error.type}, code=${error.code}, error=${error.error}, desc=${error.errorDescription}, cause=${error.cause}")
+                                    }
                                     val isUserCanceled = error is AuthorizationException &&
                                         error.type == AuthorizationException.TYPE_GENERAL_ERROR &&
                                         error.code == AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code
