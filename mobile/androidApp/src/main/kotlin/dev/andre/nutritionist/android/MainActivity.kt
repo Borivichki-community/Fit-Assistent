@@ -28,15 +28,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             FitAssistantTheme {
                 val navController = rememberNavController()
-                val startDestination = if (authRepository.isAuthenticated()) {
-                    AppDestination.Dashboard.route
-                } else {
-                    AppDestination.Auth.route
-                }
 
                 AppNavHost(
                     navController = navController,
-                    startDestination = startDestination,
+                    startDestination = AppDestination.Splash.route,
                     authViewModel = authViewModel,
                     authRepository = authRepository,
                 )

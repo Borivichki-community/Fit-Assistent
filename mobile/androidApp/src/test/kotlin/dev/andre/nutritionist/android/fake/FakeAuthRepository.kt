@@ -37,6 +37,11 @@ class FakeAuthRepository : AuthRepository {
 
     override fun isAuthenticated(): Boolean = _state.value
 
+    fun setAuthenticated(auth: Boolean) {
+        _state.value = auth
+        currentToken = if (auth) "fake-token" else null
+    }
+
     override suspend fun processAuthResponse(intent: Intent): Result<Unit> {
         processAuthResponseCallCount++
         return processResultToReturn.also {

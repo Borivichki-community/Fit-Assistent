@@ -5,6 +5,23 @@
 
 Обновлено: 2026-11-21
 
+### T-050 — Splash Screen и актуализация темы Aether Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Актуализированы дизайн-токены в соответствии с `screenshots/DESIGN-dark.md` (Aether Zero-G Luxury):
+  - `Color.kt` и `FitAssistantTheme.kt`: Luminous Telemetry Emerald (`#00F5A0`, `#CDFFDE`), Champagne Gold (`#E4C277`, `#5D4604`), Ion Cyan (`#22D3EE`, `#DCF8FF`), Obsidian Base (`#0B0E14`, `#10131A`, `#191C22`, `#1D2026`), контуры, границы и градиенты свечения.
+  - `Spacing.kt`: сетка 4/8 dp, скругления squircle 24/32 dp и pill 9999 dp.
+- Реализованы Compose-компоненты:
+  - `SplashScreen.kt`: глубокий космический фон с радиальным свечением, векторная типографика и плавное проявление логотипа через `Animatable`, темный `@Preview`.
+  - `SplashRoute.kt`: проверка авторизации (`AuthRepository.isAuthenticated()`) с перенаправлением на `AppDestination.Dashboard` либо `AppDestination.Auth`.
+  - Добавлена дестинация `AppDestination.Splash` как стартовая в `AppNavHost.kt` и `MainActivity.kt`.
+- Тестирование и верификация:
+  - `SplashScreenTest`: проверка рендеринга логотипа и приветствия, проверка автоматического роутинга на Dashboard при наличии сессии и на Auth при отсутствии.
+  - Исправлена доступность generated proto классов для `testDebugUnitTest` в `mobile/androidApp/build.gradle.kts`.
+  - PASS: `:mobile:shared:allTests` — успешно (111/111).
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — успешно (77/77).
+  - PASS: `:mobile:androidApp:assembleDebug` — успешно (BUILD SUCCESSFUL).
+
 ### Настройка подключения Android-эмулятора и сквозная верификация с бэкендом (2026-11-21)
 
 - Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer`.

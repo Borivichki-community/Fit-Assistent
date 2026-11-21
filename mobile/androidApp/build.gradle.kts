@@ -20,7 +20,7 @@ protobuf {
         }
     }
     generateProtoTasks {
-        ofBuildType("debug").forEach { task ->
+        this.all().forEach { task ->
             task.builtins {
                 maybeCreate("java")
             }
@@ -71,6 +71,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.compose.test.junit4)
     debugImplementation(libs.compose.test.manifest)
+    testDebugImplementation(libs.grpc.okhttp)
+    testDebugImplementation(libs.grpc.protobuf)
+    testDebugImplementation(libs.grpc.stub)
+    testDebugImplementation(libs.grpc.kotlin.stub)
+    testDebugImplementation(libs.protobuf.java)
 
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.testExt.junit)
@@ -114,15 +119,22 @@ android {
         }
     }
     sourceSets {
-        getByName("debug").proto {
-            srcDir("../../proto")
-            setIncludes(
-                listOf(
-                    "nutritionist/diary/v1/diary.proto",
-                    "nutritionist/catalog/v1/catalog.proto",
-                    "nutritionist/recipe/v1/recipe.proto",
-                    "health.proto",
-                ),
+        getByName("debug") {
+            proto {
+                srcDir("../../proto")
+                setIncludes(
+                    listOf(
+                        "nutritionist/diary/v1/diary.proto",
+                        "nutritionist/catalog/v1/catalog.proto",
+                        "nutritionist/recipe/v1/recipe.proto",
+                        "health.proto",
+                    ),
+                )
+            }
+            java.srcDirs(
+                "build/generated/java/generateDebugProto/java",
+                "build/generated/java/generateDebugProto/grpc",
+                "build/generated/java/generateDebugProto/grpckt",
             )
         }
     }

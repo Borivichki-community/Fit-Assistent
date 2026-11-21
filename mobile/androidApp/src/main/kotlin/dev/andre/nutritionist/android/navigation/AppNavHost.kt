@@ -22,6 +22,7 @@ import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
+import dev.andre.nutritionist.android.ui.screens.splash.SplashRoute
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileNews
@@ -32,7 +33,7 @@ import org.koin.compose.koinInject
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    startDestination: Any = AppDestination.Auth.route,
+    startDestination: Any = AppDestination.Splash.route,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
@@ -50,6 +51,21 @@ fun AppNavHost(
         startDestination = destinationRoute,
         modifier = modifier,
     ) {
+        composable(AppDestination.Splash.route) {
+            SplashRoute(
+                onNavigateToDashboard = {
+                    navController.navigate(AppDestination.Dashboard.route) {
+                        popUpTo(AppDestination.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToAuth = {
+                    navController.navigate(AppDestination.Auth.route) {
+                        popUpTo(AppDestination.Splash.route) { inclusive = true }
+                    }
+                },
+                authRepository = authRepository,
+            )
+        }
         composable(AppDestination.Auth.route) {
             LoginRoute(
                 onLoginSuccess = {

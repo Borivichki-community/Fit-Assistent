@@ -1,6 +1,7 @@
 package dev.andre.nutritionist.android.navigation
 
 sealed class AppDestination(val route: String) {
+    data object Splash : AppDestination("splash")
     data object Auth : AppDestination("auth")
     data object SignUp : AppDestination("sign_up")
     data object Registration : AppDestination("registration")
