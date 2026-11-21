@@ -3,6 +3,7 @@ package dev.andre.nutritionist.di
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
 import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.repository.AnalyticsRepositoryImpl
 import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
 import dev.andre.nutritionist.data.repository.FoodCatalogRepositoryImpl
 import dev.andre.nutritionist.data.repository.MealPlanRepositoryImpl
@@ -10,6 +11,7 @@ import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.data.repository.RecipeRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
+import dev.andre.nutritionist.domain.repository.AnalyticsRepository
 import dev.andre.nutritionist.domain.repository.DiaryRepository
 import dev.andre.nutritionist.domain.repository.FoodCatalogRepository
 import dev.andre.nutritionist.domain.repository.MealPlanRepository
@@ -39,6 +41,10 @@ import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesCommandsFlow
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUiStateMapper
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUpdate
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesViewModel
+import dev.andre.nutritionist.presentation.statistics.StatisticsCommandsFlowHandler
+import dev.andre.nutritionist.presentation.statistics.StatisticsUiStateMapper
+import dev.andre.nutritionist.presentation.statistics.StatisticsUpdate
+import dev.andre.nutritionist.presentation.statistics.StatisticsViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
@@ -78,6 +84,9 @@ val dataModule: Module = module {
     }
     single<RecipeRepository> {
         RecipeRepositoryImpl()
+    }
+    single<AnalyticsRepository> {
+        AnalyticsRepositoryImpl()
     }
 }
 
@@ -165,6 +174,22 @@ val presentationModule: Module = module {
     factory { SavedRecipesUiStateMapper() }
     factory {
         SavedRecipesViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { StatisticsUpdate() }
+    factory {
+        StatisticsCommandsFlowHandler(
+            analyticsRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { StatisticsUiStateMapper() }
+    factory {
+        StatisticsViewModel(
             update = get(),
             commandsFlowHandler = get(),
             uiStateMapper = get(),

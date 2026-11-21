@@ -1311,6 +1311,30 @@
   - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
   - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
 
+## Checkpoint 2026-11-21 — [T-056] Экран аналитики питания и бюджета (StatisticsScreen) в стиле Aether Zero-G Luxury
+- Активные Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`.
+- Роль: `implementer`.
+- **Domain & Repository (:mobile:shared):**
+  - Доменная модель `NutritionAnalytics` (`AnalyticsPeriod: WEEK, MONTH`, `DailyAnalyticsPoint`).
+  - Интерфейс `AnalyticsRepository` и реализация `AnalyticsRepositoryImpl` (расчёт соблюдения норм КБЖУ, финансовых затрат, экономии и стоимости порций).
+- **MVI KoTEA (:mobile:shared):**
+  - `StatisticsState` (`period: AnalyticsPeriod`, `Content: Loading, Success, Error`).
+  - `StatisticsEvent` (Ui & Internal), `StatisticsCommand`, `StatisticsNews`, `StatisticsUpdate` (чистый DslUpdate без `else`), `StatisticsCommandsFlowHandler`, `StatisticsUiStateMapper`, `StatisticsViewModel`.
+  - Регистрация в Koin (`presentationModule` и `dataModule`).
+- **Android UI (:mobile:androidApp):**
+  - `PeriodSelectorTab`: сегментированный стеклянный переключатель периода («Неделя» / «Месяц»).
+  - `CaloriesBarChartCard`: карточка динамики калорийности с графиком вертикальных столбцов, плашкой процента соблюдения нормы и индикацией достижения цели.
+  - `MacroDistributionCard`: карточка баланса БЖУ с сегментированным прогресс-баром и граммовками белков, жиров и углеводов.
+  - `BudgetAnalyticsCard`: карточка бюджета и экономии с burn-rate прогресс-баром, суммой сбережений и средней стоимостью приёма пищи.
+  - `StatisticsSuccessContent`: скроллируемый дашборд аналитики.
+  - `StatisticsScreen` (stateless со стеклянным topBar и нижней панелью навигации), `StatisticsRoute`, `AppNavHost` интеграция (`AppDestination.Statistics`).
+- **Тестирование & Верификация:**
+  - `StatisticsUpdateTest` (6 тестов), `StatisticsCommandsFlowHandlerTest` (2 теста) — 100% прохождение (193 теста в :shared).
+  - `StatisticsScreenTest` (5 тестов) — 100% прохождение (115 тестов в :mobile:androidApp).
+  - `./gradlew :mobile:shared:allTests` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
 
 
 
