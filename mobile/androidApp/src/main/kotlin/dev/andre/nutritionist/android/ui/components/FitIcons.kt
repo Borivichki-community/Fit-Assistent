@@ -714,6 +714,50 @@ object FitIcons {
         }.build()
     }
 
+    val ChevronLeft: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitChevronLeft",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(15f, 18f)
+                lineTo(9f, 12f)
+                lineTo(15f, 6f)
+            }
+        }.build()
+    }
+
+    val ArrowBack: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitArrowBack",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(19f, 12f)
+                lineTo(5f, 12f)
+                moveTo(12f, 19f)
+                lineTo(5f, 12f)
+                lineTo(12f, 5f)
+            }
+        }.build()
+    }
+
     /** Иконка миски / йогурта / еды */
     val Bowl: ImageVector by lazy {
         ImageVector.Builder(

@@ -1267,6 +1267,29 @@
   3. Запрос успешно авторизован шлюзом Envoy Gateway, прошёл валидацию mTLS в `RecipeIdentityInterceptor` и вернул потоковый ответ со всеми 7 днями меню и итоговой сводкой (`MENU_SOURCE_FALLBACK`, 14028 ккал, 10521 коп.).
   4. Результат отображён на экране `ServiceCheckActivity` со статусом `GenerateWeekMenu — success`.
 
+## Checkpoint 2026-11-21 — [T-054] Генератор AI-рецептов с дыхательной Zero-G Luxury анимацией загрузки
+- Активные Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`.
+- Роль: `implementer`.
+- **Domain & Repository (:mobile:shared):**
+  - Доменная модель `Recipe` (`RecipeId`, `RecipeIngredient`, `RecipeStep`, `AiRecipePrompt`).
+  - Интерфейс `RecipeRepository` и реализация `RecipeRepositoryImpl` (реалистичные рецепты, динамический расчёт под КБЖУ и бюджет).
+- **MVI KoTEA (:mobile:shared):**
+  - `AiRecipeState` с `sealed interface Content: Configuring, Generating, Success, Error`.
+  - `AiRecipeEvent` (Ui & Internal), `AiRecipeCommand`, `AiRecipeNews`, `AiRecipeUpdate` (чистый DslUpdate без `else`), `AiRecipeCommandsFlowHandler`, `AiRecipeUiStateMapper`, `AiRecipeViewModel`.
+  - Регистрация в Koin (`viewModelOf(::AiRecipeViewModel)` и `singleOf(::RecipeRepositoryImpl)`).
+- **Android UI (:mobile:androidApp):**
+  - `AiRecipeConfiguringContent`: выбор приёма пищи, чипсет калорий и бюджета, фильтры предпочтений, текстовый запрос, кнопка запуска.
+  - `AiRecipeGeneratingContent`: Zero-G Luxury анимация дыхания (двойной пульсирующий светящийся ореол, вращающийся круг с искрами, динамическая смена фаз генерации, прогресс-бар).
+  - `AiRecipeSuccessContent`: карточка сгенерированного блюда, баджи времени и приёма пищи, макронутриенты с цветными прогресс-барами, чеклист ингредиентов, пошаговые инструкции, действия добавления в дневник и сохранения в избранное.
+  - `AiRecipeScreen` (stateless), `AiRecipeRoute`, `AppNavHost` интеграция (`AppDestination.AiRecipeGenerator`).
+- **Тестирование & Верификация:**
+  - `AiRecipeUpdateTest` (12 тестов), `AiRecipeCommandsFlowHandlerTest` (4 теста) — 100% прохождение (166 тестов в :shared).
+  - `AiRecipeScreenTest` (8 тестов) — 100% прохождение (99 тестов в :mobile:androidApp).
+  - `./gradlew :mobile:shared:allTests` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+
 
 
 

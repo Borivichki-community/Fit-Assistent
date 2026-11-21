@@ -7,16 +7,22 @@ import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
 import dev.andre.nutritionist.data.repository.FoodCatalogRepositoryImpl
 import dev.andre.nutritionist.data.repository.MealPlanRepositoryImpl
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
+import dev.andre.nutritionist.data.repository.RecipeRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.domain.repository.DiaryRepository
 import dev.andre.nutritionist.domain.repository.FoodCatalogRepository
 import dev.andre.nutritionist.domain.repository.MealPlanRepository
 import dev.andre.nutritionist.domain.repository.ProfileRepository
+import dev.andre.nutritionist.domain.repository.RecipeRepository
 import dev.andre.nutritionist.presentation.addmeal.AddMealCommandsFlowHandler
 import dev.andre.nutritionist.presentation.addmeal.AddMealUiStateMapper
 import dev.andre.nutritionist.presentation.addmeal.AddMealUpdate
 import dev.andre.nutritionist.presentation.addmeal.AddMealViewModel
+import dev.andre.nutritionist.presentation.airecipe.AiRecipeCommandsFlowHandler
+import dev.andre.nutritionist.presentation.airecipe.AiRecipeUiStateMapper
+import dev.andre.nutritionist.presentation.airecipe.AiRecipeUpdate
+import dev.andre.nutritionist.presentation.airecipe.AiRecipeViewModel
 import dev.andre.nutritionist.presentation.catalog.CatalogCommandsFlowHandler
 import dev.andre.nutritionist.presentation.catalog.CatalogUiStateMapper
 import dev.andre.nutritionist.presentation.catalog.CatalogUpdate
@@ -65,6 +71,9 @@ val dataModule: Module = module {
         MealPlanRepositoryImpl(
             dispatchers = get(),
         )
+    }
+    single<RecipeRepository> {
+        RecipeRepositoryImpl()
     }
 }
 
@@ -118,6 +127,23 @@ val presentationModule: Module = module {
     factory { CatalogUiStateMapper() }
     factory {
         CatalogViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { AiRecipeUpdate() }
+    factory {
+        AiRecipeCommandsFlowHandler(
+            recipeRepository = get(),
+            diaryRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { AiRecipeUiStateMapper() }
+    factory {
+        AiRecipeViewModel(
             update = get(),
             commandsFlowHandler = get(),
             uiStateMapper = get(),

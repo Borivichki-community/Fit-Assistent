@@ -21,6 +21,7 @@ import dev.andre.nutritionist.android.ui.screens.MainScreen
 import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
+import dev.andre.nutritionist.android.ui.screens.airecipe.AiRecipeRoute
 import dev.andre.nutritionist.android.ui.screens.catalog.CatalogRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.android.ui.screens.splash.SplashRoute
@@ -192,6 +193,21 @@ fun AppNavHost(
                 onDestinationSelected = { dest ->
                     navController.navigate(dest.route) {
                         launchSingleTop = true
+                    }
+                },
+                onNavigateToAiGenerator = {
+                    navController.navigate(AppDestination.AiRecipeGenerator.route)
+                },
+            )
+        }
+        composable(AppDestination.AiRecipeGenerator.route) {
+            AiRecipeRoute(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToDiary = {
+                    navController.navigate(AppDestination.Dashboard.route) {
+                        popUpTo(AppDestination.Dashboard.route) { inclusive = true }
                     }
                 },
             )
