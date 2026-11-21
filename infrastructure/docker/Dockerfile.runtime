@@ -1,0 +1,19 @@
+# infrastructure/docker/Dockerfile.runtime
+# Быстрая сборка runtime-образа из локально скомпилированного bootJar
+FROM azul/zulu-openjdk:21-jre@sha256:c7cc727a2b13c7018f238c2e113f72fa7744fed8143321ecbb5b6c0d1193ff53
+
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home app
+
+WORKDIR /app
+
+ARG JAR_FILE=backend/profile-service/build/libs/profile-service.jar
+COPY ${JAR_FILE} app.jar
+
+RUN chown -R app:app /app
+
+USER app
+
+EXPOSE 9090 8080
+
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-Dfile.encoding=UTF-8", "-jar", "/app/app.jar"]

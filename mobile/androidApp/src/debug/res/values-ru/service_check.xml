@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_check_title">Проверка сервисов FitAssistant</string>
+    <string name="service_check_menu_description">Используйте тестовый аккаунт. Для запросов с авторизацией войдите через основную иконку FitAssistant на этом эмуляторе.</string>
+    <string name="service_check_back">Все сервисы</string>
+    <string name="service_check_profile">Профиль</string>
+    <string name="service_check_diary">Дневник питания</string>
+    <string name="service_check_catalog">Каталог и цены</string>
+    <string name="service_check_recipe">Рекомендации рецептов</string>
+    <string name="service_check_keycloak">Keycloak</string>
+    <string name="service_check_profile_description">UpdateProfile создаёт или перезаписывает ваш профиль тестовыми данными. Проверьте сохранённые значения через GetProfile.</string>
+    <string name="service_check_diary_description">Подготовьте образец, добавьте его дважды и проверьте, что он появился в выдаче за день и неделю один раз. В конце удалите образец. Запросы используют UTC и дату подготовленной записи.</string>
+    <string name="service_check_catalog_description">Проверьте состояние gRPC и запросите первые 10 продуктов из каталога.</string>
+    <string name="service_check_recipe_description">Укажите HTTPS-адрес своего тестового Envoy Gateway и запросите меню на неделю. Сервис может обратиться к настроенному поставщику ИИ, запрос займёт до минуты.</string>
+    <string name="service_check_keycloak_description">Проверяются конфигурация OpenID Connect и состояние локальной сессии. Для входа откройте основное приложение FitAssistant.</string>
+    <string name="service_check_port">Порт на компьютере (10.0.2.2)</string>
+    <string name="service_check_gateway">Адрес тестового Envoy Gateway (HTTPS)</string>
+    <string name="service_check_health">gRPC Health</string>
+    <string name="service_check_discovery">Проверить конфигурацию OpenID</string>
+    <string name="service_check_session">Проверить сессию входа</string>
+    <string name="service_check_get_profile">GetProfile</string>
+    <string name="service_check_search_products">SearchProducts</string>
+    <string name="service_check_generate_menu">GenerateWeekMenu</string>
+    <string name="service_check_update_profile">UpdateProfile с тестовыми данными</string>
+    <string name="service_check_prepare_entry">Подготовить тестовую запись</string>
+    <string name="service_check_add_entry">AddEntry (повтор с тем же ключом)</string>
+    <string name="service_check_day">GetDailyEntries</string>
+    <string name="service_check_range">GetRange (7 дней)</string>
+    <string name="service_check_delete_entry">DeleteMeal (тестовая запись)</string>
+    <string name="service_check_running">Выполняется %1$s…</string>
+    <string name="service_check_success">%1$s — успешно</string>
+    <string name="service_check_failure">%1$s — ошибка</string>
+</resources>

@@ -9,9 +9,8 @@ import dev.andre.nutritionist.profile.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toProto
 import dev.andre.nutritionist.profile.domain.model.UserId
-import dev.andre.nutritionist.profile.grpc.idempotency.IdempotencyServerInterceptor
 import dev.andre.nutritionist.profile.grpc.interceptor.DailyCaloriesIdentityInterceptor
-import dev.andre.nutritionist.profile.grpc.interceptor.GrpcExceptionInterceptor
+import dev.andre.nutritionist.profile.grpc.security.currentAuthContext
 import dev.andre.nutritionist.profile.grpc.validation.ProfileRequestValidator
 import dev.andre.nutritionist.profile.service.DailyCaloriesService
 import dev.andre.nutritionist.profile.service.ProfileService
@@ -25,7 +24,7 @@ import java.time.ZoneId
 import java.util.UUID
 import com.budgetntr.proto.profile.v1.GetDailyCaloriesBalanceRequest as DailyCaloriesRequest
 
-@GrpcService(interceptors = [GrpcExceptionInterceptor::class, IdempotencyServerInterceptor::class])
+@GrpcService
 class ProfileGrpcService(
     private val profileService: ProfileService,
     private val validator: ProfileRequestValidator,
@@ -66,6 +65,7 @@ class ProfileGrpcService(
 
     override suspend fun getProfile(request: GetProfileRequest): ProfileProto {
         validator.validate(request)
+        checkAccess(UserId(request.userId))
 
         return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
             logger.info("getProfile called: userId={}", request.userId)
@@ -81,6 +81,7 @@ class ProfileGrpcService(
 
     override suspend fun updateProfile(request: UpdateProfileRequest): ProfileProto {
         validator.validate(request)
+        checkAccess(UserId(request.userId))
 
         return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
             logger.info(
@@ -96,6 +97,16 @@ class ProfileGrpcService(
 
             logger.info("updateProfile completed successfully: id={}, userId={}", profile.id, profile.userId)
             profile.toProto()
+        }
+    }
+
+    private fun checkAccess(targetUserId: UserId) {
+        val auth = currentAuthContext()
+        if (!auth.isAuthenticated || auth.userId.isNullOrBlank()) {
+            throw Status.UNAUTHENTICATED.asException()
+        }
+        if (!auth.isAdmin && auth.userId != targetUserId.raw) {
+            throw Status.PERMISSION_DENIED.asException()
         }
     }
 }

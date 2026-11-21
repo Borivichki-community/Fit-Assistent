@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="005-seed-initial-regions" author="implementer">
+        <loadData tableName="regions"
+                  file="db/changelog/data/initial_regions.csv"
+                  relativeToChangelogFile="false"
+                  encoding="UTF-8">
+            <column name="id" type="OTHER"/>
+            <column name="name" type="STRING"/>
+            <column name="is_active" type="BOOLEAN"/>
+            <column name="created_at" type="STRING"/>
+        </loadData>
+    </changeSet>
+
+    <changeSet id="006-seed-initial-products" author="implementer">
+        <loadData tableName="products"
+                  file="db/changelog/data/initial_products.csv"
+                  relativeToChangelogFile="false"
+                  encoding="UTF-8">
+            <column name="id" type="OTHER"/>
+            <column name="name" type="STRING"/>
+            <column name="barcode" type="STRING"/>
+            <column name="category" type="STRING"/>
+            <column name="calories_per_100g" type="NUMERIC"/>
+            <column name="proteins_per_100g" type="NUMERIC"/>
+            <column name="fats_per_100g" type="NUMERIC"/>
+            <column name="carbs_per_100g" type="NUMERIC"/>
+            <column name="version" type="NUMERIC"/>
+            <column name="created_at" type="STRING"/>
+        </loadData>
+    </changeSet>
+
+    <changeSet id="007-seed-initial-regional-prices" author="implementer">
+        <loadData tableName="regional_prices"
+                  file="db/changelog/data/initial_prices.csv"
+                  relativeToChangelogFile="false"
+                  encoding="UTF-8">
+            <column name="id" type="OTHER"/>
+            <column name="product_id" type="OTHER"/>
+            <column name="region_id" type="OTHER"/>
+            <column name="price" type="NUMERIC"/>
+            <column name="currency" type="STRING"/>
+            <column name="unit" type="STRING"/>
+            <column name="updated_at" type="STRING"/>
+        </loadData>
+    </changeSet>
+
+</databaseChangeLog>

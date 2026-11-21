@@ -7,3 +7,37 @@ metadata:
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
   description: "Envoy Gateway Controller for FitAssistent2 API Gateway"
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: custom-proxy-config
+    namespace: envoy-gateway-system
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: custom-proxy-config
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyDeployment:
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              template:
+                spec:
+                  containers:
+                    - name: envoy
+                      ports:
+                        - name: http-9090
+                          containerPort: 9090
+                          hostPort: 9090
+                        - name: http-80
+                          containerPort: 10080
+                          hostPort: 80
+                        - name: https-443
+                          containerPort: 10443
+                          hostPort: 443

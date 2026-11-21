@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recipe-ai-service
+  namespace: budget-nutritionist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recipe-ai-service
+  template:
+    metadata:
+      labels:
+        app: recipe-ai-service
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: recipe-ai-service
+          image: recipe-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: grpc
+              containerPort: 9090
+            - name: actuator
+              containerPort: 8084
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: gateway
+            - name: SPRING_GRPC_SERVER_ADDRESS
+              value: "0.0.0.0"
+            - name: RECIPE_GRPC_PORT
+              value: "9090"
+            - name: RECIPE_CATALOG_TARGET
+              value: "catalog-price-service.budget-nutritionist.svc.cluster.local:9090"
+            - name: RECIPE_CATALOG_PLAINTEXT
+              value: "true"
+            - name: REDIS_HOST
+              value: redis-state.budget-nutritionist.svc.cluster.local
+            - name: RECIPE_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recipe-llm
+                  key: api-key
+          volumeMounts:
+            - name: tls
+              mountPath: /run/recipe-tls
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: actuator
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: actuator
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: actuator
+      volumes:
+        - name: tls
+          secret:
+            secretName: recipe-server-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recipe-ai-service
+  namespace: budget-nutritionist
+spec:
+  selector:
+    app: recipe-ai-service
+  ports:
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+      appProtocol: grpc
+---
+apiVersion: gateway.networking.k8s.io/v1alpha3
+kind: BackendTLSPolicy
+metadata:
+  name: recipe-backend-tls
+  namespace: budget-nutritionist
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: recipe-ai-service
+      sectionName: grpc
+  validation:
+    caCertificateRefs:
+      - group: ""
+        kind: ConfigMap
+        name: recipe-server-ca
+    hostname: recipe-ai-service.budget-nutritionist.svc.cluster.local
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: recipes
+  namespace: budget-nutritionist
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: envoy-gateway-system
+  rules:
+    - matches:
+        - method:
+            service: com.budgetntr.recipe.v1.RecipeAiService
+            method: GenerateWeekMenu
+      backendRefs:
+        - name: recipe-ai-service
+          port: 9090
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: recipes-jwt
+  namespace: budget-nutritionist
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: recipes
+  jwt:
+    providers:
+      - name: keycloak-loopback
+        issuer: http://127.0.0.1:8080/realms/FitAssistant
+        remoteJWKS:
+          uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+      - name: keycloak-emulator
+        issuer: http://10.0.2.2:8080/realms/FitAssistant
+        remoteJWKS:
+          uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+      - name: keycloak-localhost
+        issuer: http://localhost:8080/realms/FitAssistant
+        remoteJWKS:
+          uri: http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: recipes-rate-limit
+  namespace: budget-nutritionist
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: recipes
+  timeout:
+    http:
+      requestTimeout: 60s
+  rateLimit:
+    type: Global
+    global:
+      rules:
+        - limit:
+            requests: 30
+            unit: Minute

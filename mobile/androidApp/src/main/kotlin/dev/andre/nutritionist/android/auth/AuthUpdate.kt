@@ -12,11 +12,14 @@ class AuthUpdate : DslUpdate<AuthState, AuthEvent, AuthCommand, AuthNews>() {
         when (event) {
             is AuthEvent.Ui.StartLogin -> {
                 state { copy(content = AuthState.Content.Loading) }
-                commands(AuthCommand.LaunchAuthTab)
+                commands(AuthCommand.LaunchAuthTab(event.idpHint, event.prompt))
             }
             is AuthEvent.Ui.AuthResponseReceived -> {
                 state { copy(content = AuthState.Content.Loading) }
                 commands(AuthCommand.ProcessAuthResponse(event.intent))
+            }
+            is AuthEvent.Ui.AuthCancelled -> {
+                state { copy(content = AuthState.Content.Idle) }
             }
             is AuthEvent.Ui.LogoutClicked -> {
                 state { copy(content = AuthState.Content.Loading) }
@@ -36,6 +39,7 @@ class AuthUpdate : DslUpdate<AuthState, AuthEvent, AuthCommand, AuthNews>() {
             }
             is AuthEvent.Internal.LoggedOut -> {
                 state { copy(content = AuthState.Content.Idle) }
+                news(AuthNews.NavigateToAuth)
             }
         }
     }

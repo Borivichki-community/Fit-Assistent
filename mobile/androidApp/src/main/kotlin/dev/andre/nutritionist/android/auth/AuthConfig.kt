@@ -13,6 +13,8 @@ data class AuthConfig(
     val clientId: String = DEFAULT_CLIENT_ID,
     val redirectUri: Uri = Uri.parse(DEFAULT_REDIRECT_URI),
     val discoveryUri: Uri = Uri.parse(DEFAULT_DISCOVERY_URI),
+    val authEndpoint: Uri? = Uri.parse(DEFAULT_AUTH_ENDPOINT),
+    val tokenEndpoint: Uri? = Uri.parse(DEFAULT_TOKEN_ENDPOINT),
     val scope: String = DEFAULT_SCOPE,
 ) {
     companion object {
@@ -20,6 +22,10 @@ data class AuthConfig(
         const val DEFAULT_REDIRECT_URI: String = "com.budgetntr.fitassistant://oauth2redirect"
         const val DEFAULT_DISCOVERY_URI: String =
             "http://10.0.2.2:8080/realms/FitAssistant/.well-known/openid-configuration"
+        const val DEFAULT_AUTH_ENDPOINT: String =
+            "http://10.0.2.2:8080/realms/FitAssistant/protocol/openid-connect/auth"
+        const val DEFAULT_TOKEN_ENDPOINT: String =
+            "http://10.0.2.2:8080/realms/FitAssistant/protocol/openid-connect/token"
         const val DEFAULT_SCOPE: String = "openid profile email"
     }
 }

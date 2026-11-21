@@ -1,0 +1,15 @@
+spring:
+  ssl:
+    bundle:
+      pem:
+        recipe-gateway:
+          keystore:
+            certificate: ${RECIPE_TLS_CERTIFICATE:file:/run/recipe-tls/tls.crt}
+            private-key: ${RECIPE_TLS_PRIVATE_KEY:file:/run/recipe-tls/tls.key}
+          truststore:
+            certificate: ${RECIPE_TLS_CLIENT_CA:file:/run/recipe-tls/client-ca.crt}
+  grpc:
+    server:
+      ssl:
+        bundle: recipe-gateway
+        client-auth: require

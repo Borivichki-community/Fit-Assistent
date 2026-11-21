@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: catalog-grpc-route
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: catalog-price-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: envoy-gateway-system
+  rules:
+    - matches:
+        - method:
+            service: nutritionist.catalog.v1.CatalogService
+      backendRefs:
+        - name: catalog-price-service
+          port: 9192
