@@ -23,6 +23,7 @@ import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
 import dev.andre.nutritionist.android.ui.screens.airecipe.AiRecipeRoute
 import dev.andre.nutritionist.android.ui.screens.catalog.CatalogRoute
+import dev.andre.nutritionist.android.ui.screens.savedrecipes.SavedRecipesRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.android.ui.screens.splash.SplashRoute
 import dev.andre.nutritionist.domain.model.UserId
@@ -209,6 +210,16 @@ fun AppNavHost(
                     navController.navigate(AppDestination.Dashboard.route) {
                         popUpTo(AppDestination.Dashboard.route) { inclusive = true }
                     }
+                },
+            )
+        }
+        composable(AppDestination.SavedRecipes.route) {
+            SavedRecipesRoute(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToAiGenerator = {
+                    navController.navigate(AppDestination.AiRecipeGenerator.route)
                 },
             )
         }

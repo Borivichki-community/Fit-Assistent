@@ -35,6 +35,10 @@ import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
 import dev.andre.nutritionist.presentation.profile.ProfileUiStateMapper
 import dev.andre.nutritionist.presentation.profile.ProfileUpdate
 import dev.andre.nutritionist.presentation.profile.ProfileViewModel
+import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesCommandsFlowHandler
+import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUiStateMapper
+import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUpdate
+import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.KoinAppDeclaration
@@ -144,6 +148,23 @@ val presentationModule: Module = module {
     factory { AiRecipeUiStateMapper() }
     factory {
         AiRecipeViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { SavedRecipesUpdate() }
+    factory {
+        SavedRecipesCommandsFlowHandler(
+            recipeRepository = get(),
+            diaryRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { SavedRecipesUiStateMapper() }
+    factory {
+        SavedRecipesViewModel(
             update = get(),
             commandsFlowHandler = get(),
             uiStateMapper = get(),

@@ -1063,4 +1063,53 @@ object FitIcons {
             }
         }.build()
     }
+
+    val Bookmark: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitBookmark",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(19f, 21f)
+                lineTo(12f, 16f)
+                lineTo(5f, 21f)
+                lineTo(5f, 5f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 7f, 3f)
+                lineTo(17f, 3f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 5f)
+                close()
+            }
+        }.build()
+    }
+
+    val BookmarkFilled: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitBookmarkFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+            ) {
+                moveTo(19f, 21f)
+                lineTo(12f, 16f)
+                lineTo(5f, 21f)
+                lineTo(5f, 5f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 7f, 3f)
+                lineTo(17f, 3f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 5f)
+                close()
+            }
+        }.build()
+    }
 }

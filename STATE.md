@@ -1289,6 +1289,29 @@
   - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
   - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
 
+## Checkpoint 2026-11-21 — [T-055] Экран избранных и сохранённых рецептов (SavedRecipesScreen) в стиле Aether Zero-G Luxury
+- Активные Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`.
+- Роль: `implementer`.
+- **Domain & Repository (:mobile:shared):**
+  - Поддержка наблюдения, добавления и удаления из избранного в `RecipeRepository` / `RecipeRepositoryImpl`.
+- **MVI KoTEA (:mobile:shared):**
+  - `SavedRecipesState` с `filter: SavedRecipesFilter` и `sealed interface Content: Loading, Empty, Success, Error`.
+  - `SavedRecipesEvent` (Ui & Internal), `SavedRecipesCommand`, `SavedRecipesNews`, `SavedRecipesUpdate` (чистый DslUpdate без `else`), `SavedRecipesCommandsFlowHandler`, `SavedRecipesUiStateMapper`, `SavedRecipesViewModel`.
+  - Регистрация в Koin (`presentationModule`).
+- **Android UI (:mobile:androidApp):**
+  - `SavedRecipeCard`: стильная карточка с заголовком, описанием, баджами времени, калорийности, бюджета и приёма пищи, макро-плашкой и кнопкой добавления/удаления из избранного (`FitIcons.Bookmark` / `BookmarkFilled`).
+  - `SavedRecipeDetailBottomSheet` и `SavedRecipeDetailContent`: модальная шторка с графиками КБЖУ, чеклистом ингредиентов, шагами приготовления и кнопкой «Добавить в дневник».
+  - `SavedRecipesEmptyContent`: роскошное пустое состояние со светящимся кругом, пояснением и кнопкой перехода к AI-генератору.
+  - `SavedRecipesSuccessContent`: поиск по сохранённым блюдам, чипсет категорий, счётчик рецептов и список карточек.
+  - `SavedRecipesScreen` (stateless), `SavedRecipesRoute`, `AppNavHost` интеграция (`AppDestination.SavedRecipes`).
+- **Тестирование & Верификация:**
+  - `SavedRecipesUpdateTest` (15 тестов), `SavedRecipesCommandsFlowHandlerTest` (4 теста) — 100% прохождение (185 тестов в :shared).
+  - `SavedRecipesScreenTest` (11 тестов) — 100% прохождение (110 тестов в :mobile:androidApp).
+  - `./gradlew :mobile:shared:allTests` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
+  - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+
 
 
 
