@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,9 +22,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel2
 
 /**
- * Переиспользуемая метрическая карточка с лейблом и значением.
+ * Переиспользуемая метрическая карточка с лейблом и значением в стиле Aether Zero-G Luxury.
  * При наличии [onClick] становится кликабельной и отображает индикатор редактирования.
  */
 @Composable
@@ -34,10 +36,11 @@ fun MetricCard(
     onClick: (() -> Unit)? = null,
 ) {
     val cardColors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     )
     val cardShape = RoundedCornerShape(Spacing.innerCardRadius)
+    val cardBorder = BorderStroke(1.dp, GlassBorderLevel2)
 
     val content = @Composable {
         Column(
@@ -79,6 +82,7 @@ fun MetricCard(
             modifier = modifier.height(110.dp),
             colors = cardColors,
             shape = cardShape,
+            border = cardBorder,
         ) {
             content()
         }
@@ -87,6 +91,7 @@ fun MetricCard(
             modifier = modifier.height(110.dp),
             colors = cardColors,
             shape = cardShape,
+            border = cardBorder,
         ) {
             content()
         }

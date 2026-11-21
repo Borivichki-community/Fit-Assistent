@@ -1,7 +1,9 @@
 package dev.andre.nutritionist.android.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,8 @@ import dev.andre.nutritionist.android.ui.dialogs.EditBudgetDialog
 import dev.andre.nutritionist.android.ui.dialogs.EditGoalDialog
 import dev.andre.nutritionist.android.ui.dialogs.EditWeightDialog
 import dev.andre.nutritionist.android.ui.theme.FitAssistantTheme
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel2
 import dev.andre.nutritionist.domain.model.ActivityLevel
 import dev.andre.nutritionist.domain.model.GoalType
 import dev.andre.nutritionist.domain.model.ProfileId
@@ -96,10 +100,11 @@ fun ProfileSuccessContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
             shape = RoundedCornerShape(Spacing.cardRadius),
+            border = BorderStroke(1.dp, GlassBorderLevel2),
         ) {
             Column(
                 modifier = Modifier
@@ -112,13 +117,14 @@ fun ProfileSuccessContent(
                     modifier = Modifier
                         .size(96.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(BorderStroke(1.dp, GlassBorderLevel1), CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = FitIcons.Profile,
                         contentDescription = stringResource(R.string.content_avatar),
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        tint = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.size(52.dp),
                     )
                 }
@@ -174,10 +180,11 @@ fun ProfileSuccessContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
             shape = RoundedCornerShape(Spacing.cardRadius),
+            border = BorderStroke(1.dp, GlassBorderLevel2),
         ) {
             Column(
                 modifier = Modifier
@@ -190,7 +197,7 @@ fun ProfileSuccessContent(
                     onClick = onEditClick,
                 )
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    color = GlassBorderLevel1,
                     modifier = Modifier.padding(horizontal = Spacing.medium),
                 )
                 SettingsActionRow(
@@ -199,7 +206,7 @@ fun ProfileSuccessContent(
                     onClick = { /* системные уведомления */ },
                 )
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    color = GlassBorderLevel1,
                     modifier = Modifier.padding(horizontal = Spacing.medium),
                 )
                 SettingsActionRow(
@@ -208,7 +215,7 @@ fun ProfileSuccessContent(
                     onClick = { /* справка */ },
                 )
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    color = GlassBorderLevel1,
                     modifier = Modifier.padding(horizontal = Spacing.medium),
                 )
                 SettingsActionRow(
@@ -217,7 +224,7 @@ fun ProfileSuccessContent(
                     onClick = onFillSurveyClick,
                 )
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    color = GlassBorderLevel1,
                     modifier = Modifier.padding(horizontal = Spacing.medium),
                 )
                 SettingsActionRow(
