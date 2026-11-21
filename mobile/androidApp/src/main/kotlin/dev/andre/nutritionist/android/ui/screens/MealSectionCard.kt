@@ -1,5 +1,11 @@
 package dev.andre.nutritionist.android.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,7 +28,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,10 +35,14 @@ import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
+import dev.andre.nutritionist.domain.model.MealType
+import dev.andre.nutritionist.presentation.dashboard.MealSectionUiModel
+import dev.andre.nutritionist.presentation.dashboard.formatMacroGrams
 
 /**
- * Карточка секции приёма пищи (Завтрак, Обед, Ужин, Перекус/Другое).
- * Поддерживает компактное состояние (когда блюд нет) и развёрнутое состояние со списком блюд и быстрыми действиями.
+ * Карточка секции приёма пищи (Завтрак, Обед, Ужин, Перекус/Другое) в стиле Aether Zero-G Luxury.
+ * Выполнена на основе Level 1 Glass со скруглением squircle 24dp и плавной анимацией аккордеона.
  */
 @Composable
 fun MealSectionCard(
@@ -54,10 +63,10 @@ fun MealSectionCard(
     }
 
     val iconTint = when (meal.type) {
-        MealType.BREAKFAST -> Color(0xFFFFD54F)
-        MealType.LUNCH -> Color(0xFF4FC3F7)
-        MealType.DINNER -> Color(0xFFFF8A65)
-        MealType.SNACK -> Color(0xFFBA68C8)
+        MealType.BREAKFAST -> MaterialTheme.colorScheme.secondary
+        MealType.LUNCH -> MaterialTheme.colorScheme.tertiaryContainer
+        MealType.DINNER -> MaterialTheme.colorScheme.primaryContainer
+        MealType.SNACK -> MaterialTheme.colorScheme.tertiary
     }
 
     val title = when (meal.type) {
@@ -71,23 +80,24 @@ fun MealSectionCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Spacing.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        shape = RoundedCornerShape(Spacing.cardRadius),
+        border = BorderStroke(1.dp, GlassBorderLevel1),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.medium, vertical = Spacing.small),
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         ) {
             // Заголовок карточки
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(enabled = hasEntries) { onToggleExpand(meal.type) }
-                    .padding(vertical = Spacing.small),
+                    .padding(vertical = Spacing.xs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -102,7 +112,7 @@ fun MealSectionCard(
                         modifier = Modifier.size(24.dp),
                     )
 
-                    Spacer(modifier = Modifier.width(Spacing.medium))
+                    Spacer(modifier = Modifier.width(Spacing.md))
 
                     Text(
                         text = title,
@@ -114,7 +124,7 @@ fun MealSectionCard(
                 // Правая часть: Калории, шеврон и кнопка добавления +
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
                     if (hasEntries) {
                         Column(
@@ -154,15 +164,19 @@ fun MealSectionCard(
                         Icon(
                             imageVector = FitIcons.Plus,
                             contentDescription = "+",
-                            tint = Color(0xFF00E676),
+                            tint = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier.size(24.dp),
                         )
                     }
                 }
             }
 
-            // Раскрывающаяся часть с блюдами и быстрыми действиями
-            if (hasEntries && meal.isExpanded) {
+            // Плавный раскрывающийся аккордеон с блюдами и быстрыми действиями
+            AnimatedVisibility(
+                visible = hasEntries && meal.isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -174,32 +188,32 @@ fun MealSectionCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = Spacing.extraSmall),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.large),
+                            .padding(vertical = Spacing.xs),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
                     ) {
                         Text(
-                            text = formatMacroGrams(totalFats),
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "${stringResource(R.string.macro_fats)}: ${formatMacroGrams(totalFats)}г",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = formatMacroGrams(totalCarbs),
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "${stringResource(R.string.macro_carbs)}: ${formatMacroGrams(totalCarbs)}г",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = formatMacroGrams(totalProteins),
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "${stringResource(R.string.macro_proteins)}: ${formatMacroGrams(totalProteins)}г",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
 
                     HorizontalDivider(
-                        modifier = Modifier.padding(vertical = Spacing.extraSmall),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        modifier = Modifier.padding(vertical = Spacing.xs),
+                        color = GlassBorderLevel1,
                     )
 
-                    // Список блюд
+                    // Список съеденных блюд
                     meal.entries.forEach { entry ->
                         MealItemRow(
                             entry = entry,
@@ -207,7 +221,7 @@ fun MealSectionCard(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(Spacing.small))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
 
                     // Быстрые действия: Копировать | + Сохранить Еду | + Камера
                     Row(
@@ -217,20 +231,20 @@ fun MealSectionCard(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.extraSmall),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                         ) {
                             TextButton(onClick = { onCopyClick(meal.type) }) {
                                 Icon(
                                     imageVector = FitIcons.Copy,
                                     contentDescription = null,
-                                    tint = Color(0xFFFFB300),
+                                    tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = stringResource(R.string.btn_quick_copy),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                    color = Color(0xFF00E676),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                 )
                             }
 
@@ -238,15 +252,22 @@ fun MealSectionCard(
                                 Text(
                                     text = stringResource(R.string.btn_quick_save_food),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                    color = Color(0xFF00E676),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                 )
                             }
 
                             TextButton(onClick = { onCameraClick(meal.type) }) {
+                                Icon(
+                                    imageVector = FitIcons.Camera,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = stringResource(R.string.btn_quick_camera),
                                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                    color = Color(0xFF00E676),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
                                 )
                             }
                         }

@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.presentation.dashboard.MealEntryUiModel
+import dev.andre.nutritionist.presentation.dashboard.formatMacroGrams
 
 /**
  * Строка блюда внутри раскрытой карточки приёма пищи.

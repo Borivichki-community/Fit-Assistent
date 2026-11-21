@@ -866,4 +866,28 @@ object FitIcons {
             }
         }.build()
     }
+
+    val Search: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitSearch",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(11f, 19f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = false, 11f, 3f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = false, isPositiveArc = false, 11f, 19f)
+                close()
+                moveTo(21f, 21f)
+                lineTo(16.65f, 16.65f)
+            }
+        }.build()
+    }
 }

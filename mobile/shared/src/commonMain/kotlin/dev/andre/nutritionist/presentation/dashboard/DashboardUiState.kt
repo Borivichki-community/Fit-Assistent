@@ -1,12 +1,12 @@
-package dev.andre.nutritionist.android.ui.screens
+package dev.andre.nutritionist.presentation.dashboard
 
-import kotlin.math.round
+import dev.andre.nutritionist.domain.model.MealType
 
 /**
- * Форматирует значение граммов макронутриентов без лишних нулей.
+ * Вспомогательная функция форматирования граммов макронутриентов.
  */
 fun formatMacroGrams(grams: Double): String {
-    val rounded = round(grams * 100) / 100.0
+    val rounded = kotlin.math.round(grams * 100) / 100.0
     val str = rounded.toString().replace('.', ',')
     return when {
         str.endsWith(",0") -> str.substringBefore(',')
@@ -59,7 +59,7 @@ data class MealEntryUiModel(
 )
 
 /**
- * UI-модель секции приёма пищи (Завтрак, Обед, Ужин, Перекус).
+ * UI-модель секции приёма пищи (Завтрак, Обед, Ужин, Перекус/Другое).
  */
 data class MealSectionUiModel(
     val type: MealType,
@@ -89,9 +89,9 @@ fun defaultWeekDays(): List<DayOfWeekUiModel> = listOf(
 )
 
 /**
- * Неделимое состояние главного экрана дневника питания (Dashboard).
+ * Успешные агрегированные данные для отображения в UI.
  */
-data class DashboardUiState(
+data class DashboardSuccessUiModel(
     val selectedDateLabel: String = "Сегодня",
     val streakDays: Int = 1,
     val streakLabel: String = "Серия записи еды: 1 дн.",
@@ -100,3 +100,17 @@ data class DashboardUiState(
     val meals: List<MealSectionUiModel>,
     val showCompleteProfileBanner: Boolean = false,
 )
+
+/**
+ * Презентационное состояние главного экрана (Dashboard / Diary).
+ * В соответствии с KoTEA и AGENTS.md §3.1 содержит sealed interface Content.
+ */
+data class DashboardUiState(
+    val content: Content = Content.Loading,
+) {
+    sealed interface Content {
+        data object Loading : Content
+        data class Success(val data: DashboardSuccessUiModel) : Content
+        data class Error(val message: String) : Content
+    }
+}

@@ -14,11 +14,14 @@ import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.domain.model.ActivityLevel
 import dev.andre.nutritionist.domain.model.Gender
 import dev.andre.nutritionist.domain.model.GoalType
+import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.repository.DiaryRepository
+import dev.andre.nutritionist.presentation.dashboard.DashboardUiStateMapper
+import kotlinx.datetime.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,7 +33,33 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 class FakeDiaryRepository : DiaryRepository {
-    // Fake implementation for KMP requirement
+    private val entries = mutableListOf<dev.andre.nutritionist.domain.model.DiaryEntry>()
+
+    override suspend fun getDailyDiary(
+        userId: UserId,
+        date: LocalDate,
+    ): Result<dev.andre.nutritionist.domain.model.DailyDiary> {
+        val list = entries.filter { it.userId == userId && it.date == date }
+        return Result.success(dev.andre.nutritionist.domain.model.DailyDiary(userId = userId, date = date, entries = list))
+    }
+
+    override fun observeDailyDiary(
+        userId: UserId,
+        date: LocalDate,
+    ): kotlinx.coroutines.flow.Flow<dev.andre.nutritionist.domain.model.DailyDiary> = kotlinx.coroutines.flow.flow {
+        val list = entries.filter { it.userId == userId && it.date == date }
+        emit(dev.andre.nutritionist.domain.model.DailyDiary(userId = userId, date = date, entries = list))
+    }
+
+    override suspend fun addEntry(entry: dev.andre.nutritionist.domain.model.DiaryEntry): Result<dev.andre.nutritionist.domain.model.DiaryEntry> {
+        entries.add(entry)
+        return Result.success(entry)
+    }
+
+    override suspend fun deleteEntry(id: dev.andre.nutritionist.domain.model.DiaryEntryId): Result<Unit> {
+        entries.removeAll { it.id == id }
+        return Result.success(Unit)
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)

@@ -2,6 +2,7 @@ package dev.andre.nutritionist.android.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,10 +31,16 @@ import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.android.ui.components.CompleteProfileBanner
+import dev.andre.nutritionist.android.ui.components.ErrorContent
 import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.FitTopBar
+import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.domain.model.MealType
+import dev.andre.nutritionist.presentation.dashboard.DashboardSuccessUiModel
+import dev.andre.nutritionist.presentation.dashboard.DashboardUiState
+import dev.andre.nutritionist.presentation.dashboard.DashboardUiStateMapper
 
 /**
  * Главный экран приложения (дневник питания и сводка КБЖУ в Antigravity дизайне).
@@ -49,10 +56,9 @@ fun MainScreen(
     onNavigateToProfile: () -> Unit = {},
     onDestinationSelected: (AppDestination) -> Unit = {},
     onAddExerciseSleepClick: () -> Unit = {},
+    onRetry: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val scrollState = rememberScrollState()
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -69,103 +75,146 @@ fun MainScreen(
             )
         },
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState),
+                .padding(paddingValues),
         ) {
-            // Верхняя плашка приложения
-            FitTopBar(
-                title = "FitApp",
-                onMenuClick = { /* открытие меню */ },
-            )
+            when (val content = state.content) {
+                DashboardUiState.Content.Loading -> {
+                    LoadingContent()
+                }
+                is DashboardUiState.Content.Error -> {
+                    ErrorContent(
+                        message = content.message,
+                        onRetry = onRetry,
+                    )
+                }
+                is DashboardUiState.Content.Success -> {
+                    MainScreenSuccessContent(
+                        data = content.data,
+                        onAddMealClick = onAddMealClick,
+                        onMealItemClick = onMealItemClick,
+                        onToggleMealSection = onToggleMealSection,
+                        onCompleteProfileClick = onCompleteProfileClick,
+                        onAddExerciseSleepClick = onAddExerciseSleepClick,
+                    )
+                }
+            }
+        }
+    }
+}
 
-            // Баннер предупреждения о незаполненном профиле
-            if (state.showCompleteProfileBanner) {
-                Spacer(modifier = Modifier.height(Spacing.small))
-                CompleteProfileBanner(
-                    onCompleteClick = onCompleteProfileClick,
-                    modifier = Modifier.padding(horizontal = Spacing.medium),
+/**
+ * Отображение успешных данных главного экрана дневника питания.
+ */
+@Composable
+fun MainScreenSuccessContent(
+    data: DashboardSuccessUiModel,
+    onAddMealClick: (MealType) -> Unit,
+    onMealItemClick: (String) -> Unit,
+    onToggleMealSection: (MealType) -> Unit,
+    onCompleteProfileClick: () -> Unit,
+    onAddExerciseSleepClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+    ) {
+        // Верхняя плашка приложения
+        FitTopBar(
+            title = "FitApp",
+            onMenuClick = { /* открытие меню */ },
+        )
+
+        // Баннер предупреждения о незаполненном профиле
+        if (data.showCompleteProfileBanner) {
+            Spacer(modifier = Modifier.height(Spacing.small))
+            CompleteProfileBanner(
+                onCompleteClick = onCompleteProfileClick,
+                modifier = Modifier.padding(horizontal = Spacing.medium),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.small))
+
+        // 1. Недельный календарь и стрик
+        DashboardWeekStreakBar(
+            selectedDateLabel = data.selectedDateLabel,
+            streakDays = data.streakDays,
+            weekDays = data.weekDays,
+            modifier = Modifier.padding(horizontal = Spacing.medium),
+        )
+
+        Spacer(modifier = Modifier.height(Spacing.medium))
+
+        // 2. Сводная плашка КБЖУ (KPI Bar) с бэкенда
+        DashboardNutritionKpiBar(
+            summary = data.nutritionSummary,
+            modifier = Modifier.padding(horizontal = Spacing.medium),
+        )
+
+        Spacer(modifier = Modifier.height(Spacing.medium))
+
+        // 3. Секции приёмов пищи в порядке дня (Завтрак, Обед, Ужин, Перекус/Другое)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(Spacing.small),
+        ) {
+            data.meals.forEach { meal ->
+                MealSectionCard(
+                    meal = meal,
+                    onAddMealClick = onAddMealClick,
+                    onToggleExpand = onToggleMealSection,
+                    onMealItemClick = onMealItemClick,
                 )
             }
-
-            Spacer(modifier = Modifier.height(Spacing.small))
-
-            // 1. Недельный календарь и стрик
-            DashboardWeekStreakBar(
-                selectedDateLabel = state.selectedDateLabel,
-                streakDays = state.streakDays,
-                weekDays = state.weekDays,
-                modifier = Modifier.padding(horizontal = Spacing.medium),
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.medium))
-
-            // 2. Сводная плашка КБЖУ (KPI Bar) с бэкенда
-            DashboardNutritionKpiBar(
-                summary = state.nutritionSummary,
-                modifier = Modifier.padding(horizontal = Spacing.medium),
-            )
-
-            Spacer(modifier = Modifier.height(Spacing.medium))
-
-            // 3. Секции приёмов пищи в порядке дня (Завтрак, Обед, Ужин, Перекус/Другое)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.medium),
-                verticalArrangement = Arrangement.spacedBy(Spacing.small),
-            ) {
-                state.meals.forEach { meal ->
-                    MealSectionCard(
-                        meal = meal,
-                        onAddMealClick = onAddMealClick,
-                        onToggleExpand = onToggleMealSection,
-                        onMealItemClick = onMealItemClick,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.small))
-
-            // 4. Кнопка добавления упражнения / сна
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.medium)
-                    .clickable(onClick = onAddExerciseSleepClick),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-                shape = RoundedCornerShape(Spacing.cardRadius),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.medium, vertical = Spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = FitIcons.Exercise,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-
-                    Spacer(modifier = Modifier.width(Spacing.medium))
-
-                    Text(
-                        text = stringResource(R.string.btn_add_exercise_sleep),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.large))
         }
+
+        Spacer(modifier = Modifier.height(Spacing.small))
+
+        // 4. Кнопка добавления упражнения / сна
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.medium)
+                .clickable(onClick = onAddExerciseSleepClick),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+            shape = RoundedCornerShape(Spacing.cardRadius),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.medium, vertical = Spacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = FitIcons.Exercise,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
+                )
+
+                Spacer(modifier = Modifier.width(Spacing.medium))
+
+                Text(
+                    text = stringResource(R.string.btn_add_exercise_sleep),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Spacing.large))
     }
 }
 
@@ -196,6 +245,34 @@ fun MainScreen(
         onCompleteProfileClick = onCompleteProfileClick,
         onNavigateToProfile = onNavigateToProfile,
         onDestinationSelected = onDestinationSelected,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Перегрузка для прямого отображения [DashboardSuccessUiModel].
+ */
+@Composable
+fun MainScreen(
+    data: DashboardSuccessUiModel,
+    onAddMealClick: (MealType) -> Unit = {},
+    onMealItemClick: (String) -> Unit = {},
+    onToggleMealSection: (MealType) -> Unit = {},
+    onCompleteProfileClick: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
+    onDestinationSelected: (AppDestination) -> Unit = {},
+    onAddExerciseSleepClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    MainScreen(
+        state = DashboardUiState(content = DashboardUiState.Content.Success(data)),
+        onAddMealClick = onAddMealClick,
+        onMealItemClick = onMealItemClick,
+        onToggleMealSection = onToggleMealSection,
+        onCompleteProfileClick = onCompleteProfileClick,
+        onNavigateToProfile = onNavigateToProfile,
+        onDestinationSelected = onDestinationSelected,
+        onAddExerciseSleepClick = onAddExerciseSleepClick,
         modifier = modifier,
     )
 }

@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,13 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
+import dev.andre.nutritionist.presentation.dashboard.NutritionSummaryUiModel
 
 /**
- * Сводная плашка целевых макронутриентов и калоража (KPI Bar) с бэкенда.
- * Отображает 5 метрик в единую горизонтальную строку:
- * Жиры, Углев, Белк, Цель (%), Калории.
+ * Сводная плашка целевых макронутриентов и калоража (KPI Bar) в стиле Aether Zero-G Luxury.
+ * Отображает 5 метрик в горизонтальный консольный ряд:
+ * Жиры, Углев, Белк, Цель (%), Калории с акцентом data-metric.
  */
 @Composable
 fun DashboardNutritionKpiBar(
@@ -33,16 +38,17 @@ fun DashboardNutritionKpiBar(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Spacing.cardRadius),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        shape = RoundedCornerShape(Spacing.cardRadius),
+        border = BorderStroke(1.dp, GlassBorderLevel1),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.medium, vertical = Spacing.medium),
+                .padding(horizontal = Spacing.md, vertical = Spacing.md),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -75,6 +81,7 @@ fun DashboardNutritionKpiBar(
                 label = stringResource(R.string.macro_goal_percent),
                 value = "${summary.percentCompleted}%",
                 target = null,
+                isHighlight = true,
                 modifier = Modifier.weight(1f),
             )
 
@@ -83,7 +90,8 @@ fun DashboardNutritionKpiBar(
                 label = stringResource(R.string.macro_calories),
                 value = summary.caloriesConsumed.toString(),
                 target = "/ ${summary.caloriesTarget}",
-                modifier = Modifier.weight(1f),
+                isDataMetric = true,
+                modifier = Modifier.weight(1.1f),
             )
         }
     }
@@ -94,6 +102,8 @@ private fun NutritionKpiColumn(
     label: String,
     value: String,
     target: String?,
+    isHighlight: Boolean = false,
+    isDataMetric: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -103,18 +113,33 @@ private fun NutritionKpiColumn(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
 
-        Spacer(modifier = Modifier.height(Spacing.extraSmall))
+        Spacer(modifier = Modifier.height(Spacing.xs))
 
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface,
+            style = if (isDataMetric) {
+                MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                )
+            } else if (isHighlight) {
+                MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            } else {
+                MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
@@ -122,7 +147,7 @@ private fun NutritionKpiColumn(
         if (target != null) {
             Text(
                 text = target,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 maxLines = 1,

@@ -3,10 +3,16 @@ package dev.andre.nutritionist.di
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
 import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
+import dev.andre.nutritionist.domain.repository.DiaryRepository
 import dev.andre.nutritionist.domain.repository.ProfileRepository
+import dev.andre.nutritionist.presentation.dashboard.DashboardCommandsFlowHandler
+import dev.andre.nutritionist.presentation.dashboard.DashboardUiStateMapper
+import dev.andre.nutritionist.presentation.dashboard.DashboardUpdate
+import dev.andre.nutritionist.presentation.dashboard.DashboardViewModel
 import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
 import dev.andre.nutritionist.presentation.profile.ProfileUiStateMapper
 import dev.andre.nutritionist.presentation.profile.ProfileUpdate
@@ -33,6 +39,11 @@ val dataModule: Module = module {
             dispatchers = get(),
         )
     }
+    single<DiaryRepository> {
+        DiaryRepositoryImpl(
+            dispatchers = get(),
+        )
+    }
 }
 
 val presentationModule: Module = module {
@@ -40,6 +51,23 @@ val presentationModule: Module = module {
     factory { ProfileCommandsFlowHandler(profileRepository = get(), dispatchers = get()) }
     factory { ProfileUiStateMapper() }
     factory { ProfileViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
+
+    factory { DashboardUpdate() }
+    factory {
+        DashboardCommandsFlowHandler(
+            diaryRepository = get(),
+            profileRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { DashboardUiStateMapper() }
+    factory {
+        DashboardViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
 }
 
 val sharedModule: Module = module {

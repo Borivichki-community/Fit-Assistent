@@ -5,6 +5,31 @@
 
 Обновлено: 2026-11-21
 
+### T-051 — Редизайн главного экрана (Dashboard / Дневник питания) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Перенос бизнес-логики и презентации в `:mobile:shared` по KoTEA MVI:
+  - Доменные модели: `DiaryEntry`, `DailyDiary`, контракт `DiaryRepository` и потокобезопасная реализация `DiaryRepositoryImpl` с кэшированием `StateFlow`.
+  - KoTEA Store: `DashboardState` (с вложенным `sealed interface Content: Loading, Success, Error`), чистый `DashboardUpdate` (исчерпывающий `when` без `else`, оптимистичные обновления), `DashboardCommandsFlowHandler` (`Flow` через `CoroutineDispatchers.io`), `DashboardUiState` и `DashboardUiStateMapper`.
+  - `DashboardViewModel` с инкапсулированным `Store` и предоставлением `StateFlow<DashboardUiState>`. Зарегистрирован в `sharedModule` Koin.
+- Редизайн UI-компонентов в `mobile:androidApp` по Aether Zero-G Luxury (`screenshots/DESIGN-dark.md`):
+  - `FitTopBar`: обновлённая фирменная плашка с логотипом яблока FitAssistent, кнопками поиска, уведомлений и аватаром профиля.
+  - `FitBottomNavigationBar`: Level 2 Glass dock (`surfaceContainer`, 1px border, форма pill `9999.dp`).
+  - `BottomNavItem`: подсветка активной вкладки цветом Luminous Emerald (`#00F5A0`) и оптическая точка свечения снизу.
+  - `DashboardWeekStreakBar`: Level 1 Glass, squircle `24.dp`, золотой бейдж серии (стрика) с иконкой огня, индикаторы дней недели.
+  - `DashboardNutritionKpiBar`: Level 1 Glass, табличная плашка 5 метрик КБЖУ с крупным акцентом на калориях и закругленными прогресс-барами.
+  - `MealSectionCard`: Level 1 Glass squircle карточки приёмов пищи с плавным раскрывающимся аккордеоном (`AnimatedVisibility`), иконками времени суток, сводкой макросов и быстрыми действиями (Копировать, + Сохранить Еду, + Камера).
+  - `MealItemRow`: строка блюда с граммовками БЖУ и калориями.
+  - `MainScreen`: тонкий stateless Compose-экран, обрабатывающий `Loading`, `Error`, `Success`.
+  - `DashboardRoute`: подключение к `DashboardViewModel`, сбор `dashboardUiState` и `news`.
+- Тестирование и верификация:
+  - `DashboardUpdateTest`: 9 тестов редьюсера KoTEA (проверка всех `Ui` и `Internal` событий, смена дат, оптимистичные мутации, переключение секций).
+  - `DashboardCommandsFlowHandlerTest`: 5 тестов с `Turbine` на обработку команд загрузки, добавления и удаления записей.
+  - `MainScreenTest`: 8 тестов рендеринга Compose UI (проверка плашки FitApp, баннера онбординга, KPI-бара КБЖУ, секций приёмов пищи, кликов добавления и стрик-бара).
+  - PASS: `:mobile:shared:allTests` — 125 тестов без ошибок.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 77 тестов без ошибок.
+  - PASS: `:mobile:androidApp:assembleDebug` — сборка APK успешна.
+
 ### T-050 — Splash Screen и актуализация темы Aether Luxury (2026-11-21)
 
 - Skills: `android-compose-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.

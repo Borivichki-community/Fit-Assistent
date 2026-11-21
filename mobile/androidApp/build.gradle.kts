@@ -69,6 +69,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.datetime)
     testImplementation(libs.compose.test.junit4)
     debugImplementation(libs.compose.test.manifest)
     testDebugImplementation(libs.grpc.okhttp)
