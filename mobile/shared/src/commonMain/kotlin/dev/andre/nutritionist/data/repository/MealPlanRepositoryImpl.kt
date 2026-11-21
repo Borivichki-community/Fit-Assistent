@@ -1,14 +1,20 @@
 package dev.andre.nutritionist.data.repository
 
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
+import dev.andre.nutritionist.domain.model.GroceryItem
+import dev.andre.nutritionist.domain.model.GroceryItemId
 import dev.andre.nutritionist.domain.model.MealPlan
+import dev.andre.nutritionist.domain.model.MealPlanDay
 import dev.andre.nutritionist.domain.model.MealPlanId
+import dev.andre.nutritionist.domain.model.MealPlanMealItem
+import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.repository.MealPlanRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 
 /**
- * Реализация [MealPlanRepository] с каталогом сбалансированных рационов.
+ * Реализация [MealPlanRepository] с каталогом сбалансированных рационов,
+ * недельным расписанием приемов пищи и списком необходимых покупок.
  */
 class MealPlanRepositoryImpl(
     private val dispatchers: CoroutineDispatchers,
@@ -115,6 +121,311 @@ class MealPlanRepositoryImpl(
         ),
     )
 
+    private val activePlansMap = MutableStateFlow<Map<String, MealPlanId>>(
+        mapOf("testuser" to MealPlanId("plan-mediterranean")),
+    )
+
+    private val sampleDays: List<MealPlanDay> = listOf(
+        MealPlanDay(
+            dayNumber = 1,
+            dayName = "Понедельник",
+            shortDayName = "Пн",
+            targetCalories = 2190,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Овсяная каша с ягодами и миндалем",
+                    mealType = "Завтрак",
+                    calories = 420,
+                    proteinsGrams = 14.0,
+                    fatsGrams = 12.0,
+                    carbsGrams = 65.0,
+                ),
+                MealPlanMealItem(
+                    title = "Лосось на гриле с диким рисом",
+                    mealType = "Обед",
+                    calories = 650,
+                    proteinsGrams = 42.0,
+                    fatsGrams = 24.0,
+                    carbsGrams = 62.0,
+                ),
+                MealPlanMealItem(
+                    title = "Греческий йогурт с грецкими орехами",
+                    mealType = "Полдник",
+                    calories = 280,
+                    proteinsGrams = 18.0,
+                    fatsGrams = 14.0,
+                    carbsGrams = 18.0,
+                ),
+                MealPlanMealItem(
+                    title = "Салат с тунцом, оливками и авокадо",
+                    mealType = "Ужин",
+                    calories = 550,
+                    proteinsGrams = 38.0,
+                    fatsGrams = 25.0,
+                    carbsGrams = 35.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 2,
+            dayName = "Вторник",
+            shortDayName = "Вт",
+            targetCalories = 2210,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Омлет со шпинатом и сыром фета",
+                    mealType = "Завтрак",
+                    calories = 450,
+                    proteinsGrams = 28.0,
+                    fatsGrams = 26.0,
+                    carbsGrams = 12.0,
+                ),
+                MealPlanMealItem(
+                    title = "Куриная грудка с булгуром и овощами",
+                    mealType = "Обед",
+                    calories = 620,
+                    proteinsGrams = 48.0,
+                    fatsGrams = 16.0,
+                    carbsGrams = 68.0,
+                ),
+                MealPlanMealItem(
+                    title = "Яблоко и горсть кешью",
+                    mealType = "Полдник",
+                    calories = 240,
+                    proteinsGrams = 6.0,
+                    fatsGrams = 14.0,
+                    carbsGrams = 26.0,
+                ),
+                MealPlanMealItem(
+                    title = "Запеченная треска с брокколи и кунжутом",
+                    mealType = "Ужин",
+                    calories = 520,
+                    proteinsGrams = 44.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 38.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 3,
+            dayName = "Среда",
+            shortDayName = "Ср",
+            targetCalories = 2200,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Сырники из творога с нежирной сметаной",
+                    mealType = "Завтрак",
+                    calories = 480,
+                    proteinsGrams = 32.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 42.0,
+                ),
+                MealPlanMealItem(
+                    title = "Суп-пюре из красной чечевицы и томатов",
+                    mealType = "Обед",
+                    calories = 540,
+                    proteinsGrams = 26.0,
+                    fatsGrams = 14.0,
+                    carbsGrams = 74.0,
+                ),
+                MealPlanMealItem(
+                    title = "Протеиновый смузи с бананом и шпинатом",
+                    mealType = "Полдник",
+                    calories = 290,
+                    proteinsGrams = 22.0,
+                    fatsGrams = 5.0,
+                    carbsGrams = 38.0,
+                ),
+                MealPlanMealItem(
+                    title = "Индейка су-вид с запеченной тыквой",
+                    mealType = "Ужин",
+                    calories = 580,
+                    proteinsGrams = 45.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 48.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 4,
+            dayName = "Четверг",
+            shortDayName = "Чт",
+            targetCalories = 2230,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Авокадо-тост с яйцом пашот",
+                    mealType = "Завтрак",
+                    calories = 430,
+                    proteinsGrams = 16.0,
+                    fatsGrams = 22.0,
+                    carbsGrams = 40.0,
+                ),
+                MealPlanMealItem(
+                    title = "Паста из твердых сортов с морепродуктами",
+                    mealType = "Обед",
+                    calories = 670,
+                    proteinsGrams = 38.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 85.0,
+                ),
+                MealPlanMealItem(
+                    title = "Груша и горсть миндаля",
+                    mealType = "Полдник",
+                    calories = 220,
+                    proteinsGrams = 5.0,
+                    fatsGrams = 12.0,
+                    carbsGrams = 25.0,
+                ),
+                MealPlanMealItem(
+                    title = "Стейк из тунца с зеленым салатом",
+                    mealType = "Ужин",
+                    calories = 510,
+                    proteinsGrams = 46.0,
+                    fatsGrams = 15.0,
+                    carbsGrams = 20.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 5,
+            dayName = "Пятница",
+            shortDayName = "Пт",
+            targetCalories = 2170,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Гранола с миндальным молоком и чиа",
+                    mealType = "Завтрак",
+                    calories = 410,
+                    proteinsGrams = 12.0,
+                    fatsGrams = 14.0,
+                    carbsGrams = 58.0,
+                ),
+                MealPlanMealItem(
+                    title = "Говядина на пару с киноа и цукини",
+                    mealType = "Обед",
+                    calories = 660,
+                    proteinsGrams = 48.0,
+                    fatsGrams = 22.0,
+                    carbsGrams = 60.0,
+                ),
+                MealPlanMealItem(
+                    title = "Кефир 2.5% с черникой",
+                    mealType = "Полдник",
+                    calories = 190,
+                    proteinsGrams = 10.0,
+                    fatsGrams = 5.0,
+                    carbsGrams = 22.0,
+                ),
+                MealPlanMealItem(
+                    title = "Кальмары гриль со спаржей",
+                    mealType = "Ужин",
+                    calories = 490,
+                    proteinsGrams = 42.0,
+                    fatsGrams = 12.0,
+                    carbsGrams = 35.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 6,
+            dayName = "Суббота",
+            shortDayName = "Сб",
+            targetCalories = 2250,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Овсяноблин с слабосоленой семгой",
+                    mealType = "Завтрак",
+                    calories = 460,
+                    proteinsGrams = 26.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 45.0,
+                ),
+                MealPlanMealItem(
+                    title = "Стейк форели с печеным картофелем",
+                    mealType = "Обед",
+                    calories = 680,
+                    proteinsGrams = 44.0,
+                    fatsGrams = 26.0,
+                    carbsGrams = 58.0,
+                ),
+                MealPlanMealItem(
+                    title = "Грейпфрут и грецкие орехи",
+                    mealType = "Полдник",
+                    calories = 230,
+                    proteinsGrams = 5.0,
+                    fatsGrams = 14.0,
+                    carbsGrams = 22.0,
+                ),
+                MealPlanMealItem(
+                    title = "Теплый салат с ростбифом и руколой",
+                    mealType = "Ужин",
+                    calories = 530,
+                    proteinsGrams = 40.0,
+                    fatsGrams = 24.0,
+                    carbsGrams = 28.0,
+                ),
+            ),
+        ),
+        MealPlanDay(
+            dayNumber = 7,
+            dayName = "Воскресенье",
+            shortDayName = "Вс",
+            targetCalories = 2180,
+            meals = listOf(
+                MealPlanMealItem(
+                    title = "Шакшука с томатами и болгарским перцем",
+                    mealType = "Завтрак",
+                    calories = 440,
+                    proteinsGrams = 22.0,
+                    fatsGrams = 22.0,
+                    carbsGrams = 34.0,
+                ),
+                MealPlanMealItem(
+                    title = "Фаршированный перец с индейкой и бурым рисом",
+                    mealType = "Обед",
+                    calories = 630,
+                    proteinsGrams = 42.0,
+                    fatsGrams = 18.0,
+                    carbsGrams = 65.0,
+                ),
+                MealPlanMealItem(
+                    title = "Творожный мусс с манго",
+                    mealType = "Полдник",
+                    calories = 260,
+                    proteinsGrams = 20.0,
+                    fatsGrams = 6.0,
+                    carbsGrams = 30.0,
+                ),
+                MealPlanMealItem(
+                    title = "Белая рыба на пару с брокколи и лимоном",
+                    mealType = "Ужин",
+                    calories = 480,
+                    proteinsGrams = 42.0,
+                    fatsGrams = 10.0,
+                    carbsGrams = 25.0,
+                ),
+            ),
+        ),
+    )
+
+    private val groceriesFlow = MutableStateFlow(
+        listOf(
+            GroceryItem(GroceryItemId("g-1"), "Авокадо Хасс", "3 шт", "Овощи и зелень", false, 350.0),
+            GroceryItem(GroceryItemId("g-2"), "Брокколи свежая", "500 г", "Овощи и зелень", true, 190.0),
+            GroceryItem(GroceryItemId("g-3"), "Томаты черри", "400 г", "Овощи и зелень", false, 240.0),
+            GroceryItem(GroceryItemId("g-4"), "Шпинат свежий бэби", "200 г", "Овощи и зелень", false, 180.0),
+            GroceryItem(GroceryItemId("g-5"), "Филе лосося охлажденное", "600 г", "Мясо и рыба", false, 1200.0),
+            GroceryItem(GroceryItemId("g-6"), "Стейк из тунца", "400 г", "Мясо и рыба", true, 750.0),
+            GroceryItem(GroceryItemId("g-7"), "Филе индейки", "800 г", "Мясо и рыба", false, 540.0),
+            GroceryItem(GroceryItemId("g-8"), "Греческий йогурт 2%", "400 г", "Молочные продукты", true, 170.0),
+            GroceryItem(GroceryItemId("g-9"), "Сыр Фета греческий", "250 г", "Молочные продукты", false, 280.0),
+            GroceryItem(GroceryItemId("g-10"), "Яйца фермерские СО", "10 шт", "Молочные продукты", true, 140.0),
+            GroceryItem(GroceryItemId("g-11"), "Дикий рис микс", "500 г", "Бакалея и орехи", false, 220.0),
+            GroceryItem(GroceryItemId("g-12"), "Орехи миндаль жареный", "200 г", "Бакалея и орехи", false, 340.0),
+            GroceryItem(GroceryItemId("g-13"), "Оливковое масло Extra Virgin", "500 мл", "Бакалея и орехи", true, 690.0),
+        ),
+    )
+
     override suspend fun getMealPlans(query: String, category: String): Result<List<MealPlan>> =
         withContext(dispatchers.io) {
             runCatching {
@@ -149,6 +460,66 @@ class MealPlanRepositoryImpl(
                     current[index] = updated
                     plansFlow.value = current
                     updated.isFavorite
+                } else {
+                    false
+                }
+            }
+        }
+
+    override suspend fun getActiveMealPlan(userId: UserId): Result<MealPlan?> =
+        withContext(dispatchers.io) {
+            runCatching {
+                val planId = activePlansMap.value[userId.raw]
+                if (planId != null) {
+                    plansFlow.value.find { it.id == planId }
+                } else {
+                    null
+                }
+            }
+        }
+
+    override suspend fun setActiveMealPlan(userId: UserId, planId: MealPlanId): Result<Unit> =
+        withContext(dispatchers.io) {
+            runCatching {
+                val current = activePlansMap.value.toMutableMap()
+                current[userId.raw] = planId
+                activePlansMap.value = current
+            }
+        }
+
+    override suspend fun deactivateMealPlan(userId: UserId): Result<Unit> =
+        withContext(dispatchers.io) {
+            runCatching {
+                val current = activePlansMap.value.toMutableMap()
+                current.remove(userId.raw)
+                activePlansMap.value = current
+            }
+        }
+
+    override suspend fun getMealPlanDays(planId: MealPlanId): Result<List<MealPlanDay>> =
+        withContext(dispatchers.io) {
+            runCatching {
+                sampleDays
+            }
+        }
+
+    override suspend fun getGroceryList(planId: MealPlanId): Result<List<GroceryItem>> =
+        withContext(dispatchers.io) {
+            runCatching {
+                groceriesFlow.value
+            }
+        }
+
+    override suspend fun toggleGroceryItem(planId: MealPlanId, itemId: GroceryItemId): Result<Boolean> =
+        withContext(dispatchers.io) {
+            runCatching {
+                val current = groceriesFlow.value.toMutableList()
+                val index = current.indexOfFirst { it.id == itemId }
+                if (index >= 0) {
+                    val updated = current[index].copy(isBought = !current[index].isBought)
+                    current[index] = updated
+                    groceriesFlow.value = current
+                    updated.isBought
                 } else {
                     false
                 }

@@ -9,6 +9,12 @@ import kotlin.jvm.JvmInline
 value class MealPlanId(val raw: String)
 
 /**
+ * Идентификатор позиции списка покупок.
+ */
+@JvmInline
+value class GroceryItemId(val raw: String)
+
+/**
  * Доменная модель готового или сгенерированного плана питания (рациона).
  */
 data class MealPlan(
@@ -27,3 +33,39 @@ data class MealPlan(
     val isFavorite: Boolean = false,
     val tags: List<String> = emptyList(),
 )
+
+/**
+ * Отдельный прием пищи внутри дня рациона.
+ */
+data class MealPlanMealItem(
+    val title: String,
+    val mealType: String,
+    val calories: Int,
+    val proteinsGrams: Double,
+    val fatsGrams: Double,
+    val carbsGrams: Double,
+)
+
+/**
+ * Расписание приемов пищи на конкретный день плана питания.
+ */
+data class MealPlanDay(
+    val dayNumber: Int,
+    val dayName: String,
+    val shortDayName: String,
+    val targetCalories: Int,
+    val meals: List<MealPlanMealItem>,
+)
+
+/**
+ * Позиция продуктовой корзины, сгенерированная на основе активного рациона.
+ */
+data class GroceryItem(
+    val id: GroceryItemId,
+    val name: String,
+    val amount: String,
+    val category: String,
+    val isBought: Boolean = false,
+    val estimatedPriceRub: Double = 0.0,
+)
+

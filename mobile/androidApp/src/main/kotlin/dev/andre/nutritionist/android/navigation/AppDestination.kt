@@ -12,4 +12,5 @@ sealed class AppDestination(val route: String) {
     data object AiRecipeGenerator : AppDestination("ai_recipe_generator")
     data object Statistics : AppDestination("statistics")
     data object Profile : AppDestination("profile")
+    data object MealPlanManager : AppDestination("meal_plan_manager")
 }

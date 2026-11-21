@@ -41,6 +41,10 @@ import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesCommandsFlow
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUiStateMapper
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesUpdate
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipesViewModel
+import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerCommandsFlowHandler
+import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerUiStateMapper
+import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerUpdate
+import dev.andre.nutritionist.presentation.planmanager.MealPlanManagerViewModel
 import dev.andre.nutritionist.presentation.statistics.StatisticsCommandsFlowHandler
 import dev.andre.nutritionist.presentation.statistics.StatisticsUiStateMapper
 import dev.andre.nutritionist.presentation.statistics.StatisticsUpdate
@@ -190,6 +194,22 @@ val presentationModule: Module = module {
     factory { StatisticsUiStateMapper() }
     factory {
         StatisticsViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { MealPlanManagerUpdate() }
+    factory {
+        MealPlanManagerCommandsFlowHandler(
+            mealPlanRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { MealPlanManagerUiStateMapper() }
+    factory {
+        MealPlanManagerViewModel(
             update = get(),
             commandsFlowHandler = get(),
             uiStateMapper = get(),

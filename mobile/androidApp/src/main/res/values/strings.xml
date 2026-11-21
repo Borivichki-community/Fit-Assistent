@@ -194,4 +194,18 @@
     <string name="btn_ai_camera">AI Camera</string>
     <string name="portion_size_label">Portion (g)</string>
     <string name="select_product_hint">Select a product</string>
+
+    <!-- Meal Plan Manager -->
+    <string name="plan_manager_title">Meal Plan</string>
+    <string name="plan_manager_tab_schedule">Schedule</string>
+    <string name="plan_manager_tab_groceries">Grocery List</string>
+    <string name="plan_manager_status_active">Active</string>
+    <string name="plan_manager_btn_change">Change Plan</string>
+    <string name="plan_manager_btn_deactivate">Deactivate</string>
+    <string name="plan_manager_groceries_title">Weekly Groceries</string>
+    <string name="plan_manager_estimated_sum">Estimated Total</string>
+    <string name="plan_manager_empty_title">No Active Meal Plan</string>
+    <string name="plan_manager_empty_subtitle">Choose a balanced meal plan from our catalog or generate recipes with AI</string>
+    <string name="plan_manager_empty_btn">Browse Catalog</string>
+    <string name="plan_manager_day_target">Daily Target</string>
 </resources>

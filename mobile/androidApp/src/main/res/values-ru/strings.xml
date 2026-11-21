@@ -194,4 +194,18 @@
     <string name="btn_ai_camera">AI Камера</string>
     <string name="portion_size_label">Размер порции (г)</string>
     <string name="select_product_hint">Выберите продукт</string>
+
+    <!-- Meal Plan Manager -->
+    <string name="plan_manager_title">Мой рацион</string>
+    <string name="plan_manager_tab_schedule">Расписание</string>
+    <string name="plan_manager_tab_groceries">Список покупок</string>
+    <string name="plan_manager_status_active">Активен</string>
+    <string name="plan_manager_btn_change">Сменить рацион</string>
+    <string name="plan_manager_btn_deactivate">Отключить</string>
+    <string name="plan_manager_groceries_title">Недельный список покупок</string>
+    <string name="plan_manager_estimated_sum">Примерная стоимость</string>
+    <string name="plan_manager_empty_title">У вас пока нет активного рациона</string>
+    <string name="plan_manager_empty_subtitle">Выберите сбалансированный рацион в каталоге или создайте рецепт с помощью ИИ</string>
+    <string name="plan_manager_empty_btn">Перейти в каталог</string>
+    <string name="plan_manager_day_target">Цель на день</string>
 </resources>

@@ -105,5 +105,23 @@ class CatalogCommandsFlowHandlerTest {
             if (err != null) return Result.failure(err)
             return Result.success(isFavoriteToReturn)
         }
+
+        override suspend fun getActiveMealPlan(userId: dev.andre.nutritionist.domain.model.UserId): Result<MealPlan?> =
+            Result.success(plansToReturn.firstOrNull())
+
+        override suspend fun setActiveMealPlan(userId: dev.andre.nutritionist.domain.model.UserId, planId: MealPlanId): Result<Unit> =
+            Result.success(Unit)
+
+        override suspend fun deactivateMealPlan(userId: dev.andre.nutritionist.domain.model.UserId): Result<Unit> =
+            Result.success(Unit)
+
+        override suspend fun getMealPlanDays(planId: MealPlanId): Result<List<dev.andre.nutritionist.domain.model.MealPlanDay>> =
+            Result.success(emptyList())
+
+        override suspend fun getGroceryList(planId: MealPlanId): Result<List<dev.andre.nutritionist.domain.model.GroceryItem>> =
+            Result.success(emptyList())
+
+        override suspend fun toggleGroceryItem(planId: MealPlanId, itemId: dev.andre.nutritionist.domain.model.GroceryItemId): Result<Boolean> =
+            Result.success(true)
     }
 }
