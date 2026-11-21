@@ -5,6 +5,90 @@
 
 Обновлено: 2026-11-21
 
+### T-058 — Финализация стилизации экрана профиля (Profile Screen Styling) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Стилизация UI в `mobile:androidApp`:
+  - `ProfileSuccessContent`: карточка аватара пользователя переведена на Level 2 Glass (`surfaceContainer`, `GlassBorderLevel2`), аватар с неоновой изумрудной рамкой `GlassBorderLevel1` и иконкой `primaryContainer`.
+  - `MetricCard`: переведена на палитру `surfaceContainer`, границу `BorderStroke(1.dp, GlassBorderLevel2)` и скругление `innerCardRadius`.
+  - Карточка меню настроек и действий оформлена в стиле Aether Zero-G Luxury с разделителями `GlassBorderLevel1`.
+  - Все тесты профиля и приложения проходят без регрессий.
+
+### T-057 — Экран управления планами питания и списка покупок (Meal Plans Manager & Grocery List) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Доменный слой и репозиторий в `:mobile:shared`:
+  - Доменные модели: `MealPlanDay`, `MealPlanMealItem`, `GroceryItem`, value class `GroceryItemId`.
+  - Расширение `MealPlanRepository` и `MealPlanRepositoryImpl`: методы `getActiveMealPlan`, `setActiveMealPlan`, `deactivateMealPlan`, `getMealPlanDays`, `getGroceryList`, `toggleGroceryItem`.
+  - KoTEA Store: `MealPlanManagerState` (`PlanManagerTab: SCHEDULE, GROCERY_LIST`, `sealed interface Content: Loading, Success, Empty, Error`), чистый редьюсер `MealPlanManagerUpdate`, асинхронный `MealPlanManagerCommandsFlowHandler`, маппер `MealPlanManagerUiStateMapper` и `MealPlanManagerViewModel`. Зарегистрированы в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `ActivePlanHeroCard`: карточка активного плана питания с бейджем статуса «Активен» (светящаяся изумрудная точка), сводкой калорийности, недельного бюджета, БЖУ и кнопками управления.
+  - `PlanDayItemCard` & `PlanDayScheduleSection`: горизонтальный селектор дней недели (Пн-Вс) и карточки приёмов пищи дня (Завтрак, Обед, Полдник, Ужин) с КБЖУ.
+  - `GroceryListContent`: список покупок с прогресс-баром покупок, категориями продуктов («Овощи и зелень», «Мясо и рыба», «Молочные продукты», «Бакалея и орехи»), чекбоксами и зачёркиванием купленных позиций.
+  - `MealPlanManagerEmptyContent`: состояние экрана без активного плана с CTA-кнопкой перехода в каталог.
+  - `MealPlanManagerScreen` и `MealPlanManagerRoute`: интеграция в `AppNavHost` (`AppDestination.MealPlanManager`).
+- Тестирование и верификация:
+  - `MealPlanManagerUpdateTest`: 12 тестов редьюсера KoTEA.
+  - `MealPlanManagerCommandsFlowHandlerTest`: 5 тестов с `Turbine`.
+  - `MealPlanManagerScreenTest`: 8 тестов Robolectric Compose UI.
+  - PASS: `:mobile:shared:testAndroidHostTest` — 210 тестов без ошибок.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 123 теста без ошибок.
+  - PASS: `:mobile:androidApp:assembleDebug` — сборка APK успешна.
+
+### T-056 — Экран статистики и аналитики КБЖУ/Бюджета (Statistics & Analytics) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Презентация и доменный слой в `:mobile:shared`:
+  - Доменные модели `AnalyticsPeriod`, `DailyAnalyticsPoint`, `NutritionAnalytics`, контракт `AnalyticsRepository` и реализация `AnalyticsRepositoryImpl`.
+  - KoTEA Store: `StatisticsState`, `StatisticsEvent`, `StatisticsCommand`, `StatisticsNews`, чистый `StatisticsUpdate`, `StatisticsCommandsFlowHandler`, `StatisticsUiState`, `StatisticsUiStateMapper` и `StatisticsViewModel`. Зарегистрированы в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `PeriodSelectorTab`: селектор периода «Неделя» / «Месяц».
+  - `CaloriesBarChartCard`: гистограмма суточного потребления калорий с целевой линией нормы.
+  - `MacroDistributionCard`: карточка баланса макронутриентов с прогресс-барами БЖУ.
+  - `BudgetAnalyticsCard`: карточка контроля бюджета питания со статусом экономии.
+  - `StatisticsScreen` и `StatisticsRoute`: интеграция с нижней навигацией `FitBottomNavigationBar` и `AppNavHost`.
+- Тестирование и верификация:
+  - `StatisticsUpdateTest`: 6 тестов редьюсера KoTEA.
+  - `StatisticsCommandsFlowHandlerTest`: 2 теста с `Turbine`.
+  - `StatisticsScreenTest`: 5 тестов Compose UI.
+  - PASS: `:mobile:shared:testAndroidHostTest` — 193 теста.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 115 тестов.
+
+### T-055 — Экран сохранённых и избранных рецептов (Favorite & Saved Recipes) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Презентация и доменный слой в `:mobile:shared`:
+  - KoTEA Store: `SavedRecipesState`, `SavedRecipesEvent`, `SavedRecipesCommand`, `SavedRecipesNews`, чистый `SavedRecipesUpdate`, `SavedRecipesCommandsFlowHandler`, `SavedRecipesUiState`, `SavedRecipesUiStateMapper` и `SavedRecipesViewModel`. Зарегистрированы в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `SavedRecipeCard`: карточка рецепта с макросами, ценой и кнопкой избранного.
+  - `SavedRecipeDetailBottomSheet`: детальный просмотр ингредиентов и инструкции приготовления с кнопкой добавления в дневник.
+  - `SavedRecipesEmptyContent`: экран пустого состояния с быстрым переходом к AI-генератору.
+  - `SavedRecipesScreen` и `SavedRecipesRoute`: интеграция в `AppNavHost`.
+- Тестирование и верификация:
+  - `SavedRecipesUpdateTest`: 15 тестов редьюсера KoTEA.
+  - `SavedRecipesCommandsFlowHandlerTest`: 4 теста с `Turbine`.
+  - `SavedRecipesScreenTest`: 11 тестов Compose UI.
+  - PASS: `:mobile:shared:testAndroidHostTest` — 185 тестов.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 110 тестов.
+
+### T-054 — Экран генерации AI-рецептов (AI Recipe Generator) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Презентация и доменный слой в `:mobile:shared`:
+  - Доменная модель `Recipe`, `RecipeId`, контракт `RecipeRepository` и реализация `RecipeRepositoryImpl`.
+  - KoTEA Store: `AiRecipeState`, `AiRecipeEvent`, `AiRecipeCommand`, `AiRecipeNews`, чистый `AiRecipeUpdate`, `AiRecipeCommandsFlowHandler`, `AiRecipeUiState`, `AiRecipeUiStateMapper` и `AiRecipeViewModel`. Зарегистрированы в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `AiRecipeConfiguringContent`: выбор типа блюда, времени приготовления, бюджета, переключатель холодильника и поле ингредиентов.
+  - `AiRecipeGeneratingContent`: пульсирующая голографическая анимация генерации рецепта с неоновыми кольцами.
+  - `AiRecipeSuccessContent`: карточка сгенерированного блюда с КБЖУ, ингредиентами, шагами и добавлением в дневник.
+  - `AiRecipeScreen` и `AiRecipeRoute`: интеграция в `AppNavHost`.
+- Тестирование и верификация:
+  - `AiRecipeUpdateTest`: 12 тестов редьюсера KoTEA.
+  - `AiRecipeCommandsFlowHandlerTest`: 4 теста с `Turbine`.
+  - `AiRecipeScreenTest`: 8 тестов Compose UI.
+  - PASS: `:mobile:shared:testAndroidHostTest` — 166 тестов.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 99 тестов.
+
 ### T-053 — Каталог рационов питания (Catalog & Meal Plans) в стиле Aether Zero-G Luxury (2026-11-21)
 
 - Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
