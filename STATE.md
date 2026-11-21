@@ -5,6 +5,30 @@
 
 Обновлено: 2026-11-21
 
+### T-052 — Модальная шторка добавления блюда (Add Meal BottomSheet) в стиле Aether Zero-G Luxury (2026-11-21)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Презентация и доменный слой в `:mobile:shared`:
+  - Доменная модель `FoodItem` с БЖУ на 100 г, интерфейс `FoodCatalogRepository` и реализация `FoodCatalogRepositoryImpl` с базой популярных продуктов питания.
+  - KoTEA Store: `AddMealState` (`sealed interface Content: Loading, Success, Error`), `AddMealEvent` (`Ui` и `Internal`), `AddMealCommand` (`SearchFoods`, `SaveDiaryEntry`), `AddMealNews` (`MealAddedSuccess`, `Dismiss`, `ShowSnackbar`, `OpenBarcodeScanner`, `OpenAiCamera`).
+  - Чистый `AddMealUpdate` без сайд-эффектов и без `else`, с расчётом граммовок и калорийности.
+  - `AddMealCommandsFlowHandler` с безопасным исполнением через `CoroutineDispatchers.io`.
+  - `AddMealUiState` и `AddMealUiStateMapper` с динамическим формированием названий, чипсов категорий, пресетов граммовок и текста кнопки добавления.
+  - `AddMealViewModel` с предоставлением `StateFlow<AddMealUiState>` и регистрация в `Koin.kt`.
+- Реализация UI в `mobile:androidApp`:
+  - `AddMealBottomSheet`: модальная шторка на базе Level 2 Glass (`surfaceContainerHigh`), скругления `squircleXl` (32.dp), граница `GlassBorderLevel2`.
+  - Поисковая строка pill-формы с очисткой, быстрые кнопки штрихкода и AI камеры, горизонтальная лента категорий.
+  - Список продуктов с КБЖУ, карточка интерактивного выбора размера порции с быстрыми пресетами (50г, 100г, 150г, 200г, 300г).
+  - Главная CTA-кнопка в стиле Luminous Emerald (`#00F5A0`) с динамическим текстом («Добавить в Обед • 248 ккал»).
+  - Интеграция шторки в `DashboardRoute`: открытие при тапе на `+` в секциях приёмов пищи и автоматическое добавление блюда в дневник через MVI News.
+- Тестирование и верификация:
+  - `AddMealUpdateTest`: 10 тестов редьюсера KoTEA (инициализация, поиск, выбор категории, выбор продукта, пересчёт порции, валидация при добавлении, одноразовые эффекты).
+  - `AddMealCommandsFlowHandlerTest`: 4 теста с `Turbine` на поиск в каталоге и сохранение записи в дневник.
+  - `AddMealBottomSheetTest`: 7 тестов Compose UI (отображение заголовка, ввод поискового запроса, клики по категориям, выбор продукта, клик по пресету граммовки, валидация активности кнопки).
+  - PASS: `:mobile:shared:allTests` — 139 тестов без ошибок.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 84 теста без ошибок.
+  - PASS: `:mobile:androidApp:assembleDebug` — сборка APK успешна.
+
 ### T-051 — Редизайн главного экрана (Dashboard / Дневник питания) в стиле Aether Zero-G Luxury (2026-11-21)
 
 - Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.

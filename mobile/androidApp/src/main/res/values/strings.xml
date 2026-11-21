@@ -188,4 +188,10 @@
     <string name="btn_quick_copy">Copy</string>
     <string name="dashboard_empty_meal">Empty</string>
     <string name="portion_format">%1$d serving</string>
+    <string name="add_meal_title_format">Add to %1$s</string>
+    <string name="add_meal_search_hint">Search food or dishes&#8230;</string>
+    <string name="btn_scan_barcode">Barcode</string>
+    <string name="btn_ai_camera">AI Camera</string>
+    <string name="portion_size_label">Portion (g)</string>
+    <string name="select_product_hint">Select a product</string>
 </resources>

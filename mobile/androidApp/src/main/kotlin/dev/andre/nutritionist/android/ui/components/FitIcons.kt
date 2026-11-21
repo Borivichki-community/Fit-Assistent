@@ -890,4 +890,55 @@ object FitIcons {
             }
         }.build()
     }
+
+    val Close: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitClose",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(18f, 6f)
+                lineTo(6f, 18f)
+                moveTo(6f, 6f)
+                lineTo(18f, 18f)
+            }
+        }.build()
+    }
+
+    val Barcode: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitBarcode",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+            ) {
+                moveTo(3f, 5f)
+                lineTo(3f, 19f)
+                moveTo(7f, 5f)
+                lineTo(7f, 19f)
+                moveTo(11f, 5f)
+                lineTo(11f, 19f)
+                moveTo(14f, 5f)
+                lineTo(14f, 19f)
+                moveTo(18f, 5f)
+                lineTo(18f, 19f)
+                moveTo(21f, 5f)
+                lineTo(21f, 19f)
+            }
+        }.build()
+    }
 }
