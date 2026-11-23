@@ -94,6 +94,8 @@ class ProductSearchRepositoryImpl(
 
         val boundedPageSize = criteria.pageSize.coerceIn(1, 100)
         val query = entityManager.createQuery(cq)
+        val entityGraph = entityManager.getEntityGraph("Product.withPricesAndRegions")
+        query.setHint("jakarta.persistence.loadgraph", entityGraph)
         query.maxResults = boundedPageSize + 1
 
         val resultList = query.resultList

@@ -59,22 +59,23 @@ class CatalogGrpcServiceSecurityTest : AbstractPostgresIntegrationTest() {
 
     @BeforeEach
     fun setUp() {
-        regionalPriceRepository.deleteAll()
-        productRepository.deleteAll()
-        regionRepository.deleteAll()
-
-        testRegion = regionRepository.save(RegionEntity(name = "Центральный ФО"))
+        testRegion =
+            regionRepository.findByName("Центральный ФО")
+                ?: regionRepository.save(RegionEntity(name = "Центральный ФО"))
         testProduct =
-            productRepository.save(
-                ProductEntity(
-                    name = "Овсянка 500г",
-                    category = "GRAINS",
-                    caloriesPer100g = BigDecimal("350.00"),
-                    proteinsPer100g = BigDecimal("12.00"),
-                    fatsPer100g = BigDecimal("6.00"),
-                    carbsPer100g = BigDecimal("60.00"),
-                ),
-            )
+            productRepository.findByBarcode("4609999999999")
+                ?: productRepository.save(
+                    ProductEntity(
+                        name = "Овсянка 500г",
+                        barcode = "4609999999999",
+                        category = "GRAINS",
+                        caloriesPer100g = BigDecimal("350.00"),
+                        proteinsPer100g = BigDecimal("12.00"),
+                        fatsPer100g = BigDecimal("6.00"),
+                        carbsPer100g = BigDecimal("60.00"),
+                    ),
+                )
+        regionalPriceRepository.deleteAll(regionalPriceRepository.findByProductId(testProduct.id))
 
         val serverName = InProcessServerBuilder.generateName()
         server =

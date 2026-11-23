@@ -6,5 +6,6 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <include file="v1/001-init-catalog-schema.xml" relativeToChangelogFile="true"/>
+    <include file="v1/002-seed-initial-catalog.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
