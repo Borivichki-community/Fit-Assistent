@@ -9,8 +9,16 @@ import dev.andre.nutritionist.catalog.persistence.repository.RegionalPriceJpaRep
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
+
+data class AveragePriceResult(
+    val productId: UUID,
+    val averagePrice: BigDecimal,
+    val currency: String,
+    val regionCount: Int,
+)
 
 @Service
 class CatalogService(
@@ -31,6 +39,9 @@ class CatalogService(
         )
 
     @Transactional(readOnly = true)
+    fun findProductsByCategory(category: String): List<ProductEntity> = productRepository.findByCategoryIgnoreCase(category)
+
+    @Transactional(readOnly = true)
     fun getProductWithPrices(productId: UUID): ProductEntity =
         productRepository.findWithPricesAndRegionsById(productId)
             ?: throw NoSuchElementException("Product with id $productId not found")
@@ -49,6 +60,37 @@ class CatalogService(
 
     @Transactional
     fun createOrUpdateRegion(region: RegionEntity): RegionEntity = regionRepository.save(region)
+
+    @Transactional(readOnly = true)
+    fun getAveragePrices(
+        productIds: List<UUID>,
+        regionId: UUID? = null,
+    ): List<AveragePriceResult> {
+        if (productIds.isEmpty()) return emptyList()
+
+        return productIds.mapNotNull { productId ->
+            val prices =
+                if (regionId != null) {
+                    val p = regionalPriceRepository.findByProductIdAndRegionId(productId, regionId)
+                    if (p != null) listOf(p) else emptyList()
+                } else {
+                    regionalPriceRepository.findByProductId(productId)
+                }
+
+            if (prices.isEmpty()) {
+                null
+            } else {
+                val sum = prices.map { it.price }.reduce { acc, p -> acc + p }
+                val avg = sum.divide(BigDecimal(prices.size), 2, RoundingMode.HALF_UP)
+                AveragePriceResult(
+                    productId = productId,
+                    averagePrice = avg,
+                    currency = prices.first().currency,
+                    regionCount = prices.size,
+                )
+            }
+        }
+    }
 
     @Transactional
     fun upsertRegionalPrice(

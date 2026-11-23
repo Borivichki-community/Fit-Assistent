@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package nutritionist.catalog.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.budgetntr.proto.catalog.v1";
+option java_outer_classname = "CatalogOuterClass";
+
+// Сервис каталога продуктов питания, КБЖУ и региональных цен.
+service CatalogService {
+  // Поиск продуктов по фильтрам (название, категория, КБЖУ) с keyset-пагинацией.
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse);
+
+  // Получение детальной информации о продукте по его идентификатору.
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+
+  // Получение средних/актуальных цен для списка продуктов (с фильтрацией по региону).
+  rpc GetAveragePrices(GetAveragePricesRequest) returns (GetAveragePricesResponse);
+
+  // Создание или обновление региональной цены на продукт (требует роль ROLE_ADMIN или ROLE_SERVICE).
+  rpc UpsertPrice(UpsertPriceRequest) returns (UpsertPriceResponse);
+}
+
+// Пищевая ценность продукта на 100 грамм (КБЖУ).
+message NutritionFacts {
+  double calories_per_100g = 1;
+  double proteins_per_100g = 2;
+  double fats_per_100g = 3;
+  double carbs_per_100g = 4;
+}
+
+// Карточка региональной цены продукта.
+message RegionalPriceItem {
+  string id = 1;
+  string product_id = 2;
+  string region_id = 3;
+  double price = 4;
+  string currency = 5;
+  string unit = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  string region_name = 8;
+}
+
+// Карточка продукта в каталоге.
+message ProductItem {
+  string id = 1;
+  string name = 2;
+  string barcode = 3;
+  string category = 4;
+  NutritionFacts nutrition = 5;
+  int64 version = 6;
+  google.protobuf.Timestamp created_at = 7;
+  repeated RegionalPriceItem prices = 8;
+}
+
+// Запрос поиска продуктов с keyset-пагинацией.
+message SearchProductsRequest {
+  string query = 1;
+  string category = 2;
+  optional double min_calories = 3;
+  optional double max_calories = 4;
+  optional double min_proteins = 5;
+  optional string region_id = 6;
+  int32 page_size = 7;
+  string page_token = 8;
+}
+
+// Ответ со списком найденных продуктов и токеном следующей страницы.
+message SearchProductsResponse {
+  repeated ProductItem products = 1;
+  string next_page_token = 2;
+}
+
+// Запрос карточки продукта по ID.
+message GetProductRequest {
+  string product_id = 1;
+  optional string region_id = 2;
+}
+
+// Ответ с карточкой продукта.
+message GetProductResponse {
+  ProductItem product = 1;
+}
+
+// Элемент средней цены продукта.
+message AveragePriceItem {
+  string product_id = 1;
+  double average_price = 2;
+  string currency = 3;
+  int32 region_count = 4;
+}
+
+// Запрос средних цен для списка продуктов.
+message GetAveragePricesRequest {
+  repeated string product_ids = 1;
+  optional string region_id = 2;
+}
+
+// Ответ со списком средних/региональных цен.
+message GetAveragePricesResponse {
+  repeated AveragePriceItem prices = 1;
+}
+
+// Запрос на создание/обновление региональной цены.
+message UpsertPriceRequest {
+  string product_id = 1;
+  string region_id = 2;
+  double price = 3;
+  string currency = 4;
+  string unit = 5;
+}
+
+// Ответ с сохраненной региональной ценой.
+message UpsertPriceResponse {
+  RegionalPriceItem price = 1;
+}
