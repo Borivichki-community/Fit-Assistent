@@ -6,10 +6,12 @@ import com.budgetntr.proto.catalog.v1.GetAveragePricesRequest
 import com.budgetntr.proto.catalog.v1.GetAveragePricesResponse
 import com.budgetntr.proto.catalog.v1.GetProductRequest
 import com.budgetntr.proto.catalog.v1.GetProductResponse
+import com.budgetntr.proto.catalog.v1.ProductItem
 import com.budgetntr.proto.catalog.v1.SearchProductsRequest
 import com.budgetntr.proto.catalog.v1.SearchProductsResponse
 import com.budgetntr.proto.catalog.v1.UpsertPriceRequest
 import com.budgetntr.proto.catalog.v1.UpsertPriceResponse
+import dev.andre.nutritionist.catalog.cache.CatalogCacheService
 import dev.andre.nutritionist.catalog.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.catalog.grpc.mapper.toProto
 import dev.andre.nutritionist.catalog.grpc.security.currentAuthContext
@@ -27,6 +29,7 @@ import java.util.UUID
 class CatalogGrpcService(
     private val catalogService: CatalogService,
     private val dispatchers: CoroutineDispatchers,
+    private val catalogCacheService: CatalogCacheService? = null,
 ) : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
     private val logger = LoggerFactory.getLogger(CatalogGrpcService::class.java)
 
@@ -55,11 +58,18 @@ class CatalogGrpcService(
 
         return withContext(dispatchers.io) {
             logger.info("getProduct called: productId={}, regionId={}", productId, regionId)
-            val product = catalogService.getProductWithPrices(productId)
-            GetProductResponse
-                .newBuilder()
-                .setProduct(product.toProto(regionId))
-                .build()
+            val cachedBytes = catalogCacheService?.getProduct(productId, regionId)
+            if (cachedBytes != null) {
+                GetProductResponse.newBuilder().setProduct(ProductItem.parseFrom(cachedBytes)).build()
+            } else {
+                val product = catalogService.getProductWithPrices(productId)
+                val proto = product.toProto(regionId)
+                catalogCacheService?.putProduct(productId, regionId, proto.toByteArray())
+                GetProductResponse
+                    .newBuilder()
+                    .setProduct(proto)
+                    .build()
+            }
         }
     }
 
@@ -85,21 +95,33 @@ class CatalogGrpcService(
             }
 
         return withContext(dispatchers.io) {
-            val results = catalogService.getAveragePrices(productIds, regionId)
-            val items =
-                results.map {
-                    AveragePriceItem
+            val cachedBytes = catalogCacheService?.getAveragePrices(productIds, regionId)
+            if (cachedBytes != null) {
+                GetAveragePricesResponse.parseFrom(cachedBytes)
+            } else {
+                val results = catalogService.getAveragePrices(productIds, regionId)
+                val items =
+                    results.map {
+                        AveragePriceItem
+                            .newBuilder()
+                            .setProductId(it.productId.toString())
+                            .setAveragePrice(it.averagePrice.toDouble())
+                            .setCurrency(it.currency)
+                            .setRegionCount(it.regionCount)
+                            .build()
+                    }
+                val response =
+                    GetAveragePricesResponse
                         .newBuilder()
-                        .setProductId(it.productId.toString())
-                        .setAveragePrice(it.averagePrice.toDouble())
-                        .setCurrency(it.currency)
-                        .setRegionCount(it.regionCount)
+                        .addAllPrices(items)
                         .build()
-                }
-            GetAveragePricesResponse
-                .newBuilder()
-                .addAllPrices(items)
-                .build()
+                catalogCacheService?.putAveragePrices(
+                    productIds,
+                    regionId,
+                    response.toByteArray(),
+                )
+                response
+            }
         }
     }
 
@@ -150,6 +172,8 @@ class CatalogGrpcService(
                     currency = request.currency.ifBlank { "RUB" },
                     unit = request.unit.ifBlank { "PIECE" },
                 )
+
+            catalogCacheService?.evictProduct(productId)
 
             UpsertPriceResponse
                 .newBuilder()

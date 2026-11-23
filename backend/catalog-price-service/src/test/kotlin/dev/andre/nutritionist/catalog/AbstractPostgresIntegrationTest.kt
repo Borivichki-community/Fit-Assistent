@@ -3,6 +3,7 @@ package dev.andre.nutritionist.catalog
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
@@ -19,6 +20,13 @@ abstract class AbstractPostgresIntegrationTest {
                 .apply { start() }
 
         @JvmStatic
+        val redis: GenericContainer<*> =
+            GenericContainer(DockerImageName.parse("redis:7-alpine"))
+                .withExposedPorts(6379)
+                .withReuse(true)
+                .apply { start() }
+
+        @JvmStatic
         @DynamicPropertySource
         fun registerProperties(registry: DynamicPropertyRegistry) {
             registry.add("spring.datasource.url", postgres::getJdbcUrl)
@@ -26,6 +34,8 @@ abstract class AbstractPostgresIntegrationTest {
             registry.add("spring.datasource.password", postgres::getPassword)
             registry.add("spring.liquibase.enabled") { "true" }
             registry.add("spring.jpa.hibernate.ddl-auto") { "none" }
+            registry.add("spring.data.redis.host", redis::getHost)
+            registry.add("spring.data.redis.port") { redis.getMappedPort(6379) }
         }
     }
 }

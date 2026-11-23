@@ -33,6 +33,7 @@ grpc-kotlin = "1.5.0"
 
 spring-boot = "4.1.2"
 uuid-creator = "6.1.1"
+resilience4j = "2.3.0"
 
 grpc-java = "1.69.0"
 protobuf = "4.36.2"
@@ -107,6 +108,8 @@ postgresql-jdbc = { module = "org.postgresql:postgresql" }
 uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 
 spring-starter-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
+resilience4j-spring-boot = { module = "io.github.resilience4j:resilience4j-spring-boot3", version.ref = "resilience4j" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 
 spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
 avro-runtime = { module = "org.apache.avro:avro", version.ref = "avro" }
