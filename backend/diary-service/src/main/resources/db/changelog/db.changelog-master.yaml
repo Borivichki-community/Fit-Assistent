@@ -1,1 +1,10 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - include:
+      file: v1/001-init-diary-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: v1/002-idempotency-keys.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: v1/004-diary-outbox.yaml
+      relativeToChangelogFile: true
