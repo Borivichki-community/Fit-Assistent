@@ -8,9 +8,14 @@ import java.math.BigDecimal
 import java.util.UUID
 
 @Repository
-interface ProductJpaRepository : JpaRepository<ProductEntity, UUID> {
+interface ProductJpaRepository :
+    JpaRepository<ProductEntity, UUID>,
+    ProductSearchRepository {
     @EntityGraph(value = "Product.withPricesAndRegions", type = EntityGraph.EntityGraphType.LOAD)
     fun findWithPricesAndRegionsById(id: UUID): ProductEntity?
+
+    @EntityGraph(value = "Product.withPricesAndRegions", type = EntityGraph.EntityGraphType.LOAD)
+    fun findWithPricesAndRegionsByIdIn(ids: Collection<UUID>): List<ProductEntity>
 
     fun findByCaloriesPer100gBetweenAndProteinsPer100gGreaterThanEqual(
         minCalories: BigDecimal,

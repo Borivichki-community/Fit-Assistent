@@ -3,7 +3,9 @@ package dev.andre.nutritionist.catalog.service
 import dev.andre.nutritionist.catalog.persistence.entity.ProductEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionalPriceEntity
+import dev.andre.nutritionist.catalog.persistence.repository.KeysetSearchResult
 import dev.andre.nutritionist.catalog.persistence.repository.ProductJpaRepository
+import dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria
 import dev.andre.nutritionist.catalog.persistence.repository.RegionJpaRepository
 import dev.andre.nutritionist.catalog.persistence.repository.RegionalPriceJpaRepository
 import org.springframework.stereotype.Service
@@ -26,6 +28,11 @@ class CatalogService(
     private val regionRepository: RegionJpaRepository,
     private val regionalPriceRepository: RegionalPriceJpaRepository,
 ) {
+    @Transactional(readOnly = true)
+    fun searchProducts(
+        criteria: ProductSearchCriteria,
+    ): KeysetSearchResult<ProductEntity> = productRepository.searchProducts(criteria)
+
     @Transactional(readOnly = true)
     fun findProductsByNutrition(
         minCalories: BigDecimal,
