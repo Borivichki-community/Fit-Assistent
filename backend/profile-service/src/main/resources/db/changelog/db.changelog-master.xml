@@ -7,6 +7,8 @@
 
     <include file="v1/001-init-profile-table.xml" relativeToChangelogFile="true"/>
     <include file="v1/002-add-version-column.xml" relativeToChangelogFile="true"/>
-    <include file="v1/003-calories-consumer.xml" relativeToChangelogFile="true"/>
+    <include file="v1/003-create-outbox-table.xml" relativeToChangelogFile="true"/>
+    <include file="v1/004-calories-consumer.xml" relativeToChangelogFile="true"/>
+    <include file="v1/005-profile-outbox-delivery.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

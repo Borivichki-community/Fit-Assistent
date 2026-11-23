@@ -29,7 +29,7 @@ spring:
 
   # ── Database ─────────────────────────────────────────────────────────────────
   datasource:
-    url: ${PROFILE_DB_URL:jdbc:postgresql://localhost:5432/profile_db}
+    url: ${PROFILE_DB_URL:jdbc:postgresql://localhost:5433/profile_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     hikari:
@@ -66,6 +66,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
     consumer:
       group-id: profile-service
       enable-auto-commit: false
@@ -87,10 +90,23 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 5s
 
+# ── Outbox ────────────────────────────────────────────────────────────────────
+outbox:
+  enabled: ${OUTBOX_ENABLED:true}
+  polling-interval-ms: ${OUTBOX_POLLING_INTERVAL_MS:500}
+  batch-size: ${OUTBOX_BATCH_SIZE:50}
+  max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+  send-timeout-seconds: ${OUTBOX_SEND_TIMEOUT_SECONDS:10}
+  retry-backoff-ms: ${OUTBOX_RETRY_BACKOFF_MS:2000}
+  failed-retry-interval-ms: ${OUTBOX_FAILED_RETRY_INTERVAL_MS:60000}
+
+server:
+  port: ${SERVER_PORT:8085}
+
 # ── Actuator ──────────────────────────────────────────────────────────────────
 management:
   server:
-    port: ${MANAGEMENT_PORT:8080}   # HTTP-порт для Actuator отдельно от gRPC
+    port: ${MANAGEMENT_PORT:8085}   # HTTP-порт для Actuator отдельно от gRPC
 
   endpoints:
     web:
@@ -126,7 +142,4 @@ logging:
     dev.andre.nutritionist: INFO
   pattern:
     console: >-
-      {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}",
-       "level":"%level","service":"${spring.application.name}",
-       "traceId":"%X{traceId}","spanId":"%X{spanId}",
-       "userId":"%X{userId}","message":"%msg"}%n
+      {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}","level":"%level","service":"${spring.application.name}","traceId":"%X{traceId}","spanId":"%X{spanId}","userId":"%X{userId}","message":"%msg"}%n

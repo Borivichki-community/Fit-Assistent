@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Instant
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,7 +52,7 @@ class ProfileCommandsFlowHandlerTest {
             targetWeightKg = 70.0,
         ),
         weeklyBudget = 5000.0,
-        updatedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
+        updatedAt = kotlin.time.Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
 
     @BeforeTest
@@ -112,6 +111,31 @@ class ProfileCommandsFlowHandlerTest {
     @Test
     fun `RefreshProfile command completes without events on success`() = runTest(testDispatcher) {
         handler.handle(flowOf(ProfileCommand.RefreshProfile(testUserId))).test {
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `UpdateProfile command calls repository updateProfile and emits ProfileLoaded event on success`() = runTest(testDispatcher) {
+        val updatedProfile = testProfile.copy(weightKg = 72.0)
+
+        handler.handle(flowOf(ProfileCommand.UpdateProfile(updatedProfile))).test {
+            val event = awaitItem()
+            assertIs<ProfileEvent.Internal.ProfileLoaded>(event)
+            assertEquals(updatedProfile, event.profile)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun `UpdateProfile command emits ProfileLoadFailed event on repository failure`() = runTest(testDispatcher) {
+        val error = RuntimeException("Ошибка сохранения профиля")
+        fakeRepository.errorToThrow = error
+
+        handler.handle(flowOf(ProfileCommand.UpdateProfile(testProfile))).test {
+            val event = awaitItem()
+            assertIs<ProfileEvent.Internal.ProfileLoadFailed>(event)
+            assertEquals("Ошибка сохранения профиля", event.error.message)
             awaitComplete()
         }
     }

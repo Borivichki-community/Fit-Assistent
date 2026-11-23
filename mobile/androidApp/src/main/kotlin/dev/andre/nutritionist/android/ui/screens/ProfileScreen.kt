@@ -12,30 +12,36 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.android.ui.components.ErrorContent
 import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
-import dev.andre.nutritionist.android.ui.components.FitTopBar
 import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileUiState
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     state: ProfileUiState,
     onEvent: (ProfileEvent.Ui) -> Unit,
+    modifier: Modifier = Modifier,
+    onLogoutClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
+    onCreateProfileClick: () -> Unit = {},
     onDestinationSelected: (AppDestination) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     isOffline: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        topBar = {
+            ProfileTopHeader()
+        },
         bottomBar = {
             FitBottomNavigationBar(
                 currentDestination = AppDestination.Profile,
@@ -48,12 +54,6 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            // Переиспользуемая верхняя плашка FitApp
-            FitTopBar(
-                title = "FitApp",
-                onMenuClick = { /* Открытие бокового меню */ },
-            )
-
             if (isOffline) {
                 OfflineBanner()
             }
@@ -68,23 +68,35 @@ fun ProfileScreen(
                         LoadingContent()
                     }
                     is ProfileUiState.Content.Error -> {
+                        val isNotFound = content.message.contains("NOT_FOUND", ignoreCase = true) ||
+                            content.message.contains("not found", ignoreCase = true)
+                        val displayMessage = if (isNotFound) {
+                            stringResource(R.string.profile_not_found_message)
+                        } else {
+                            content.message
+                        }
                         ErrorContent(
-                            message = content.message,
+                            message = displayMessage,
                             onRetry = { onEvent(ProfileEvent.Ui.Retry) },
+                            actionButtonText = stringResource(R.string.profile_fill_survey_again),
+                            onActionClick = onCreateProfileClick,
                         )
                     }
                     is ProfileUiState.Content.Success -> {
                         ProfileSuccessContent(
                             profile = content.profile,
-                            onEditClick = { onEvent(ProfileEvent.Ui.EditClicked) },
+                            onEditClick = onCreateProfileClick,
+                            onLogoutClick = onLogoutClick,
+                            isLoggingOut = isLoggingOut,
+                            onFillSurveyClick = onCreateProfileClick,
+                            onMealPlanClick = { onDestinationSelected(AppDestination.MealPlanManager) },
+                            onEvent = onEvent,
                         )
                     }
                     is ProfileUiState.Content.Form -> {
-                        // Режим редактирования/формы
                         LoadingContent()
                     }
                     is ProfileUiState.Content.ValidationError -> {
-                        // Режим отображения ошибок валидации
                         LoadingContent()
                     }
                 }

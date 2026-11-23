@@ -1,0 +1,67 @@
+package dev.andre.nutritionist.recipe
+
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
+import org.springframework.data.redis.core.StringRedisTemplate
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import tools.jackson.databind.json.JsonMapper
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
+
+@Testcontainers(disabledWithoutDocker = true)
+class RedisMenuStoreTest {
+    @Test
+    fun `Redis stores warmup menu and atomically caps concurrent quota attempts`() {
+        val config = RecipeConfiguration()
+        val properties = RecipeProperties(dailyAttemptLimit = 3)
+        val connection = LettuceConnectionFactory(redis.host, redis.getMappedPort(6379))
+        connection.afterPropertiesSet()
+        try {
+            val template = StringRedisTemplate(connection)
+            val store = RedisMenuStore(template, properties, Clock.systemUTC(), config.recipeIoDispatcher())
+            val product = CatalogProduct(ProductId("rice"), "Рис", 200.0, 150)
+            val menu =
+                MenuValidator(JsonMapper.builder().build(), properties)
+                    .validate(RecipeLlmTest.menuJson(), MenuRequest(600, 5000), listOf(product))
+            runBlocking {
+                assertTrue(store.beginWarmup("600:5000"))
+                assertFalse(store.beginWarmup("600:5000"))
+                store.write("menu", menu, Duration.ofMinutes(1))
+                assertEquals(menu, store.read("menu"))
+
+                val user = UserId(UUID.randomUUID().toString())
+                val successful =
+                    (1..12)
+                        .map {
+                            async {
+                                try {
+                                    store.reserveAttempt(user)
+                                    true
+                                } catch (_: QuotaExceeded) {
+                                    false
+                                }
+                            }
+                        }.awaitAll()
+                        .count { it }
+                assertEquals(3, successful)
+            }
+        } finally {
+            connection.destroy()
+        }
+    }
+
+    companion object {
+        @Container
+        @JvmField
+        val redis = GenericContainer<Nothing>("redis:7-alpine").apply { addExposedPort(6379) }
+    }
+}

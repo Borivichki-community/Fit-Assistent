@@ -7,6 +7,9 @@ data class ProfileState(
     val content: Content = Content.Loading,
     val currentUserId: UserId? = null,
     val isOffline: Boolean = false,
+    val isSaving: Boolean = false,
+    val displayName: String? = null,
+    val age: String? = null,
 ) {
     sealed interface Content {
         data object Loading : Content
@@ -18,7 +21,11 @@ data class ProfileState(
             val dailyCalories: String = "",
         ) : Content
 
-        data class Success(val profile: Profile) : Content
+        data class Success(
+            val profile: Profile,
+            val displayName: String? = null,
+            val age: String? = null,
+        ) : Content
 
         data class Error(val message: String) : Content
 

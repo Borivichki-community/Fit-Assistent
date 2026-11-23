@@ -36,7 +36,8 @@ class ProfileRepositoryImpl(
                 .onSuccess { remoteProfile ->
                     dao.insertOrReplace(remoteProfile.toEntity())
                 }
-                .getOrNull() }
+                .getOrNull()
+        }
 
     override suspend fun refreshProfile(userId: UserId): Result<Unit> =
         withContext(dispatchers.io) {
@@ -51,13 +52,16 @@ class ProfileRepositoryImpl(
 
     override suspend fun updateProfile(profile: Profile): Result<Profile> =
         withContext(dispatchers.io) {
+            // Гарантируем немедленное сохранение в локальный Room-кэш (offline-first)
+            dao.insertOrReplace(profile.toEntity())
             remoteDataSource.updateProfile(profile)
                 .mapCatching { updatedProfile ->
                     dao.insertOrReplace(updatedProfile.toEntity())
                     updatedProfile
                 }
-                .onFailure { error ->
+                .recover { error ->
                     if (error is CancellationException) throw error
+                    profile
                 }
         }
 }

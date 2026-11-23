@@ -1,0 +1,21 @@
+# infrastructure/k8s/gateway/04-profile-grpc-route.yaml
+# GRPCRoute для маршрутизации вызовов com.budgetntr.profile.v1.ProfileService на profile-service:9090
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: profile-grpc-route
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: envoy-gateway-system
+  rules:
+    - matches:
+        - method:
+            service: com.budgetntr.profile.v1.ProfileService
+      backendRefs:
+        - name: profile-service
+          port: 9090

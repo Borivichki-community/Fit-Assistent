@@ -31,8 +31,12 @@ class EncryptedPrefsAuthStorage(
         )
     }
 
+    override fun getAuthStateJsonSync(): String? {
+        return sharedPreferences.getString(KEY_AUTH_STATE_JSON, null)
+    }
+
     override suspend fun getAuthStateJson(): String? = withContext(dispatchers.io) {
-        sharedPreferences.getString(KEY_AUTH_STATE_JSON, null)
+        getAuthStateJsonSync()
     }
 
     override suspend fun saveAuthStateJson(json: String): Unit = withContext(dispatchers.io) {

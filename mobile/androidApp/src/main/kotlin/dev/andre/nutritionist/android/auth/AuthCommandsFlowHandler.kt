@@ -5,6 +5,7 @@ import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import net.openid.appauth.AuthorizationException
 
 
 class AuthCommandsFlowHandler(
@@ -18,7 +19,12 @@ class AuthCommandsFlowHandler(
             when (command) {
                 is AuthCommand.LaunchAuthTab -> {
                     val event = withContext(dispatchers.io) {
-                        runCatching { authIntentProvider.createAuthIntent() }
+                        runCatching {
+                            authIntentProvider.createAuthIntent(
+                                idpHint = command.idpHint,
+                                prompt = command.prompt,
+                            )
+                        }
                             .fold(
                                 onSuccess = { AuthEvent.Internal.AuthIntentPrepared(it) },
                                 onFailure = { AuthEvent.Internal.AuthFailed(it) },
@@ -31,7 +37,20 @@ class AuthCommandsFlowHandler(
                         authRepository.processAuthResponse(command.intent)
                             .fold(
                                 onSuccess = { AuthEvent.Internal.AuthSuccess },
-                                onFailure = { AuthEvent.Internal.AuthFailed(it) },
+                                onFailure = { error ->
+                                    android.util.Log.e("FitAuth", "ProcessAuthResponse failed: ${error.message}", error)
+                                    if (error is AuthorizationException) {
+                                        android.util.Log.e("FitAuth", "AuthEx type=${error.type}, code=${error.code}, error=${error.error}, desc=${error.errorDescription}, cause=${error.cause}")
+                                    }
+                                    val isUserCanceled = error is AuthorizationException &&
+                                        error.type == AuthorizationException.TYPE_GENERAL_ERROR &&
+                                        error.code == AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW.code
+                                    if (isUserCanceled) {
+                                        AuthEvent.Ui.AuthCancelled
+                                    } else {
+                                        AuthEvent.Internal.AuthFailed(error)
+                                    }
+                                },
                             )
                     }
                     emit(event)

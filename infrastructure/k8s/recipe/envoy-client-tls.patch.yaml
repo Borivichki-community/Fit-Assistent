@@ -1,0 +1,6 @@
+spec:
+  backendTLS:
+    clientCertificateRef:
+      kind: Secret
+      name: recipe-envoy-client-tls
+      namespace: envoy-gateway-system

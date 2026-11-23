@@ -17,6 +17,7 @@ class AndroidDatabaseBuilder(
             context = appContext,
             name = dbFile.absolutePath,
         )
+            .fallbackToDestructiveMigration(true)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
             .build()

@@ -10,6 +10,7 @@ val DarkColorScheme = darkColorScheme(
     onPrimary = OnPrimaryDark,
     primaryContainer = PrimaryContainerDark,
     onPrimaryContainer = OnPrimaryContainerDark,
+    inversePrimary = InversePrimaryDark,
     secondary = SecondaryDark,
     onSecondary = OnSecondaryDark,
     secondaryContainer = SecondaryContainerDark,
@@ -28,7 +29,13 @@ val DarkColorScheme = darkColorScheme(
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = OnSurfaceVariantDark,
+    surfaceContainerLowest = SurfaceContainerLowest,
+    surfaceContainerLow = SurfaceContainerLow,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerHigh = SurfaceContainerHigh,
+    surfaceContainerHighest = SurfaceContainerHighest,
     outline = OutlineDark,
+    outlineVariant = OutlineVariantDark,
 )
 
 val LightColorScheme = lightColorScheme(
@@ -58,7 +65,7 @@ val LightColorScheme = lightColorScheme(
 )
 
 /**
- * Основная Material 3 тема приложения FitAssistant в гамме Antigravity.
+ * Основная Material 3 тема приложения FitAssistant в дизайне Aether Zero-G Luxury.
  */
 @Composable
 fun FitAssistantTheme(

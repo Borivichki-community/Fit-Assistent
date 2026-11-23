@@ -1,8 +1,37 @@
+import com.google.protobuf.gradle.proto
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.protobuf)
+}
+
+protobuf {
+    protoc {
+        artifact = libs.codegen.protoc.get().toString()
+    }
+    plugins {
+        create("grpc") {
+            artifact = libs.codegen.grpc.java.get().toString()
+        }
+        create("grpckt") {
+            artifact = "${libs.codegen.grpc.kotlin.get()}:jdk8@jar"
+        }
+    }
+    generateProtoTasks {
+        this.all().forEach { task ->
+            task.builtins {
+                maybeCreate("java")
+            }
+            task.plugins {
+                create("grpc") {
+                    option("@generated=omit")
+                }
+                create("grpckt")
+            }
+        }
+    }
 }
 
 kotlin {
@@ -24,18 +53,30 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.appauth)
     implementation(libs.androidx.security.crypto)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation(libs.grpc.okhttp)
+    debugImplementation(libs.grpc.protobuf)
+    debugImplementation(libs.grpc.stub)
+    debugImplementation(libs.grpc.kotlin.stub)
+    debugImplementation(libs.protobuf.java)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.datetime)
     testImplementation(libs.compose.test.junit4)
     debugImplementation(libs.compose.test.manifest)
+    testDebugImplementation(libs.grpc.okhttp)
+    testDebugImplementation(libs.grpc.protobuf)
+    testDebugImplementation(libs.grpc.stub)
+    testDebugImplementation(libs.grpc.kotlin.stub)
+    testDebugImplementation(libs.protobuf.java)
 
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.testExt.junit)
@@ -76,6 +117,26 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+        }
+    }
+    sourceSets {
+        getByName("debug") {
+            proto {
+                srcDir("../../proto")
+                setIncludes(
+                    listOf(
+                        "nutritionist/diary/v1/diary.proto",
+                        "nutritionist/catalog/v1/catalog.proto",
+                        "nutritionist/recipe/v1/recipe.proto",
+                        "health.proto",
+                    ),
+                )
+            }
+            java.srcDirs(
+                "build/generated/java/generateDebugProto/java",
+                "build/generated/java/generateDebugProto/grpc",
+                "build/generated/java/generateDebugProto/grpckt",
+            )
         }
     }
     buildFeatures {

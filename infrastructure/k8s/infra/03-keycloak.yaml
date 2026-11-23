@@ -1,0 +1,266 @@
+# infrastructure/k8s/infra/03-keycloak.yaml
+# Развёртывание Keycloak 26.x для аутентификации OAuth 2.1 PKCE и выпуска JWT
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-secret
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: fitassistant
+type: Opaque
+stringData:
+  KEYCLOAK_ADMIN: "admin"
+  KEYCLOAK_ADMIN_PASSWORD: "admin"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-config
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: fitassistant
+data:
+  fitassistant-realm.json: |
+    {
+      "id": "FitAssistant",
+      "realm": "FitAssistant",
+      "displayName": "FitAssistant",
+      "enabled": true,
+      "sslRequired": "external",
+      "registrationAllowed": true,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": true,
+      "editUsernameAllowed": false,
+      "accessTokenLifespan": 3600,
+      "ssoSessionIdleTimeout": 1800,
+      "ssoSessionMaxLifespan": 36000,
+      "defaultSignatureAlgorithm": "RS256",
+      "roles": {
+        "realm": [
+          {
+            "name": "ROLE_USER",
+            "description": "Standard user role"
+          },
+          {
+            "name": "ROLE_PREMIUM",
+            "description": "Premium subscriber role"
+          }
+        ]
+      },
+      "defaultRoles": [
+        "ROLE_USER"
+      ],
+      "clients": [
+        {
+          "clientId": "fitassistant-mobile",
+          "name": "FitAssistant Mobile Application",
+          "description": "Android and iOS mobile client with PKCE",
+          "enabled": true,
+          "publicClient": true,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "fullScopeAllowed": true,
+          "redirectUris": [
+            "com.budgetntr.fitassistant://oauth2redirect/*",
+            "com.budgetntr.fitassistant://oauth2redirect",
+            "http://localhost:*"
+          ],
+          "webOrigins": [
+            "*"
+          ],
+          "attributes": {
+            "pkce.code.challenge.method": "S256",
+            "post.logout.redirect.uris": "com.budgetntr.fitassistant://oauth2redirect/*##com.budgetntr.fitassistant://oauth2redirect"
+          }
+        },
+        {
+          "clientId": "profile-app",
+          "name": "Profile Microservice Client",
+          "description": "Confidential backend client for service communication",
+          "enabled": true,
+          "publicClient": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "fitassistant-secret-local-dev-123",
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "fullScopeAllowed": true,
+          "redirectUris": [
+            "http://localhost:*"
+          ],
+          "webOrigins": [
+            "*"
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "testuser",
+          "enabled": true,
+          "email": "test@example.com",
+          "firstName": "Test",
+          "lastName": "User",
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "password123",
+              "temporary": false
+            }
+          ],
+          "realmRoles": [
+            "ROLE_USER",
+            "ROLE_PREMIUM"
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: budget-nutritionist
+  labels:
+    app: keycloak
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: management
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    app: keycloak
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: budget-nutritionist
+  labels:
+    app: keycloak
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 0
+        fsGroup: 1000
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "start-dev"
+            - "--import-realm"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_DB
+              value: "postgres"
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/keycloak_db"
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: 1500m
+              memory: 1024Mi
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: realm-import
+              mountPath: /opt/keycloak/data/import/fitassistant-realm.json
+              subPath: fitassistant-realm.json
+              readOnly: true
+      volumes:
+        - name: realm-import
+          configMap:
+            name: keycloak-realm-config

@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +15,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
+import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel2
 
 /**
- * Нижняя плавающая панель навигации приложения
+ * Подвешенная плавающая стеклянная док-панель навигации (Floating Dock) в стиле Aether Zero-G Luxury.
  */
 @Composable
 fun FitBottomNavigationBar(
@@ -27,15 +29,16 @@ fun FitBottomNavigationBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.medium, vertical = Spacing.small),
-        shape = RoundedCornerShape(Spacing.buttonRadius),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp,
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        shape = RoundedCornerShape(Spacing.pill),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, GlassBorderLevel2),
+        tonalElevation = 8.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = Spacing.small, horizontal = Spacing.small),
+                .padding(vertical = Spacing.xs, horizontal = Spacing.sm),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically,
         ) {

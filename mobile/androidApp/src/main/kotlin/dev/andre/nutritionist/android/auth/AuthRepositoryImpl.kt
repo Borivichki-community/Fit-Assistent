@@ -3,10 +3,10 @@ package dev.andre.nutritionist.android.auth
 import android.content.Intent
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.AccessToken
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.openid.appauth.AuthState
@@ -31,9 +31,7 @@ class AuthRepositoryImpl(
 
     init {
         // Восстановление сохранённого состояния сессии из безопасного хранилища
-        val cachedJson = runBlocking(dispatchers.io) {
-            authStorage.getAuthStateJson()
-        }
+        val cachedJson = authStorage.getAuthStateJsonSync()
         if (!cachedJson.isNullOrBlank()) {
             runCatching {
                 currentAuthState = AuthState.jsonDeserialize(cachedJson)
@@ -48,6 +46,32 @@ class AuthRepositoryImpl(
 
     override fun getAccessTokenTyped(): AccessToken? =
         currentAuthState.accessToken?.let(::AccessToken)
+
+    override fun getUserId(): UserId? {
+        val parsedSub = currentAuthState.parsedIdToken?.subject
+        if (!parsedSub.isNullOrBlank()) {
+            return UserId(parsedSub)
+        }
+        val token = currentAuthState.idToken ?: currentAuthState.accessToken ?: return null
+        return extractClaimFromJwt(token, "sub")?.let(::UserId)
+    }
+
+    override fun getUserDisplayName(): String? {
+        val claims = currentAuthState.parsedIdToken?.additionalClaims
+        val givenName = claims?.get("given_name") as? String
+        if (!givenName.isNullOrBlank()) return givenName
+
+        val name = claims?.get("name") as? String
+        if (!name.isNullOrBlank()) return name
+
+        val preferredUsername = claims?.get("preferred_username") as? String
+        if (!preferredUsername.isNullOrBlank()) return preferredUsername
+
+        val token = currentAuthState.idToken ?: currentAuthState.accessToken ?: return null
+        return extractClaimFromJwt(token, "given_name")
+            ?: extractClaimFromJwt(token, "name")
+            ?: extractClaimFromJwt(token, "preferred_username")
+    }
 
     override fun isAuthenticated(): Boolean = currentAuthState.isAuthorized
 
@@ -101,7 +125,7 @@ class AuthRepositoryImpl(
                         continuation.resume(accessToken)
                     } else {
                         continuation.resumeWithException(
-                            IllegalStateException("Fresh token action returned null token and null exception")
+                            IllegalStateException("Fresh token action returned null token and null exception"),
                         )
                     }
                 }
@@ -110,4 +134,19 @@ class AuthRepositoryImpl(
             }
         }
     }
+
+    private fun extractClaimFromJwt(token: String, claimName: String): String? = runCatching {
+        val parts = token.split(".")
+        if (parts.size >= 2) {
+            val payloadBytes = android.util.Base64.decode(
+                parts[1],
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
+            )
+            val jsonString = String(payloadBytes, Charsets.UTF_8)
+            val regex = """"$claimName"\s*:\s*"([^"]+)"""".toRegex()
+            regex.find(jsonString)?.groupValues?.get(1)
+        } else {
+            null
+        }
+    }.getOrNull()
 }
