@@ -77,6 +77,8 @@ dependencies {
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
     implementation(libs.spring.starter.redis)
+    implementation(libs.resilience4j.spring.boot)
+    implementation(libs.logstash.logback.encoder)
     implementation(libs.uuid.creator)
     runtimeOnly(libs.postgresql.jdbc)
 
@@ -108,18 +110,13 @@ val ktlintEngineVersion =
         .get()
         .requiredVersion
 
-tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
-    exclude { element ->
-        element
-            .file
-            .toPath()
-            .startsWith(
-                layout
-                    .buildDirectory
-                    .asFile
-                    .get()
-                    .toPath(),
-            )
+ktlint {
+    version.set(ktlintEngineVersion)
+    filter {
+        exclude { element ->
+            val path = element.file.absolutePath.replace('\\', '/')
+            path.contains("/build/") || path.contains("/generated/")
+        }
     }
 }
 

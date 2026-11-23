@@ -13,11 +13,13 @@ import com.budgetntr.proto.catalog.v1.UpsertPriceRequest
 import com.budgetntr.proto.catalog.v1.UpsertPriceResponse
 import dev.andre.nutritionist.catalog.cache.CatalogCacheService
 import dev.andre.nutritionist.catalog.coroutines.CoroutineDispatchers
+import dev.andre.nutritionist.catalog.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.catalog.grpc.mapper.toProto
 import dev.andre.nutritionist.catalog.grpc.security.currentAuthContext
 import dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria
 import dev.andre.nutritionist.catalog.service.CatalogService
 import io.grpc.Status
+import io.grpc.kotlin.GrpcContextElement
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -28,7 +30,7 @@ import java.util.UUID
 @GrpcService
 class CatalogGrpcService(
     private val catalogService: CatalogService,
-    private val dispatchers: CoroutineDispatchers,
+    private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
     private val catalogCacheService: CatalogCacheService? = null,
 ) : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
     private val logger = LoggerFactory.getLogger(CatalogGrpcService::class.java)
@@ -56,7 +58,10 @@ class CatalogGrpcService(
                 null
             }
 
-        return withContext(dispatchers.io) {
+        val auth = currentAuthContext()
+        val userId = auth.userId ?: "anonymous"
+
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to userId))) {
             logger.info("getProduct called: productId={}, regionId={}", productId, regionId)
             val cachedBytes = catalogCacheService?.getProduct(productId, regionId)
             if (cachedBytes != null) {
@@ -94,7 +99,10 @@ class CatalogGrpcService(
                 null
             }
 
-        return withContext(dispatchers.io) {
+        val auth = currentAuthContext()
+        val userId = auth.userId ?: "anonymous"
+
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to userId))) {
             val cachedBytes = catalogCacheService?.getAveragePrices(productIds, regionId)
             if (cachedBytes != null) {
                 GetAveragePricesResponse.parseFrom(cachedBytes)
@@ -155,7 +163,7 @@ class CatalogGrpcService(
         val auth = currentAuthContext()
         val userId = auth.userId ?: "unknown"
 
-        return withContext(MDCContext(mapOf("userId" to userId)) + dispatchers.io) {
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to userId))) {
             logger.info(
                 "upsertPrice called by userId={}: productId={}, regionId={}, price={}",
                 userId,
@@ -207,7 +215,10 @@ class CatalogGrpcService(
                 sortBy = if (request.hasSortBy() && request.sortBy.isNotBlank()) request.sortBy else "name",
             )
 
-        return withContext(dispatchers.io) {
+        val auth = currentAuthContext()
+        val userId = auth.userId ?: "anonymous"
+
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to userId))) {
             val result = catalogService.searchProducts(criteria)
             val items = result.items.map { it.toProto(regionId) }
             SearchProductsResponse

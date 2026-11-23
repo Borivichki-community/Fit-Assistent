@@ -21,7 +21,13 @@ class IdempotencyCleanup(
         fixedDelayString = "\${diary.idempotency.cleanup-interval:PT1H}",
     )
     fun cleanUp() {
-        val deleted = store.deleteExpired(batchSize)
-        logger.info("Expired idempotency responses removed: count={}", deleted)
+        try {
+            val deleted = store.deleteExpired(batchSize)
+            if (deleted > 0) {
+                logger.info("Expired idempotency responses removed: count={}", deleted)
+            }
+        } catch (e: Exception) {
+            logger.error("Error during scheduled idempotency responses cleanup", e)
+        }
     }
 }

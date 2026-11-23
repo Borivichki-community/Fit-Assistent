@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.spring.starter.liquibase)
     implementation(libs.spring.starter.redis)
     implementation(libs.resilience4j.spring.boot)
+    implementation(libs.logstash.logback.encoder)
     implementation(libs.jackson.module.kotlin)
     runtimeOnly(libs.postgresql.jdbc)
 

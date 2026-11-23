@@ -147,6 +147,102 @@ class ProfileOutboxIntegrationTest {
         assertEquals(1, messagesAfterUpdate.size, "UpdateProfile must NOT publish duplicate UserRegisteredEvent")
     }
 
+    @Test
+    fun `stub profile with zero parameters triggers outbox event upon first real parameters submission`() {
+        val userId = "usr_outbox_stub_test"
+
+        // 1. Создаем пустышку профиля (рост = 0, вес = 0) без события Outbox
+        val stubCommand =
+            UpsertProfileCommand(
+                userId = UserId(userId),
+                heightCm = 0,
+                weightKg = BigDecimal.ZERO,
+                gender = Gender.UNKNOWN,
+                activityLevel = ActivityLevel.UNKNOWN,
+                goalType = GoalType.UNKNOWN,
+                nutritionGoal = null,
+                weeklyBudget = BigDecimal.ZERO,
+                email = null,
+            )
+        profileService.upsertProfile(stubCommand)
+
+        // Убеждаемся, что для пустышки событие НЕ создавалось
+        assertEquals(0, outboxRepository.findAll().size)
+
+        // 2. Пользователь заполняет реальные параметры онбординга
+        val realCommand =
+            UpsertProfileCommand(
+                userId = UserId(userId),
+                heightCm = 175,
+                weightKg = BigDecimal("70.00"),
+                gender = Gender.MALE,
+                activityLevel = ActivityLevel.LIGHT,
+                goalType = GoalType.LOSE_WEIGHT,
+                nutritionGoal = null,
+                weeklyBudget = BigDecimal("4000.00"),
+                email = "real.user@example.com",
+            )
+        profileService.upsertProfile(realCommand)
+
+        // Проверяем, что событие UserRegisteredEvent сгенерировано и опубликовано
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .untilAsserted {
+                val messages = outboxRepository.findAll()
+                assertEquals(1, messages.size)
+                val outbox = messages[0]
+                assertEquals(userId, outbox.aggregateId)
+                assertEquals(OutboxStatus.PUBLISHED, outbox.status)
+            }
+    }
+
+    @Test
+    fun `resetFailedToPending recovers failed outbox messages for successful publishing`() {
+        val userId = "usr_outbox_failed_recovery_test"
+        val userUuid = java.util.UUID.randomUUID()
+        val event =
+            UserRegisteredEvent
+                .newBuilder()
+                .setId(userUuid)
+                .setEmail("failed.recovery@example.com")
+                .setRegistrationTimestamp(java.time.Instant.now())
+                .setSource("profile-service")
+                .build()
+
+        val failedMessage =
+            dev.andre.nutritionist.profile.outbox.entity.OutboxMessageEntity(
+                id = java.util.UUID.randomUUID(),
+                aggregateType = "UserProfile",
+                aggregateId = userId,
+                topic = USER_REGISTERED_TOPIC,
+                payload =
+                    dev.andre.nutritionist.profile.outbox.service.OutboxPayloadConverter
+                        .serialize(event),
+                status = OutboxStatus.FAILED,
+                attempts = 5,
+            )
+        outboxRepository.save(failedMessage)
+
+        val beforeReset = outboxRepository.findById(failedMessage.id).orElseThrow()
+        assertEquals(OutboxStatus.FAILED, beforeReset.status)
+        assertEquals(5, beforeReset.attempts)
+
+        // Сброс FAILED -> PENDING
+        val resetCount = outboxRepository.resetFailedToPending()
+        assertEquals(1, resetCount)
+
+        // OutboxProcessor подхватывает сообщение и публикует его
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .pollInterval(200, TimeUnit.MILLISECONDS)
+            .untilAsserted {
+                val recovered = outboxRepository.findById(failedMessage.id).orElseThrow()
+                assertEquals(OutboxStatus.PUBLISHED, recovered.status)
+                assertNotNull(recovered.publishedAt)
+            }
+    }
+
     private fun createTestKafkaConsumer(): KafkaConsumer<String, Any> {
         val props =
             Properties().apply {
@@ -228,6 +324,9 @@ class ProfileOutboxIntegrationTest {
             registry.add("outbox.enabled") { "true" }
             registry.add("outbox.polling-interval-ms") { "200" }
             registry.add("outbox.batch-size") { "50" }
+            registry.add("outbox.retry-backoff-ms") { "0" }
+            registry.add("spring.grpc.server.port") { "0" }
+            registry.add("server.port") { "0" }
         }
     }
 }

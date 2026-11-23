@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.data.domain.PageRequest
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -46,6 +45,7 @@ class OutboxProcessor(
     @Value("\${outbox.batch-size:50}") private val batchSize: Int = 50,
     @Value("\${outbox.max-attempts:5}") private val maxAttempts: Int = 5,
     @Value("\${outbox.send-timeout-seconds:10}") private val sendTimeoutSeconds: Long = 10,
+    @Value("\${outbox.retry-backoff-ms:2000}") private val retryBackoffMs: Long = 2000,
 ) {
     private val logger = LoggerFactory.getLogger(OutboxProcessor::class.java)
 
@@ -56,12 +56,47 @@ class OutboxProcessor(
             .register(meterRegistry)
 
     @PostConstruct
+    fun init() {
+        registerGauge()
+        try {
+            val resetCount = retryFailedMessages()
+            if (resetCount > 0) {
+                logger.info("Restored {} FAILED outbox messages back to PENDING on startup", resetCount)
+            }
+        } catch (e: Exception) {
+            logger.warn("Could not reset FAILED outbox messages on startup (DB may not be ready yet): {}", e.message)
+        }
+    }
+
     fun registerGauge() {
         Gauge
             .builder("outbox.pending.count") {
                 outboxRepository.countByStatus(OutboxStatus.PENDING).toDouble()
             }.description("Number of pending outbox messages waiting to be published")
             .register(meterRegistry)
+    }
+
+    /**
+     * Сброс статуса всех FAILED сообщений в PENDING для повторной попытки отправки.
+     */
+    fun retryFailedMessages(): Int {
+        val count = outboxRepository.resetFailedToPending()
+        if (count > 0) {
+            logger.info("Reset {} FAILED outbox messages back to PENDING for retry", count)
+        }
+        return count
+    }
+
+    /**
+     * Периодический сброс зависших FAILED сообщений в PENDING при восстановлении связи с брокером.
+     */
+    @Scheduled(fixedDelayString = "\${outbox.failed-retry-interval-ms:60000}")
+    fun retryFailedMessagesScheduled() {
+        try {
+            retryFailedMessages()
+        } catch (e: Exception) {
+            logger.error("Error during scheduled reset of FAILED outbox messages", e)
+        }
     }
 
     /**
@@ -84,11 +119,11 @@ class OutboxProcessor(
         }
     }
 
-    fun fetchPendingBatch(): List<OutboxMessageEntity> =
+    private fun fetchPendingBatch(): List<OutboxMessageEntity> =
         transactionTemplate.execute {
             outboxRepository.findByStatusWithLock(
-                status = OutboxStatus.PENDING,
-                pageable = PageRequest.of(0, batchSize),
+                status = OutboxStatus.PENDING.name,
+                limit = batchSize,
             )
         }
 
@@ -131,6 +166,13 @@ class OutboxProcessor(
                 maxAttempts = maxAttempts,
                 failedStatus = OutboxStatus.FAILED,
             )
+            if (retryBackoffMs > 0) {
+                try {
+                    Thread.sleep(retryBackoffMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
         } finally {
             MDC.remove("userId")
             MDC.remove("outboxId")
@@ -145,6 +187,7 @@ class OutboxProcessor(
                     schema = UserRegisteredEvent.getClassSchema(),
                 )
             }
+
             else -> {
                 // Для бинарных топиков или других полезных нагрузок
                 message.payload
