@@ -158,6 +158,7 @@ class AddMealBottomSheetTest {
             )
         }
 
+        composeTestRule.onNodeWithTag("categories_row").performScrollTo()
         composeTestRule.onNodeWithTag("category_tab_Завтрак").performClick()
         assertEquals("Завтрак", selectedCat)
     }
@@ -188,7 +189,7 @@ class AddMealBottomSheetTest {
             )
         }
 
-        composeTestRule.onNodeWithTag("food_item_food-1").performClick()
+        composeTestRule.onNodeWithTag("food_item_food-1").performScrollTo().performClick()
         assertEquals("food-1", clickedFood?.id)
     }
 

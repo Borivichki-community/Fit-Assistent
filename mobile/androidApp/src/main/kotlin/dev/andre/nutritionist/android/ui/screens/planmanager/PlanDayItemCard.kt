@@ -1,24 +1,33 @@
 package dev.andre.nutritionist.android.ui.screens.planmanager
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
 import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel2
@@ -43,19 +52,18 @@ fun PlanDayScheduleSection(
         // Горизонтальный ряд дней недели (Пн, Вт, Ср, Чт, Пт, Сб, Вс)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             days.forEachIndexed { index, day ->
                 val isSelected = day.isSelected
                 Surface(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 2.dp)
                         .testTag("day_selector_pill_$index")
                         .clickable { onSelectDay(index) },
-                    shape = RoundedCornerShape(Spacing.sm),
+                    shape = RoundedCornerShape(14.dp),
                     color = if (isSelected) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
                     } else {
                         MaterialTheme.colorScheme.surfaceContainer
                     },
@@ -65,7 +73,7 @@ fun PlanDayScheduleSection(
                     ),
                 ) {
                     Column(
-                        modifier = Modifier.padding(vertical = Spacing.sm),
+                        modifier = Modifier.padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
@@ -78,11 +86,11 @@ fun PlanDayScheduleSection(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${day.dayNumber}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                             color = if (isSelected) {
                                 MaterialTheme.colorScheme.onSurface
                             } else {
@@ -94,7 +102,7 @@ fun PlanDayScheduleSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.md))
+        Spacer(modifier = Modifier.height(18.dp))
 
         // Заголовок текущего выбранного дня и целевые калории
         Row(
@@ -102,31 +110,44 @@ fun PlanDayScheduleSection(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = currentDay.dayName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                )
+                Text(
+                    text = currentDay.dayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+
             Surface(
                 shape = RoundedCornerShape(Spacing.pill),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, GlassBorderLevel1),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
             ) {
                 Text(
                     text = currentDay.targetCaloriesText,
                     style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.sm))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Список приемов пищи дня
         Column(
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             currentDay.meals.forEach { meal ->
                 PlanMealItemCard(meal = meal)
@@ -136,68 +157,172 @@ fun PlanDayScheduleSection(
 }
 
 /**
- * Карточка отдельного приема пищи в расписании дня.
+ * Карточка отдельного приема пищи в расписании дня в стиле Aether Zero-G Luxury.
  */
 @Composable
 fun PlanMealItemCard(
     meal: PlanMealUiModel,
     modifier: Modifier = Modifier,
 ) {
+    val mealColor = when (meal.mealType) {
+        "Завтрак" -> Color(0xFFFBBF24)
+        "Обед" -> Color(0xFF60A5FA)
+        "Ужин" -> Color(0xFFA78BFA)
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+
+    val mealIcon = when (meal.mealType) {
+        "Завтрак" -> FitIcons.Sun
+        "Обед" -> FitIcons.Noon
+        "Ужин" -> FitIcons.Sunset
+        else -> FitIcons.Moon
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .testTag("plan_meal_item_${meal.mealType}"),
-        shape = RoundedCornerShape(Spacing.md),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, GlassBorderLevel2),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Spacing.md),
+                .padding(16.dp),
         ) {
+            // Верхняя строка: иконка + тип приема пищи и калории
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Surface(
-                    shape = RoundedCornerShape(Spacing.pill),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    border = BorderStroke(1.dp, GlassBorderLevel1),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = mealColor.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, mealColor.copy(alpha = 0.35f)),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = mealIcon,
+                                contentDescription = null,
+                                tint = mealColor,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+
                     Text(
                         text = meal.mealType,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
 
-                Text(
-                    text = meal.caloriesText,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                )
+                Surface(
+                    shape = RoundedCornerShape(Spacing.pill),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                ) {
+                    Text(
+                        text = meal.caloriesText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.xs))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // Название блюда
             Text(
                 text = meal.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Spacer(modifier = Modifier.height(Spacing.xs))
+            Spacer(modifier = Modifier.height(6.dp))
 
+            // Макросы
             Text(
                 text = "${meal.proteinsText} • ${meal.fatsText} • ${meal.carbsText}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Нижняя строка: теги и кнопки действий
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(Spacing.pill),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = BorderStroke(1.dp, GlassBorderLevel1),
+                    ) {
+                        Text(
+                            text = "#${meal.mealType}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(Spacing.pill),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)),
+                    ) {
+                        Text(
+                            text = "#ПП",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(Spacing.pill),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = FitIcons.Bookmark,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = "В плане",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                        )
+                    }
+                }
+            }
         }
     }
 }

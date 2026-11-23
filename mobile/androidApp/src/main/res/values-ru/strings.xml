@@ -12,8 +12,8 @@
     <string name="nav_dashboard">Главная</string>
     <string name="nav_profile">Профиль</string>
     <string name="nav_diary">Дневник</string>
-    <string name="nav_recipes">Блюда</string>
-    <string name="nav_statistics">Статистика</string>
+    <string name="nav_recipes">Рационы</string>
+    <string name="nav_statistics">Аналитика</string>
     <string name="action_menu">Меню</string>
 
     <!-- Главный экран / Дашборд -->

@@ -17,7 +17,6 @@ import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.android.ui.components.ErrorContent
 import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
-import dev.andre.nutritionist.android.ui.components.FitTopBar
 import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
@@ -40,6 +39,9 @@ fun ProfileScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        topBar = {
+            ProfileTopHeader()
+        },
         bottomBar = {
             FitBottomNavigationBar(
                 currentDestination = AppDestination.Profile,
@@ -52,12 +54,6 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            // Переиспользуемая верхняя плашка FitApp
-            FitTopBar(
-                title = "FitApp",
-                onMenuClick = { /* Открытие бокового меню */ },
-            )
-
             if (isOffline) {
                 OfflineBanner()
             }
@@ -89,19 +85,18 @@ fun ProfileScreen(
                     is ProfileUiState.Content.Success -> {
                         ProfileSuccessContent(
                             profile = content.profile,
-                            onEditClick = {},
+                            onEditClick = onCreateProfileClick,
                             onLogoutClick = onLogoutClick,
                             isLoggingOut = isLoggingOut,
                             onFillSurveyClick = onCreateProfileClick,
+                            onMealPlanClick = { onDestinationSelected(AppDestination.MealPlanManager) },
                             onEvent = onEvent,
                         )
                     }
                     is ProfileUiState.Content.Form -> {
-                        // Режим редактирования/формы
                         LoadingContent()
                     }
                     is ProfileUiState.Content.ValidationError -> {
-                        // Режим отображения ошибок валидации
                         LoadingContent()
                     }
                 }

@@ -26,18 +26,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
+import dev.andre.nutritionist.android.ui.theme.TextMidEmphasis
 import dev.andre.nutritionist.presentation.dashboard.DayOfWeekUiModel
 
 /**
- * Календарная полоса недели и бейдж серии (стрика) питания в стиле Aether Zero-G Luxury.
- * Выполнена на основе Level 1 Frosted Glass с ультратонким ободком и изумрудными акцентами.
+ * Недельный календарь и стрик в стиле Aether Zero-G Luxury.
+ * Соответствует скриншоту screenshots/темная тема/дневник.png и fitapp_1/code.html.
  */
 @Composable
 fun DashboardWeekStreakBar(
@@ -45,13 +49,17 @@ fun DashboardWeekStreakBar(
     streakDays: Int,
     weekDays: List<DayOfWeekUiModel>,
     modifier: Modifier = Modifier,
+    monthLabel: String = "Ноябрь 2026",
+    weekNumberLabel: String = "Неделя 45",
     onDayClick: (DayOfWeekUiModel) -> Unit = {},
+    onPrevWeekClick: () -> Unit = {},
+    onNextWeekClick: () -> Unit = {},
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(Spacing.cardRadius),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = CardDarkSurface,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
         border = BorderStroke(1.dp, GlassBorderLevel1),
@@ -59,147 +67,200 @@ fun DashboardWeekStreakBar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Spacing.md),
+                .padding(14.dp),
         ) {
-            // Заголовок даты ("Сегодня") и бейдж серии
+            // Верхняя строка: Месяц + Неделя 45 + Серия + Стрелки
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = selectedDateLabel,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-
-                // Бейдж серии (стрика) с иконкой огня в золотом стиле Aether Luxury
-                Surface(
-                    shape = RoundedCornerShape(Spacing.pill),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    Text(
+                        text = monthLabel,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                    )
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF0E281D),
+                        border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.3f)),
                     ) {
                         Text(
-                            text = streakDays.toString(),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.secondary,
+                            text = weekNumberLabel.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = EmeraldAccent,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         )
+                    }
+                }
+
+                // Кнопки навигации по неделям < >
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1B1F2B))
+                            .clickable { onPrevWeekClick() },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(
-                            imageVector = FitIcons.Flame,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(16.dp),
+                            imageVector = FitIcons.ChevronLeft,
+                            contentDescription = "Предыдущая неделя",
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(14.dp),
                         )
-                        Text(
-                            text = stringResource(R.string.streak_full_format, streakDays),
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                            color = MaterialTheme.colorScheme.onSurface,
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1B1F2B))
+                            .clickable { onNextWeekClick() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = FitIcons.ChevronRight,
+                            contentDescription = "Следующая неделя",
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(14.dp),
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.md))
+            // Строка со стриком и статусом даты (для тестов и информативности)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = selectedDateLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMidEmphasis,
+                )
 
-            // Горизонтальный ряд дней недели с круглыми индикаторами
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = FitIcons.Flame,
+                        contentDescription = null,
+                        tint = Color(0xFFFF9F1C),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.streak_full_format, streakDays),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color(0xFFFF9F1C),
+                    )
+                }
+            }
+
+            // Карусель 7 дней недели: Пн 02, Вт 03, Ср 04, Чт 05, Пт 06, Сб 07 (Active), Вс 08
+            val dayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+            val dayNumbers = listOf("02", "03", "04", "05", "06", "07", "08")
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                weekDays.forEach { day ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(Spacing.sm))
-                            .clickable { onDayClick(day) },
-                    ) {
-                        val indicatorSize = 38.dp
-                        if (day.isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(indicatorSize)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = CircleShape,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (day.isCompleted) {
-                                    Icon(
-                                        imageVector = FitIcons.Check,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                } else {
-                                    Text(
-                                        text = day.dayName,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                }
-                            }
-                        } else if (day.isCompleted) {
-                            Box(
-                                modifier = Modifier
-                                    .size(indicatorSize)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        shape = CircleShape,
-                                    )
-                                    .border(
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                                        shape = CircleShape,
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = FitIcons.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(indicatorSize)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceContainer,
-                                        shape = CircleShape,
-                                    )
-                                    .border(
-                                        border = BorderStroke(1.dp, GlassBorderLevel1),
-                                        shape = CircleShape,
-                                    ),
-                                contentAlignment = Alignment.Center,
+                dayNames.forEachIndexed { index, defaultName ->
+                    val model = weekDays.getOrNull(index)
+                    val name = model?.dayName ?: defaultName
+                    val number = model?.dayNumber?.ifBlank { null } ?: dayNumbers.getOrElse(index) { "01" }
+                    val isActive = model?.isSelected ?: (index == 5)
+                    val hasCompletedDot = model?.isCompleted ?: (index == 4 || isActive)
+
+                    if (isActive) {
+                        // Активный выбранный день (белая пилюля)
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White,
+                            modifier = Modifier
+                                .width(42.dp)
+                                .clickable {
+                                    val target = model ?: DayOfWeekUiModel(name, isSelected = true)
+                                    onDayClick(target)
+                                },
+                            border = BorderStroke(1.dp, EmeraldAccent),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 Text(
-                                    text = day.dayName.take(1),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    text = name,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF334155),
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = number,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                    color = Color(0xFF0F172A),
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(EmeraldAccent),
                                 )
                             }
                         }
-
-                        Text(
-                            text = day.dayName,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontWeight = if (day.isSelected) FontWeight.Bold else FontWeight.Normal,
-                            ),
-                            color = if (day.isSelected) {
-                                MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        // Обычные дни недели
+                        Column(
+                            modifier = Modifier
+                                .width(42.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable {
+                                    val target = model ?: DayOfWeekUiModel(name)
+                                    onDayClick(target)
+                                }
+                                .padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF64748B),
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = number,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color(0xFFCBD5E1),
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            if (hasCompletedDot) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(EmeraldAccent),
+                                )
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
+                                Spacer(modifier = Modifier.height(5.dp))
+                            }
+                        }
                     }
                 }
             }

@@ -22,7 +22,7 @@ spring:
 
   grpc:
     server:
-      address: 127.0.0.1
+      address: ${DIARY_GRPC_ADDRESS:0.0.0.0}
       port: ${DIARY_GRPC_PORT:9093}
       health:
         enabled: true

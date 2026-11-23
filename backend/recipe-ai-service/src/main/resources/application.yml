@@ -17,6 +17,9 @@ spring:
       timeout: 2s
       password: ${REDIS_PASSWORD:}
 
+server:
+  port: ${RECIPE_SERVER_PORT:8087}
+
 management:
   server:
     port: ${RECIPE_MANAGEMENT_PORT:8084}

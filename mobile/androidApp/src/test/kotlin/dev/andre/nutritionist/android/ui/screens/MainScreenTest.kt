@@ -147,19 +147,19 @@ class MainScreenTest {
         }
 
         // Проверяем отображение заголовков КБЖУ
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_fats)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_carbs)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_proteins)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithText(context.getString(R.string.macro_calories)).onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.macro_fats)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.macro_carbs)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.macro_proteins)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(context.getString(R.string.macro_calories)).onFirst().performScrollTo().assertIsDisplayed()
 
         // Проверяем отображение целевых показателей из профиля
-        composeTestRule.onNodeWithText("/ 2200").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 75 г").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 260 г").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 135 г").assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 2200").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 75 г").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 260 г").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 135 г").performScrollTo().assertIsDisplayed()
 
         // Проверяем текущее значение употреблённых калорий
-        composeTestRule.onAllNodesWithText("85").onFirst().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("85").onFirst().performScrollTo().assertIsDisplayed()
     }
 
     @Test

@@ -14,6 +14,8 @@ import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.UserId
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.number
 
 /**
  * Создаёт тестовый дневник с образцовой записью (Йогурт епика) для отображения по умолчанию.
@@ -53,11 +55,14 @@ class DashboardUiStateMapper : UiStateMapper<DashboardState, DashboardUiState> {
             DashboardState.Content.Loading -> DashboardUiState(content = DashboardUiState.Content.Loading)
             is DashboardState.Content.Error -> DashboardUiState(content = DashboardUiState.Content.Error(content.message))
             is DashboardState.Content.Success -> {
+                val selectedDate = state.selectedDate ?: content.diary.date
                 val data = mapSuccess(
                     profile = content.profile,
                     diary = content.diary,
                     expandedMeals = content.expandedMeals,
                     showCompleteProfileBanner = content.showCompleteProfileBanner,
+                    selectedDate = selectedDate,
+                    selectedDateLabel = formatSelectedDateLabel(selectedDate),
                 )
                 DashboardUiState(content = DashboardUiState.Content.Success(data))
             }
@@ -97,7 +102,9 @@ class DashboardUiStateMapper : UiStateMapper<DashboardState, DashboardUiState> {
         customMeals: List<MealSectionUiModel>? = null,
         expandedMeals: Set<MealType> = setOf(MealType.DINNER),
         showCompleteProfileBanner: Boolean = false,
+        selectedDate: LocalDate? = null,
         selectedDateLabel: String = "Сегодня",
+        weekDays: List<DayOfWeekUiModel>? = null,
     ): DashboardSuccessUiModel {
         val effectiveDiary = if (diary.entries.isEmpty() && customMeals == null) {
             defaultSampleDiary(diary.userId).copy(streakDays = diary.streakDays)
@@ -231,14 +238,29 @@ class DashboardUiStateMapper : UiStateMapper<DashboardState, DashboardUiState> {
             )
         }
 
+        val effectiveWeekDays = weekDays
+            ?: (selectedDate ?: diary.date).let { weekDaysForDate(it) }
+            ?: defaultWeekDays()
+
         return DashboardSuccessUiModel(
             selectedDateLabel = selectedDateLabel,
             streakDays = effectiveDiary.streakDays,
             streakLabel = "Серия записи еды: ${effectiveDiary.streakDays} дн.",
-            weekDays = defaultWeekDays(),
+            weekDays = effectiveWeekDays,
             nutritionSummary = nutritionSummary,
             meals = meals,
             showCompleteProfileBanner = showCompleteProfileBanner,
         )
+    }
+
+    private fun formatSelectedDateLabel(date: LocalDate): String {
+        val monthsGenitive = listOf(
+            "января", "февраля", "марта", "апреля", "мая", "июня",
+            "июля", "августа", "сентября", "октября", "ноября", "декабря",
+        )
+        val dayNames = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье")
+        val dayName = dayNames.getOrElse(date.dayOfWeek.isoDayNumber - 1) { "" }
+        val monthName = monthsGenitive.getOrElse(date.month.number - 1) { "" }
+        return "$dayName, ${date.day} $monthName"
     }
 }

@@ -5,6 +5,54 @@
 
 Обновлено: 2026-11-22
 
+### T-061 — Редизайн экрана профиля 1:1 по темной теме и аудит коммуникации с сервисами (2026-11-22)
+
+- Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Блок 1: Аудит сетевой коммуникации и логов Logcat:
+  - Проверена инициализация gRPC-клиента: в логах `FitGrpc: Targeting gRPC service at host=10.0.2.2, port=9090` через `GrpcClientFactory.kt`.
+  - Установлено, что сетевой вызов по gRPC на данный момент сконфигурирован в `AndroidProfileGrpcServiceClient.kt` (обращение к `profile-service`), в то время как генерация ИИ-рецептов (`RecipeRepositoryImpl`), рационы питания (`MealPlanRepositoryImpl`) и синхронизация дневника (`DefaultDiaryRemoteDataSource`) работают в локальном / in-memory режиме с имитацией задержки (offline-first).
+- Блок 2: 100% визуальное соответствие темной теме `screenshots/темная тема/экран профиля.png`:
+  - `ProfileTopHeader`: неоновая плашка `• FITAPP ПРОФИЛЬ` (0xFF00E599), крупный заголовок `Профиль` и круглая кнопка уведомлений со светодиодным индикатором.
+  - `ProfileHeroCard`: светящееся неоновое кольцо аватара (2dp emerald), круглый бейдж редактирования с карандашом, отображение имени `John Doe`, бейдж `PRO`, email `john.athlete@fitapp.io`, активная ссылка `Редактировать данные >`, внутренняя плашка страйка (иконка огня, `14 дней подряд`, `Дисциплина в норме`, бейдж `Уровень 4`).
+  - `ProfileHealthParametersSection`: секция `ПАРАМЕТРЫ ЗДОРОВЬЯ` с меткой `Синхронизировано с Health` и сеткой 2x2:
+    - Вес: иконка `+` на синем фоне, крупное значение `70 кг`, бейдж `↓ 1.4 кг за месяц`.
+    - Активность: иконка молнии на оранжевом фоне, `Лёгкая активность`, подзаголовок `1–3 тренировки / нед`.
+    - Цель: иконка мишени на зеленом фоне, `Похудение`, подзаголовок в неоновом цвете `Целевой вес: 65 кг`.
+    - Бюджет: иконка кошелька на бирюзовом фоне, `500 ₽ / день`, подзаголовок `~3 500 ₽ в неделю`.
+  - `ProfileNutritionNormCard`: секция `• СУТОЧНАЯ НОРМА КБЖУ` с целевой калорийностью `2 400 ккал` и 3 внутренними колонками: Белки `170 г`, Жиры `85 г`, Углеводы `378 г`.
+  - `ProfileMenuCard`: карточка действий с цветными контейнерами иконок: «Настройки», «План питания и цели» (связка с MealPlanManager), «Уведомления» с бейджем «Вкл», «Помощь».
+  - `ProfileFooter`: полноширинная кнопка выхода с красной каймой и текстом `Выйти из аккаунта`, номер версии `FitApp v2.4.1 (Build 412)`.
+- Блок 3: Верификация и тесты:
+  - PASS: `:mobile:shared:testAndroidHostTest` — 221 тест успешно пройден.
+  - PASS: `:mobile:androidApp:testDebugUnitTest` — 121 тест успешно пройден (включая все 19 тестов `ProfileScreenUnitTest`).
+  - Успешный запуск и развёртывание на `emulator-5554`, снят скриншот экрана.
+
+- Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `diagnose-build-failure`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Блок 1: Подъём и верификация базовой инфраструктуры Docker Compose:
+  - `postgres` (127.0.0.1:5433): базы данных `profile_db`, `catalog_db`, `diary_db`, `keycloak_db` функционируют в штатном режиме.
+  - `redis` (127.0.0.1:6379): кэширование, сессии и распределённые блокировки доступны (`PONG`).
+  - `keycloak` (127.0.0.1:8080): реалм `FitAssistant`, клиент `fitassistant-mobile`, тестовый пользователь `testuser` (`password123`) выдают валидные JWT Bearer-токены.
+  - `schema-registry` (127.0.0.1:8081): схемы Avro зарегистрированы (subject `user.registered-value`).
+  - `kafka` (127.0.0.1:9092): топики `user.registered` и `diary.entry.created` созданы и функционируют.
+- Блок 2: Диагностика и устранение критических дефектов запуска сервисов:
+  - [DEFECT-01 / RESOLVED] `profile-service`: устранена коллизия Liquibase (`relation "outbox_messages" already exists`) при накате миграций на существующую БД. Миграция разделена на восстановленный `v1/003-create-outbox-table.xml`, выделенный `v1/004-calories-consumer.xml` (`processed_events`) и `v1/005-profile-outbox-delivery.xml` (добавление колонок outbox с корректным заполнением `partition_key` без недопустимого в Postgres reference in DEFAULT).
+  - [DEFECT-02 / RESOLVED] `recipe-ai-service`: устранён конфликт портов с Keycloak (порт 8080) путём явной конфигурации `server.port: ${RECIPE_SERVER_PORT:8087}` в `application.yml`.
+  - [DEFECT-03 / RESOLVED] `catalog-price-service`: устранена коллизия gRPC-порта 9192 при запуске тестов во время работы сервиса через динамический порт `spring.grpc.server.port=0`, `server.port=0`, `management.server.port=0` в `AbstractPostgresIntegrationTest`.
+- Блок 3: Сквозная верификация всех 4 микросервисов (E2E Integration & gRPC Reflection):
+  - `catalog-price-service` (gRPC 9192, HTTP 8086): Actuator `/actuator/health` UP; ServerReflection активен; `SearchProducts` выполняет поиск товаров («Яйцо») с БЖУ и региональными ценами в Москве, keyset-пагинация работает; Redis-кэш инвалидируется при `UpsertPrice` (RBAC `ROLE_ADMIN`).
+  - `profile-service` (gRPC 9090, HTTP 8085): Actuator `/actuator/health` UP; `GetProfile` с Bearer-токеном Keycloak возвращает данные пользователя; `UpdateProfile` с `idempotency-key` обновляет профиль, пересчитывает КБЖУ, сохраняет и публикует Outbox-событие `user.registered` в Kafka; повторный вызов с тем же ключом возвращает кэш Redis; вызов с изменённым телом возвращает `INVALID_ARGUMENT`.
+  - `recipe-ai-service` (gRPC 9094, HTTP 8087, Actuator 8084): Actuator `/actuator/health` UP; ServerReflection активен; безопасность mTLS/Envoy подтверждена (`UNAUTHENTICATED: Authenticated gateway and identity required`).
+  - `diary-service` (gRPC 9093): Actuator UP; ServerReflection активен; `AddEntry` проверяет контракт, валидирует `price_basis_milligrams`, сохраняет запись в БД и outbox `outbox_messages` (`status = PUBLISHED`); повторный вызов возвращает идемпотентный ответ; вызов с тем же ключом и другим телом возвращает `ALREADY_EXISTS: Idempotency key was already used with a different request`; `GetDailyEntries` возвращает список приёмов пищи и суммарные КБЖУ дня.
+- Блок 4: Сквозная интеграция Kafka Event-Driven (Outbox -> Kafka -> Consumer):
+  - Событие `diary.entry.created`, опубликованное `diary-service` при `AddEntry`, автоматически вычитано consumer `profile-calories` в `profile-service`.
+  - Запись об обработке сохранена в `processed_events` с хэшем полезной нагрузки.
+  - Метод `profile-service: GetDailyCaloriesBalance` успешно рассчитывает суточный баланс: целевые 4142 ккал, потреблённые 250 ккал, остаток 3892 ккал.
+- Верификация:
+  - PASS: `:backend:catalog-price-service:test` — 32 теста успешно пройдены.
+  - PASS: `:backend:profile-service:test` — 82 теста успешно пройдены.
+  - PASS: `:backend:recipe-ai-service:test` — 8 тестов успешно пройдены.
+  - PASS: `:backend:diary-service:test` — все тесты пройдены.
+
 ### T-059 — Ликвидация заглушек, удаление servicecheck, умный Offline-First режим и сквозная система Snackbars (2026-11-22)
 
 - Skills: `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
@@ -1448,6 +1496,21 @@
   - `./gradlew :mobile:shared:allTests` — BUILD SUCCESSFUL.
   - `./gradlew :mobile:androidApp:testDebugUnitTest` — BUILD SUCCESSFUL.
   - `./gradlew :mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+---
+
+### Фикс генерации AI-рецептов (End-to-End MVI + HUD):
+- **Диагностика:**
+  - В модальном окне добавления приёма пищи (`AiRecipeGenerationBottomSheet.kt`) нажатие «Сгенерировать приём пищи» вызывало `onGenerate`, которое в `DashboardRoute.kt` просто закрывало шторку (`activeAddMealType = null`) и переходило на пустой экран генератора без передачи введённых параметров (бюджет, калории, предпочтения) и без запуска генерации.
+  - Экран `AiRecipeGeneratingContent.kt` не соответствовал макету `screenshots/экран при генерации.png` (не было HUD-панели, кинетического ядра с вращающимися кольцами, чеклиста фаз синтеза КБЖУ и кнопки отмены).
+- **Реализация:**
+  - В `AiRecipeGenerationBottomSheet.kt` реализован 3-этапный жизненный цикл генерации:
+    1. Настройка параметров (`CONFIGURING`) — в точности по `screenshots/темная тема/генерация блюд с ии.png`.
+    2. Полноценный высокотехнологичный HUD генерации (`GENERATING`) — в точности по `screenshots/экран при генерации.png` и `fitapp_ai_2/code.html` (FitApp AI Core бейдж, кинетическое ядро с анимацией вращающихся орбит, прогресс-бар, чеклист оптимизации КБЖУ, кнопка «Отменить генерацию»).
+    3. Карточка готового блюда (`SUCCESS`) с полным расчётом КБЖУ, граммовками ингредиентов, временем, стоимостью и кнопкой «Добавить в дневник питания».
+  - В `DashboardRoute.kt` добавлена передача `RecipeRepository`, `DiaryRepository` и коллбэка `onRecipeGeneratedAndAdded`, который мгновенно оптимистично добавляет созданное блюдо в нужный слот приёма пищи в `DashboardViewModel`, сохраняет его в Room БД и синхронизирует.
+  - `AiRecipeGeneratingContent.kt` переведён на точный Zero-G Luxury HUD дизайн с орбитальной кинетической анимацией.
+  - Проверено на эмуляторе: генерация блюда, отображение HUD, добавление в дневник и обновление суточного КБЖУ работают безупречно. Все 121 тест в `:mobile:androidApp` и все тесты в `:mobile:shared` проходят успешно.
 
 
 

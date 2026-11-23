@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet id="004-profile-calories-consumer" author="team" dbms="postgresql">
+        <sql>
+            CREATE TABLE IF NOT EXISTS processed_events (
+                consumer_name VARCHAR(64) NOT NULL,
+                user_id UUID NOT NULL,
+                meal_id UUID NOT NULL,
+                calories INTEGER NOT NULL CHECK (calories &gt;= 0),
+                consumed_at TIMESTAMPTZ NOT NULL,
+                payload_hash VARCHAR(64) NOT NULL,
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (consumer_name, user_id, meal_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_processed_calories_period ON processed_events (user_id, consumed_at);
+        </sql>
+        <rollback>
+            <dropTable tableName="processed_events"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

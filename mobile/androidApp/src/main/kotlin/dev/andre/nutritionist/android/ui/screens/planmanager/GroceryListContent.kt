@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,14 +54,14 @@ fun GroceryListSection(
         // Карточка прогресса покупок
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(Spacing.md),
+            shape = RoundedCornerShape(20.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             border = BorderStroke(1.dp, GlassBorderLevel2),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(Spacing.md),
+                    .padding(18.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -69,56 +70,64 @@ fun GroceryListSection(
                 ) {
                     Text(
                         text = stringResource(R.string.plan_manager_groceries_title),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = progressText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(Spacing.pill),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+                    ) {
+                        Text(
+                            text = progressText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 LinearProgressIndicator(
                     progress = { progressPercent },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
+                        .height(8.dp)
                         .clip(RoundedCornerShape(Spacing.pill)),
                     color = MaterialTheme.colorScheme.primaryContainer,
                     trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 )
 
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.plan_manager_estimated_sum),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = totalPriceText,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFE5C378),
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.md))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Группы категорий продуктов
         Column(
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             categories.forEach { category ->
                 GroceryCategoryBlock(
@@ -131,7 +140,7 @@ fun GroceryListSection(
 }
 
 /**
- * Блок одной категории продуктов (например, "Овощи и зелень").
+ * Блок одной категории продуктов в стиле Aether Zero-G Luxury.
  */
 @Composable
 fun GroceryCategoryBlock(
@@ -143,37 +152,44 @@ fun GroceryCategoryBlock(
         modifier = modifier
             .fillMaxWidth()
             .testTag("grocery_category_${category.categoryName}"),
-        shape = RoundedCornerShape(Spacing.md),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, GlassBorderLevel2),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Spacing.sm),
+                .padding(14.dp),
         ) {
             // Заголовок категории
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = category.categoryName,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    text = category.countText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Surface(
+                    shape = RoundedCornerShape(Spacing.pill),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    border = BorderStroke(1.dp, GlassBorderLevel1),
+                ) {
+                    Text(
+                        text = category.countText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.xs))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Список позиций категории
             category.items.forEach { item ->
@@ -187,7 +203,7 @@ fun GroceryCategoryBlock(
 }
 
 /**
- * Строка отдельного продукта с чекбоксом.
+ * Строка отдельного продукта с чекбоксом в стиле Aether Zero-G Luxury.
  */
 @Composable
 fun GroceryItemRow(
@@ -198,11 +214,12 @@ fun GroceryItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Spacing.sm))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onToggle)
-            .padding(horizontal = Spacing.xs, vertical = 2.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
             .testTag("grocery_item_${item.id.raw}"),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Checkbox(
             checked = item.isBought,
@@ -210,7 +227,7 @@ fun GroceryItemRow(
             colors = CheckboxDefaults.colors(
                 checkedColor = MaterialTheme.colorScheme.primaryContainer,
                 uncheckedColor = MaterialTheme.colorScheme.outline,
-                checkmarkColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                checkmarkColor = Color(0xFF07090E),
             ),
         )
 
@@ -218,6 +235,7 @@ fun GroceryItemRow(
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (item.isBought) FontWeight.Normal else FontWeight.SemiBold,
                 textDecoration = if (item.isBought) TextDecoration.LineThrough else TextDecoration.None,
                 color = if (item.isBought) {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -225,6 +243,7 @@ fun GroceryItemRow(
                     MaterialTheme.colorScheme.onSurface
                 },
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = item.amount,
                 style = MaterialTheme.typography.bodySmall,
@@ -240,8 +259,9 @@ fun GroceryItemRow(
             Text(
                 text = item.estimatedPriceText,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE5C378),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
     }

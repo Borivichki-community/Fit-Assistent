@@ -1,6 +1,8 @@
 package dev.andre.nutritionist.presentation.dashboard
 
 import dev.andre.nutritionist.domain.model.MealType
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 
 /**
  * Вспомогательная функция форматирования граммов макронутриентов.
@@ -76,17 +78,37 @@ data class DayOfWeekUiModel(
     val dayName: String,
     val isSelected: Boolean = false,
     val isCompleted: Boolean = false,
+    val date: LocalDate? = null,
+    val dayNumber: String = "",
 )
 
 fun defaultWeekDays(): List<DayOfWeekUiModel> = listOf(
-    DayOfWeekUiModel(dayName = "Пн", isSelected = true, isCompleted = true),
-    DayOfWeekUiModel(dayName = "Вт", isSelected = false, isCompleted = false),
-    DayOfWeekUiModel(dayName = "Ср", isSelected = false, isCompleted = false),
-    DayOfWeekUiModel(dayName = "Чт", isSelected = false, isCompleted = false),
-    DayOfWeekUiModel(dayName = "Пт", isSelected = false, isCompleted = false),
-    DayOfWeekUiModel(dayName = "Сб", isSelected = false, isCompleted = false),
-    DayOfWeekUiModel(dayName = "Вс", isSelected = false, isCompleted = false),
+    DayOfWeekUiModel(dayName = "Пн", isSelected = false, isCompleted = true, dayNumber = "02"),
+    DayOfWeekUiModel(dayName = "Вт", isSelected = false, isCompleted = true, dayNumber = "03"),
+    DayOfWeekUiModel(dayName = "Ср", isSelected = false, isCompleted = true, dayNumber = "04"),
+    DayOfWeekUiModel(dayName = "Чт", isSelected = false, isCompleted = true, dayNumber = "05"),
+    DayOfWeekUiModel(dayName = "Пт", isSelected = false, isCompleted = true, dayNumber = "06"),
+    DayOfWeekUiModel(dayName = "Сб", isSelected = true, isCompleted = true, dayNumber = "07"),
+    DayOfWeekUiModel(dayName = "Вс", isSelected = false, isCompleted = false, dayNumber = "08"),
 )
+
+fun weekDaysForDate(selectedDate: LocalDate, anchorDate: LocalDate = selectedDate): List<DayOfWeekUiModel> {
+    val dayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+    val isoDay = anchorDate.dayOfWeek.isoDayNumber // 1 = Monday, 7 = Sunday
+    val mondayEpochDays = anchorDate.toEpochDays() - (isoDay - 1)
+    val todayEpochDays = selectedDate.toEpochDays()
+
+    return dayNames.mapIndexed { index, name ->
+        val date = LocalDate.fromEpochDays(mondayEpochDays + index)
+        DayOfWeekUiModel(
+            dayName = name,
+            isSelected = date == selectedDate,
+            isCompleted = date.toEpochDays() <= todayEpochDays,
+            date = date,
+            dayNumber = date.day.toString().padStart(2, '0'),
+        )
+    }
+}
 
 /**
  * Успешные агрегированные данные для отображения в UI.

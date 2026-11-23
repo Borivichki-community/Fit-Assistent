@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,11 +28,10 @@ import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
-import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
 import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel2
 
 /**
- * Пустое состояние экрана управления рационом, когда у пользователя нет активного плана питания.
+ * Пустое состояние экрана управления рационом в стиле Aether Zero-G Luxury.
  */
 @Composable
 fun MealPlanManagerEmptyContent(
@@ -43,22 +43,22 @@ fun MealPlanManagerEmptyContent(
         modifier = modifier
             .fillMaxWidth()
             .testTag("plan_manager_empty_content"),
-        shape = RoundedCornerShape(Spacing.cardRadius),
+        shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, GlassBorderLevel2),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Spacing.xl),
+                .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Surface(
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(76.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, GlassBorderLevel1),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -73,17 +73,17 @@ fun MealPlanManagerEmptyContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(Spacing.lg))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = message,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(modifier = Modifier.height(Spacing.xs))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = stringResource(R.string.plan_manager_empty_subtitle),
@@ -92,23 +92,24 @@ fun MealPlanManagerEmptyContent(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(modifier = Modifier.height(Spacing.xl))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Button(
                 onClick = onNavigateToCatalog,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(48.dp)
                     .testTag("empty_navigate_to_catalog_button"),
                 shape = RoundedCornerShape(Spacing.pill),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    contentColor = Color(0xFF07090E),
                 ),
             ) {
                 Text(
                     text = stringResource(R.string.plan_manager_empty_btn),
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }

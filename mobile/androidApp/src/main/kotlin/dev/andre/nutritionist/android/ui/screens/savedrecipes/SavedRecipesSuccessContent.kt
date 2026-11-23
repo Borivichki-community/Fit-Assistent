@@ -26,19 +26,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.android.ui.components.Spacing
+import dev.andre.nutritionist.android.ui.screens.EmeraldAccent
 import dev.andre.nutritionist.android.ui.theme.GlassBorderLevel1
+import dev.andre.nutritionist.android.ui.theme.TextMidEmphasis
 import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.domain.model.RecipeId
 import dev.andre.nutritionist.presentation.savedrecipes.MealTypeFilterUiModel
 import dev.andre.nutritionist.presentation.savedrecipes.SavedRecipeItemUiModel
 
 /**
- * Основной список сохранённых рецептов с фильтрацией и строкой поиска.
+ * Основной список сохранённых рецептов с фильтрацией и строкой поиска в стиле Aether Zero-G Luxury.
+ * Полностью соответствует screenshots/темная тема/экран рецепты (избранное).png и fitapp_5/code.html.
  */
 @Composable
 fun SavedRecipesSuccessContent(
@@ -60,7 +65,7 @@ fun SavedRecipesSuccessContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.medium, vertical = Spacing.small),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Search Input
             OutlinedTextField(
@@ -70,14 +75,14 @@ fun SavedRecipesSuccessContent(
                     Text(
                         text = "Поиск по сохранённым блюдам...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = TextMidEmphasis,
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = FitIcons.Search,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = TextMidEmphasis,
                         modifier = Modifier.size(20.dp),
                     )
                 },
@@ -90,43 +95,42 @@ fun SavedRecipesSuccessContent(
                             Icon(
                                 imageVector = FitIcons.Close,
                                 contentDescription = "Очистить поиск",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = TextMidEmphasis,
                                 modifier = Modifier.size(18.dp),
                             )
                         }
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(Spacing.buttonRadius),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
+                    focusedBorderColor = EmeraldAccent,
                     unfocusedBorderColor = GlassBorderLevel1,
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    focusedContainerColor = Color(0xFF0B0E14),
+                    unfocusedContainerColor = Color(0xFF0B0E14),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("saved_recipes_search_input"),
             )
 
-            // Meal Types Row
+            // Meal Types Row (Luxury Pills)
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("saved_recipes_filters_row"),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(mealTypeFilters) { filterChip ->
+                    val isSelected = filterChip.isSelected
                     Surface(
-                        shape = RoundedCornerShape(Spacing.buttonRadius),
-                        color = if (filterChip.isSelected) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        },
+                        shape = RoundedCornerShape(Spacing.pill),
+                        color = if (isSelected) EmeraldAccent else Color(0xFF191F2B),
                         border = BorderStroke(
                             1.dp,
-                            if (filterChip.isSelected) MaterialTheme.colorScheme.primaryContainer else GlassBorderLevel1,
+                            if (isSelected) EmeraldAccent else GlassBorderLevel1,
                         ),
                         modifier = Modifier
                             .clickable { onMealTypeFilterSelected(filterChip.mealType) }
@@ -135,14 +139,10 @@ fun SavedRecipesSuccessContent(
                         Text(
                             text = filterChip.title,
                             style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = if (filterChip.isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             ),
-                            color = if (filterChip.isSelected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier.padding(horizontal = Spacing.medium, vertical = Spacing.small),
+                            color = if (isSelected) Color(0xFF091A14) else Color(0xFFE2E8F0),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -156,19 +156,19 @@ fun SavedRecipesSuccessContent(
             ) {
                 Text(
                     text = "Сохранённые блюда",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
                 )
                 Text(
                     text = countText,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = EmeraldAccent,
                     modifier = Modifier.testTag("saved_recipes_count_text"),
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.extraSmall))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Recipes List
         LazyColumn(
@@ -176,7 +176,7 @@ fun SavedRecipesSuccessContent(
                 .fillMaxSize()
                 .testTag("saved_recipes_list"),
             contentPadding = PaddingValues(horizontal = Spacing.medium, vertical = Spacing.small),
-            verticalArrangement = Arrangement.spacedBy(Spacing.small),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(recipes, key = { it.id }) { recipe ->
                 SavedRecipeCard(

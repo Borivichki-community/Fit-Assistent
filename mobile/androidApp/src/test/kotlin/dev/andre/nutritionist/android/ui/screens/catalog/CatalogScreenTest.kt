@@ -103,6 +103,7 @@ class CatalogScreenTest {
         }
 
         composeTestRule.onNodeWithTag("catalog_search_input").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("catalog_categories_row").performScrollTo()
         composeTestRule.onNodeWithTag("catalog_category_chip_Баланс").assertIsDisplayed()
         composeTestRule.onNodeWithTag("catalog_category_chip_Баланс").performClick()
         assertEquals("Баланс", selectedCategory)

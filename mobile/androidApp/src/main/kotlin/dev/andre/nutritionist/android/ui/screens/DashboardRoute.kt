@@ -21,9 +21,19 @@ import dev.andre.nutritionist.presentation.addmeal.AddMealViewModel
 import dev.andre.nutritionist.presentation.dashboard.DashboardEvent
 import dev.andre.nutritionist.presentation.dashboard.DashboardNews
 import dev.andre.nutritionist.presentation.dashboard.DashboardViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import dev.andre.nutritionist.domain.model.DiaryEntry
+import dev.andre.nutritionist.domain.model.DiaryEntryId
+import dev.andre.nutritionist.domain.model.FoodItemId
+import dev.andre.nutritionist.domain.model.IdempotencyKey
+import dev.andre.nutritionist.domain.repository.DiaryRepository
+import dev.andre.nutritionist.domain.repository.RecipeRepository
+import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import kotlin.time.Instant
 
 /**
  * Stateful Route главного экрана (Dashboard).
@@ -44,8 +54,11 @@ fun DashboardRoute(
     authRepository: AuthRepository = koinInject(),
     connectivityObserver: ConnectivityObserver = koinInject(),
     syncScheduler: SyncScheduler = koinInject(),
+    recipeRepository: RecipeRepository = koinInject(),
+    diaryRepository: DiaryRepository = koinInject(),
     snackbarHostState: SnackbarHostState? = null,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember(authRepository) { authRepository.getUserId() }
     if (currentUserId == null) {
         LaunchedEffect(Unit) {
@@ -63,6 +76,14 @@ fun DashboardRoute(
     val today = remember {
         LocalDate.fromEpochDays(System.currentTimeMillis() / (24 * 60 * 60 * 1000L))
     }
+    var selectedDate by remember { mutableStateOf(today) }
+    var weekOffset by remember { mutableStateOf(0) }
+
+    val months = remember {
+        listOf("Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь")
+    }
+    val monthLabel = "${months.getOrElse(selectedDate.month.number - 1) { "" }} ${selectedDate.year}"
+    val weekNumberLabel = "Неделя ${(selectedDate.dayOfYear / 7) + 1}"
 
     var activeAddMealType by remember { mutableStateOf<MealType?>(null) }
 
@@ -76,14 +97,14 @@ fun DashboardRoute(
         )
     }
 
-    LaunchedEffect(activeAddMealType, currentUserId, today) {
+    LaunchedEffect(activeAddMealType, currentUserId, selectedDate) {
         val mealType = activeAddMealType
         if (mealType != null) {
             addMealViewModel.dispatch(
                 AddMealEvent.Ui.Init(
                     mealType = mealType,
                     userId = currentUserId,
-                    date = today,
+                    date = selectedDate,
                 ),
             )
         }
@@ -143,31 +164,71 @@ fun DashboardRoute(
         onNavigateToProfile = onNavigateToProfile,
         onDestinationSelected = onDestinationSelected,
         onAddExerciseSleepClick = onAddExerciseSleepClick,
+        onDayClick = { dayModel ->
+            val d = dayModel.date
+            if (d != null) {
+                selectedDate = d
+                dashboardViewModel.dispatch(DashboardEvent.Ui.SelectDate(d))
+            }
+        },
+        onPrevWeekClick = {
+            weekOffset -= 1
+            val newDate = LocalDate.fromEpochDays(selectedDate.toEpochDays() - 7)
+            selectedDate = newDate
+            dashboardViewModel.dispatch(DashboardEvent.Ui.SelectDate(newDate))
+        },
+        onNextWeekClick = {
+            weekOffset += 1
+            val newDate = LocalDate.fromEpochDays(selectedDate.toEpochDays() + 7)
+            selectedDate = newDate
+            dashboardViewModel.dispatch(DashboardEvent.Ui.SelectDate(newDate))
+        },
+        monthLabel = monthLabel,
+        weekNumberLabel = weekNumberLabel,
         onRetry = {
             dashboardViewModel.dispatch(DashboardEvent.Ui.Retry)
         },
         modifier = modifier,
     )
 
-    if (activeAddMealType != null) {
-        val addMealUiState by addMealViewModel.state.collectAsStateWithLifecycle()
-        AddMealBottomSheet(
-            uiState = addMealUiState,
-            onQueryChange = { addMealViewModel.dispatch(AddMealEvent.Ui.SearchQueryChanged(it)) },
-            onCategorySelect = { addMealViewModel.dispatch(AddMealEvent.Ui.CategorySelected(it)) },
-            onFoodSelect = { foodModel ->
-                val food = addMealViewModel.addMealState.value.let { s ->
-                    (s.content as? AddMealState.Content.Success)?.foods?.find { it.id.raw == foodModel.id }
-                }
-                if (food != null) {
-                    addMealViewModel.dispatch(AddMealEvent.Ui.FoodSelected(food))
+    val currentMealType = activeAddMealType
+    if (currentMealType != null) {
+        dev.andre.nutritionist.android.ui.screens.airecipe.AiRecipeGenerationBottomSheet(
+            mealType = currentMealType,
+            onDismiss = { activeAddMealType = null },
+            recipeRepository = recipeRepository,
+            onRecipeGeneratedAndAdded = { recipe ->
+                activeAddMealType = null
+                coroutineScope.launch {
+                    val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
+                    val entry = DiaryEntry(
+                        id = DiaryEntryId("diary-gen-${recipe.id.raw}-${now.toEpochMilliseconds()}"),
+                        userId = currentUserId,
+                        foodItemId = FoodItemId("ai-recipe-${recipe.id.raw}"),
+                        foodName = recipe.title,
+                        portionGrams = 300.0,
+                        calories = recipe.calories,
+                        proteins = recipe.proteins,
+                        fats = recipe.fats,
+                        carbs = recipe.carbs,
+                        mealType = currentMealType,
+                        date = selectedDate,
+                        recordedAt = now,
+                        idempotencyKey = IdempotencyKey.generate(),
+                        portionDescription = "1 порция (${recipe.calories} ккал)",
+                    )
+                    dashboardViewModel.dispatch(DashboardEvent.Ui.AddMealOptimistic(entry))
+                    diaryRepository.addEntry(entry)
+                    // Прямой синхронный gRPC вызов в diary-service:
+                    dev.andre.nutritionist.data.remote.DefaultDiaryRemoteDataSource.companionSyncHandler?.invoke(entry)
+                    syncScheduler.scheduleDiarySync()
+                    snackbarHostState?.showSnackbar("Рецепт «${recipe.title}» добавлен в дневник!")
                 }
             },
-            onPortionChange = { addMealViewModel.dispatch(AddMealEvent.Ui.PortionChanged(it)) },
-            onConfirmAdd = { addMealViewModel.dispatch(AddMealEvent.Ui.ConfirmAdd) },
-            onDismiss = { activeAddMealType = null },
-            onScanBarcode = { addMealViewModel.dispatch(AddMealEvent.Ui.BarcodeScanClick) },
-            onAiCamera = { addMealViewModel.dispatch(AddMealEvent.Ui.AiCameraClick) },
+            onGenerate = { query, budget, calories ->
+                activeAddMealType = null
+                onDestinationSelected(AppDestination.AiRecipeGenerator)
+            },
         )
     }
 }

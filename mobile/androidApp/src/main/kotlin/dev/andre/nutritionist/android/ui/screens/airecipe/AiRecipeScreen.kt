@@ -118,6 +118,7 @@ fun AiRecipeScreen(
                 is AiRecipeUiState.Content.Generating -> {
                     AiRecipeGeneratingContent(
                         generating = content.generating,
+                        onCancel = onResetClicked,
                     )
                 }
 
