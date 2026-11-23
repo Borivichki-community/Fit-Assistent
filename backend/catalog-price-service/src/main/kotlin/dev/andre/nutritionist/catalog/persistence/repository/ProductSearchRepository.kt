@@ -100,13 +100,6 @@ class ProductSearchRepositoryImpl(
         val hasMore = resultList.size > boundedPageSize
         val pageItems = if (hasMore) resultList.subList(0, boundedPageSize) else resultList
 
-        // Batch-initialize lazy collections within open transaction via @BatchSize(50)
-        pageItems.forEach { product ->
-            product.prices.forEach { price ->
-                price.region.name
-            }
-        }
-
         val nextToken =
             if (hasMore && pageItems.isNotEmpty()) {
                 val lastItem = pageItems.last()
