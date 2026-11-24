@@ -7,6 +7,8 @@ import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.domain.repository.ProfileRepository
+import dev.andre.nutritionist.domain.usecase.ApplyMealPlanDayToDiaryUseCase
+import dev.andre.nutritionist.domain.usecase.LogRecipeToDiaryUseCase
 import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
 import dev.andre.nutritionist.presentation.profile.ProfileUiStateMapper
 import dev.andre.nutritionist.presentation.profile.ProfileUpdate
@@ -17,7 +19,8 @@ import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
 
 val domainModule: Module = module {
-    // Регистрация UseCases
+    factory { LogRecipeToDiaryUseCase(diaryRepository = get(), dispatchers = get()) }
+    factory { ApplyMealPlanDayToDiaryUseCase(diaryRepository = get(), dispatchers = get()) }
 }
 
 val localDataModule: Module = module {

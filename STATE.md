@@ -5,6 +5,30 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 / T-077 — KMP Domain-слой в :mobile:shared (commonMain, без UI): каталог рецептов, планы питания и тренерский доступ (2026-11-24)
+
+- **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(shared): T-077 implement recipe catalog, meal plans and coaching domain models and use cases`.
+- **Доменные модели и Value Classes (`dev.andre.nutritionist.domain.model`):**
+  - `ids.kt`: добавлены `@JvmInline value class` `RecipeIngredientId`, `MealPlanTemplateId`, `MealPlanItemId`, `CoachLinkId`, `AccessGrantId`, а также генератор `MealRecordId.generate()`.
+  - `Recipe.kt`: добавлены `RecipeAuthorType`, `ContentVisibility`, расширены `RecipeIngredient` (`id`, `nutritionPer100g`) и `Recipe` (`authorType`, `authorId`, `originRecipeId`, `description`, `instructions`, `visibility`, `servingsCount`, `totalWeightGrams`, `version`, `createdAt`, `updatedAt`) с обратной совместимостью.
+  - `MealPlanTemplate.kt`: добавлены `AccessMode`, `PlanItemType`, `MealPlanItem`, `MealPlanDay`, `MealPlanTemplate`.
+  - `CoachingModels.kt`: добавлены `CoachLinkStatus`, `CoachStudentLink`, `GrantSource`, `GrantTargetType`, `AccessGrant`.
+  - `SearchAndPagination.kt`: добавлены `RecipeSearchCriteria`, `MealPlanSearchCriteria`, `PagedResult<T>`.
+- **Интерфейсы репозиториев (`dev.andre.nutritionist.domain.repository`):**
+  - `RecipeCatalogRepository` (`observeMyRecipes`, `searchPublicRecipes`, `getRecipeById`, `saveRecipe`, `deleteRecipe`, `forkRecipe`, `publishRecipe`).
+  - `MealPlanRepository` (`searchMealPlans`, `getMealPlanById`, `saveMealPlan`, `deleteMealPlan`).
+  - `CoachingRepository` (`getCoachLinks`, `inviteStudent`, `respondCoachInvite`, `grantAccess`, `revokeAccess`).
+- **Калькулятор и UseCases (`commonMain` + Koin DI):**
+  - `RecipeNutritionCalculator`: чистый клиентский расчёт `RecipeNutritionSummary` (общий вес, итоговое КБЖУ, КБЖУ на 100 г с защитой от деления на ноль), расчёт порции и пропорциональной стоимости (возврат `null` при неизвестной стоимости).
+  - `LogRecipeToDiaryUseCase`: расчёт КБЖУ и стоимости порции рецепта и сохранение `MealRecord` в `DiaryRepository` (`sourceType = EntrySourceType.RECIPE`, `sourceId = recipe.id.raw`, `syncStatus = SyncStatus.PENDING`).
+  - `ApplyMealPlanDayToDiaryUseCase`: пакетное добавление всех блюд `MealPlanDay` (или выбранного дня `MealPlanTemplate`) в `DiaryRepository` с исчерпывающим маппингом `PlanItemType`.
+  - `Koin.kt`: регистрация `LogRecipeToDiaryUseCase` и `ApplyMealPlanDayToDiaryUseCase` в `domainModule`.
+- **Тестирование и верификация (`commonTest`, без MockK):**
+  - Созданы `FakeDiaryRepository`, `RecipeNutritionCalculatorTest`, `LogRecipeToDiaryUseCaseTest`, `ApplyMealPlanDayToDiaryUseCaseTest`.
+  - `:mobile:shared:allTests` — **BUILD SUCCESSFUL** (171 тест пройден, 0 пропущено, 0 ошибок).
+  - `:mobile:androidApp:compileDebugKotlin` — **BUILD SUCCESSFUL**.
+
 ### KAN-16 / T-076 — Бизнес-логика каталога рецептов, форков, меню тренера, Entitlements и gRPC-эндпоинтов в :backend:recipe-ai-service (2026-11-24)
 
 - **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
