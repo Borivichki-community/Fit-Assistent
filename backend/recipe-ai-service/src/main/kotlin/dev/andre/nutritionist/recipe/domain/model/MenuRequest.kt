@@ -64,5 +64,4 @@ const val WEEK_DAYS = 7
 const val CURRENCY = "RUB"
 const val MENU_VERSION = "2"
 
-fun digest(value: String): String =
-    HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))
+fun digest(value: String): String = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))

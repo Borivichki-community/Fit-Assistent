@@ -88,30 +88,43 @@ class RecipeMenuService(
         request: MealPlanRequest,
         products: List<CatalogProduct>,
     ): GeneratedMealPlan {
-        val candidate = products.firstOrNull { it.caloriesPer100g > 0 }
-            ?: CatalogProduct(dev.andre.nutritionist.recipe.domain.model.ProductId("fallback"), "Базовый продукт", 150.0, 10.0, 3.0, 20.0, 100L)
+        val candidate =
+            products.firstOrNull { it.caloriesPer100g > 0 }
+                ?: CatalogProduct(
+                    dev.andre.nutritionist.recipe.domain.model
+                        .ProductId("fallback"),
+                    "Базовый продукт",
+                    150.0,
+                    10.0,
+                    3.0,
+                    20.0,
+                    100L,
+                )
         val grams = ((request.targetNutrition.calories / candidate.caloriesPer100g) * 100).toInt().coerceIn(50, 1000)
-        val mealType = when (request.period) {
-            TargetPeriod.BREAKFAST -> MealType.MEAL_TYPE_BREAKFAST
-            TargetPeriod.LUNCH -> MealType.MEAL_TYPE_LUNCH
-            TargetPeriod.DINNER -> MealType.MEAL_TYPE_DINNER
-            TargetPeriod.SNACK -> MealType.MEAL_TYPE_SNACK
-            else -> MealType.MEAL_TYPE_DINNER
-        }
+        val mealType =
+            when (request.period) {
+                TargetPeriod.BREAKFAST -> MealType.MEAL_TYPE_BREAKFAST
+                TargetPeriod.LUNCH -> MealType.MEAL_TYPE_LUNCH
+                TargetPeriod.DINNER -> MealType.MEAL_TYPE_DINNER
+                TargetPeriod.SNACK -> MealType.MEAL_TYPE_SNACK
+                else -> MealType.MEAL_TYPE_DINNER
+            }
         val cost = (candidate.pricePer100gMinor * grams + 50) / 100
-        val meal = GeneratedMeal(
-            type = mealType,
-            title = "Сбалансированное блюдо: ${candidate.name}",
-            ingredients = listOf(MenuIngredient(candidate.id.raw, candidate.name, grams)),
-            nutrition = TargetNutrition(
-                calories = candidate.caloriesPer100g * grams / 100.0,
-                proteinsGrams = candidate.proteinsPer100g * grams / 100.0,
-                fatsGrams = candidate.fatsPer100g * grams / 100.0,
-                carbsGrams = candidate.carbsPer100g * grams / 100.0,
-            ),
-            estimatedCostMinor = cost,
-            cookingTimeMinutes = 20,
-        )
+        val meal =
+            GeneratedMeal(
+                type = mealType,
+                title = "Сбалансированное блюдо: ${candidate.name}",
+                ingredients = listOf(MenuIngredient(candidate.id.raw, candidate.name, grams)),
+                nutrition =
+                    TargetNutrition(
+                        calories = candidate.caloriesPer100g * grams / 100.0,
+                        proteinsGrams = candidate.proteinsPer100g * grams / 100.0,
+                        fatsGrams = candidate.fatsPer100g * grams / 100.0,
+                        carbsGrams = candidate.carbsPer100g * grams / 100.0,
+                    ),
+                estimatedCostMinor = cost,
+                cookingTimeMinutes = 20,
+            )
         return GeneratedMealPlan(
             planId = UUID.randomUUID().toString(),
             period = request.period,
@@ -119,7 +132,10 @@ class RecipeMenuService(
             totalNutrition = meal.nutrition,
             estimatedCostMinor = meal.estimatedCostMinor,
             currency = request.currency,
-            cookingInstructions = "1. Подготовьте ${candidate.name} ($grams г).\n2. Доведите до готовности привычным способом (варка/запекание).\n3. Приятного аппетита!",
+            cookingInstructions =
+                "1. Подготовьте ${candidate.name} ($grams г).\n" +
+                    "2. Доведите до готовности привычным способом (варка/запекание).\n" +
+                    "3. Приятного аппетита!",
             source = MenuSource.MENU_SOURCE_FALLBACK,
         )
     }

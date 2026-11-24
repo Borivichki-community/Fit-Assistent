@@ -1,7 +1,6 @@
 package dev.andre.nutritionist.recipe.domain.validator
 
 import com.budgetntr.proto.recipe.v1.MealType
-import com.budgetntr.proto.recipe.v1.MenuIngredient as ProtoMenuIngredient
 import com.budgetntr.proto.recipe.v1.MenuMeal
 import com.budgetntr.proto.recipe.v1.MenuSource
 import com.budgetntr.proto.recipe.v1.WeekMenu
@@ -25,6 +24,7 @@ import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
+import com.budgetntr.proto.recipe.v1.MenuIngredient as ProtoMenuIngredient
 
 @Component
 class MenuValidator(
@@ -87,7 +87,12 @@ class MenuValidator(
                         "snack" -> MealType.MEAL_TYPE_SNACK
                         else -> MealType.MEAL_TYPE_UNSPECIFIED
                     }
-                val title = mealNode.path("title").asText("").trim().ifBlank { "Блюдо" }
+                val title =
+                    mealNode
+                        .path("title")
+                        .asText("")
+                        .trim()
+                        .ifBlank { "Блюдо" }
                 val cookingTime = mealNode.path("cooking_time_minutes").asInt(15).coerceIn(1, 300)
                 val productNodes = mealNode.path("products").elementsList(1..8, "products")
                 val ingredients =

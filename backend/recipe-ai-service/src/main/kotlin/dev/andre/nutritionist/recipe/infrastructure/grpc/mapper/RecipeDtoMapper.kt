@@ -2,16 +2,16 @@ package dev.andre.nutritionist.recipe.infrastructure.grpc.mapper
 
 import com.budgetntr.proto.recipe.v1.GenerateMealPlanRequest
 import com.budgetntr.proto.recipe.v1.GenerateMealPlanResponse
-import com.budgetntr.proto.recipe.v1.GeneratedMeal as ProtoGeneratedMeal
-import com.budgetntr.proto.recipe.v1.MenuIngredient as ProtoMenuIngredient
-import com.budgetntr.proto.recipe.v1.TargetNutrition as ProtoTargetNutrition
-import com.budgetntr.proto.recipe.v1.TargetPeriod as ProtoTargetPeriod
 import dev.andre.nutritionist.recipe.domain.model.GeneratedMeal
 import dev.andre.nutritionist.recipe.domain.model.GeneratedMealPlan
 import dev.andre.nutritionist.recipe.domain.model.MealPlanRequest
 import dev.andre.nutritionist.recipe.domain.model.MenuIngredient
 import dev.andre.nutritionist.recipe.domain.model.TargetNutrition
 import dev.andre.nutritionist.recipe.domain.model.TargetPeriod
+import com.budgetntr.proto.recipe.v1.GeneratedMeal as ProtoGeneratedMeal
+import com.budgetntr.proto.recipe.v1.MenuIngredient as ProtoMenuIngredient
+import com.budgetntr.proto.recipe.v1.TargetNutrition as ProtoTargetNutrition
+import com.budgetntr.proto.recipe.v1.TargetPeriod as ProtoTargetPeriod
 
 fun GenerateMealPlanRequest.toDomain(): MealPlanRequest =
     MealPlanRequest(
@@ -54,7 +54,8 @@ fun ProtoTargetNutrition.toDomain(): TargetNutrition =
     )
 
 fun TargetNutrition.toProto(): ProtoTargetNutrition =
-    ProtoTargetNutrition.newBuilder()
+    ProtoTargetNutrition
+        .newBuilder()
         .setCalories(calories)
         .setProteinsGrams(proteinsGrams)
         .setFatsGrams(fatsGrams)
@@ -62,14 +63,16 @@ fun TargetNutrition.toProto(): ProtoTargetNutrition =
         .build()
 
 fun MenuIngredient.toProto(): ProtoMenuIngredient =
-    ProtoMenuIngredient.newBuilder()
+    ProtoMenuIngredient
+        .newBuilder()
         .setProductId(productId)
         .setName(name)
         .setGrams(grams)
         .build()
 
 fun GeneratedMeal.toProto(): ProtoGeneratedMeal =
-    ProtoGeneratedMeal.newBuilder()
+    ProtoGeneratedMeal
+        .newBuilder()
         .setType(type)
         .setTitle(title)
         .addAllIngredients(ingredients.map { it.toProto() })
@@ -79,7 +82,8 @@ fun GeneratedMeal.toProto(): ProtoGeneratedMeal =
         .build()
 
 fun GeneratedMealPlan.toProto(): GenerateMealPlanResponse =
-    GenerateMealPlanResponse.newBuilder()
+    GenerateMealPlanResponse
+        .newBuilder()
         .setPlanId(planId)
         .setPeriod(period.toProto())
         .addAllMeals(meals.map { it.toProto() })

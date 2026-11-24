@@ -2,6 +2,33 @@ spring:
   application:
     name: recipe-ai-service
 
+  datasource:
+    url: ${RECIPE_DB_URL:jdbc:postgresql://localhost:5433/recipe_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      pool-name: RecipeAiServiceHikariPool
+      maximum-pool-size: 10
+      connection-timeout: 3000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: "none"
+    properties:
+      hibernate:
+        default_schema: public
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+          order_inserts: true
+          order_updates: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    enabled: true
+    default-schema: public
+
   grpc:
     server:
       address: 127.0.0.1
@@ -30,7 +57,7 @@ management:
         enabled: true
       group:
         readiness:
-          include: readinessState,redis
+          include: readinessState,redis,db
 
 logging:
   structured:

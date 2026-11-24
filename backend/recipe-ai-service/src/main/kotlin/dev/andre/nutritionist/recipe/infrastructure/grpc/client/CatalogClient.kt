@@ -140,7 +140,8 @@ class CatalogClient(
                 request.preferredProducts.take(5).map { query ->
                     async {
                         val searchReq =
-                            SearchProductsRequest.newBuilder()
+                            SearchProductsRequest
+                                .newBuilder()
                                 .setQuery(query)
                                 .apply { request.regionId?.let { setRegionId(it) } }
                                 .setPageSize(10)
@@ -154,7 +155,8 @@ class CatalogClient(
                 }
 
             val baseSearch =
-                SearchProductsRequest.newBuilder()
+                SearchProductsRequest
+                    .newBuilder()
                     .setPageSize(50)
                     .apply { request.regionId?.let { setRegionId(it) } }
                     .build()
@@ -167,7 +169,8 @@ class CatalogClient(
 
             val preferredFound = preferredQueries.flatMap { it.await() }
             val allProducts =
-                (preferredFound + baseProducts).distinctBy { it.id }
+                (preferredFound + baseProducts)
+                    .distinctBy { it.id }
                     .filter { it.hasNutrition() && !request.excludedProducts.any { excl -> it.name.contains(excl, ignoreCase = true) } }
 
             if (allProducts.isEmpty()) {
@@ -175,18 +178,21 @@ class CatalogClient(
             }
 
             val prices =
-                allProducts.chunked(100).flatMap { batch ->
-                    val query =
-                        GetAveragePricesRequest.newBuilder()
-                            .addAllProductIds(batch.map { it.id })
-                            .apply { request.regionId?.let { setRegionId(it) } }
-                            .build()
-                    try {
-                        read { getAveragePrices(query, headers) }.pricesList
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
-                }.associate { it.productId to (it.averagePrice * 10).toLong().coerceAtLeast(1L) }
+                allProducts
+                    .chunked(100)
+                    .flatMap { batch ->
+                        val query =
+                            GetAveragePricesRequest
+                                .newBuilder()
+                                .addAllProductIds(batch.map { it.id })
+                                .apply { request.regionId?.let { setRegionId(it) } }
+                                .build()
+                        try {
+                            read { getAveragePrices(query, headers) }.pricesList
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                    }.associate { it.productId to (it.averagePrice * 10).toLong().coerceAtLeast(1L) }
 
             val candidates =
                 allProducts.map { product ->

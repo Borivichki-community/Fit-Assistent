@@ -100,10 +100,22 @@ class RecipeGrpcService(
 
     private fun mapFailure(failure: Throwable): Status =
         when (failure) {
-            is CancellationException -> throw failure
-            is IllegalArgumentException -> Status.INVALID_ARGUMENT.withDescription(failure.message)
-            is QuotaExceeded -> Status.RESOURCE_EXHAUSTED.withDescription(failure.message)
-            is MenuUnavailable -> Status.UNAVAILABLE.withDescription(failure.message)
+            is CancellationException -> {
+                throw failure
+            }
+
+            is IllegalArgumentException -> {
+                Status.INVALID_ARGUMENT.withDescription(failure.message)
+            }
+
+            is QuotaExceeded -> {
+                Status.RESOURCE_EXHAUSTED.withDescription(failure.message)
+            }
+
+            is MenuUnavailable -> {
+                Status.UNAVAILABLE.withDescription(failure.message)
+            }
+
             else -> {
                 logger.error("Recipe generation failed: {}", failure.javaClass.simpleName, failure)
                 Status.INTERNAL.withDescription("Recipe generation failed")
