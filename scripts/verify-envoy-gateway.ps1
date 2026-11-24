@@ -22,8 +22,8 @@ Write-Host "`n--> 1. Применение манифестов сетевого 
 kubectl apply -f "$K8sDir\gateway\01-gateway-class.yaml"
 kubectl apply -f "$K8sDir\gateway\02-tls-secret.yaml"
 kubectl apply -f "$K8sDir\gateway\02-gateway.yaml"
-kubectl apply -f "$K8sDir\gateway\03-profile-service.yaml"
-kubectl apply -f "$K8sDir\gateway\04-profile-grpc-route.yaml"
+kubectl apply -f "$K8sDir\apps\profile-service"
+kubectl apply -f "$K8sDir\apps\catalog-price-service"
 kubectl apply -f "$K8sDir\gateway\05-security-policy.yaml"
 kubectl apply -f "$K8sDir\gateway\06-backend-traffic-policy.yaml"
 

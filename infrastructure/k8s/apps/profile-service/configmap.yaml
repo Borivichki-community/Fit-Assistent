@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: profile-service-config
+  namespace: budget-nutritionist
+  labels:
+    app: profile-service
+    service: profile
+    app.kubernetes.io/name: profile-service
+    app.kubernetes.io/part-of: fitassistant
+data:
+  SPRING_PROFILES_ACTIVE: "dev"
+  SPRING_GRPC_SERVER_ADDRESS: "0.0.0.0"
+  PROFILE_GRPC_PORT: "9090"
+  SERVER_PORT: "8080"
+  MANAGEMENT_PORT: "8080"
+  PROFILE_DB_URL: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db"
+  SPRING_DATA_REDIS_HOST: "redis-state.budget-nutritionist.svc.cluster.local"
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"

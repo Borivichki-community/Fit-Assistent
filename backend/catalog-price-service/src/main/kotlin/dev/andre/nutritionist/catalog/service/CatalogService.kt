@@ -3,14 +3,24 @@ package dev.andre.nutritionist.catalog.service
 import dev.andre.nutritionist.catalog.persistence.entity.ProductEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionEntity
 import dev.andre.nutritionist.catalog.persistence.entity.RegionalPriceEntity
+import dev.andre.nutritionist.catalog.persistence.repository.KeysetSearchResult
 import dev.andre.nutritionist.catalog.persistence.repository.ProductJpaRepository
+import dev.andre.nutritionist.catalog.persistence.repository.ProductSearchCriteria
 import dev.andre.nutritionist.catalog.persistence.repository.RegionJpaRepository
 import dev.andre.nutritionist.catalog.persistence.repository.RegionalPriceJpaRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
+
+data class AveragePriceResult(
+    val productId: UUID,
+    val averagePrice: BigDecimal,
+    val currency: String,
+    val regionCount: Int,
+)
 
 @Service
 class CatalogService(
@@ -18,6 +28,17 @@ class CatalogService(
     private val regionRepository: RegionJpaRepository,
     private val regionalPriceRepository: RegionalPriceJpaRepository,
 ) {
+    @Transactional(readOnly = true)
+    fun searchProducts(criteria: ProductSearchCriteria): KeysetSearchResult<ProductEntity> {
+        val searchResult = productRepository.searchProducts(criteria)
+        if (searchResult.items.isEmpty()) return searchResult
+
+        val productIds = searchResult.items.map { it.id }
+        val productsWithPrices = productRepository.findWithPricesAndRegionsByIdIn(productIds).associateBy { it.id }
+        val hydratedItems = searchResult.items.map { productsWithPrices[it.id] ?: it }
+        return searchResult.copy(items = hydratedItems)
+    }
+
     @Transactional(readOnly = true)
     fun findProductsByNutrition(
         minCalories: BigDecimal,
@@ -29,6 +50,9 @@ class CatalogService(
             maxCalories = maxCalories,
             minProteins = minProteins,
         )
+
+    @Transactional(readOnly = true)
+    fun findProductsByCategory(category: String): List<ProductEntity> = productRepository.findByCategoryIgnoreCase(category)
 
     @Transactional(readOnly = true)
     fun getProductWithPrices(productId: UUID): ProductEntity =
@@ -49,6 +73,37 @@ class CatalogService(
 
     @Transactional
     fun createOrUpdateRegion(region: RegionEntity): RegionEntity = regionRepository.save(region)
+
+    @Transactional(readOnly = true)
+    fun getAveragePrices(
+        productIds: List<UUID>,
+        regionId: UUID? = null,
+    ): List<AveragePriceResult> {
+        if (productIds.isEmpty()) return emptyList()
+
+        return productIds.mapNotNull { productId ->
+            val prices =
+                if (regionId != null) {
+                    val p = regionalPriceRepository.findByProductIdAndRegionId(productId, regionId)
+                    if (p != null) listOf(p) else emptyList()
+                } else {
+                    regionalPriceRepository.findByProductId(productId)
+                }
+
+            if (prices.isEmpty()) {
+                null
+            } else {
+                val sum = prices.map { it.price }.reduce { acc, p -> acc + p }
+                val avg = sum.divide(BigDecimal(prices.size), 2, RoundingMode.HALF_UP)
+                AveragePriceResult(
+                    productId = productId,
+                    averagePrice = avg,
+                    currency = prices.first().currency,
+                    regionCount = prices.size,
+                )
+            }
+        }
+    }
 
     @Transactional
     fun upsertRegionalPrice(

@@ -25,16 +25,24 @@ class RegionalPriceEntity(
     val id: UUID = UUID.randomUUID(),
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
-    var product: ProductEntity,
+    var product: ProductEntity, // mutable by design: JPA managed entity
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "region_id", nullable = false)
-    var region: RegionEntity,
+    var region: RegionEntity, // mutable by design: JPA managed entity
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
-    var price: BigDecimal,
+    var price: BigDecimal, // mutable by design: JPA managed entity
     @Column(name = "currency", nullable = false, length = 3)
-    var currency: String = "RUB",
+    var currency: String = "RUB", // mutable by design: JPA managed entity
     @Column(name = "unit", nullable = false, length = 30)
-    var unit: String = "PIECE",
+    var unit: String = "PIECE", // mutable by design: JPA managed entity
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now(),
-)
+    var updatedAt: Instant = Instant.now(), // mutable by design: JPA managed entity
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is RegionalPriceEntity) return false
+        return id == other.id
+    }
+
+    override fun hashCode(): Int = id.hashCode()
+}

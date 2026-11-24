@@ -38,7 +38,6 @@ protobuf {
     generateProtoTasks {
         all().forEach { task ->
             task.plugins {
-                maybeCreate("grpc")
                 create("grpckt")
             }
             task.builtins {
@@ -52,7 +51,6 @@ sourceSets {
     main {
         proto {
             srcDir("../../proto")
-            include("nutritionist/diary/v1/**")
         }
     }
 }
@@ -76,6 +74,7 @@ dependencies {
     runtimeOnly(libs.postgresql.jdbc)
 
     implementation(project(":shared:contracts"))
+    implementation(project(":backend:outbox"))
     implementation(libs.spring.kafka)
     implementation(libs.avro.runtime)
     implementation(libs.confluent.avro.serializer) {
@@ -106,6 +105,12 @@ val ktlintEngineVersion =
 
 ktlint {
     version.set(ktlintEngineVersion)
+    filter {
+        exclude { element ->
+            val path = element.file.absolutePath.replace('\\', '/')
+            path.contains("/build/") || path.contains("/generated/")
+        }
+    }
 }
 
 tasks.withType<Test>().configureEach {

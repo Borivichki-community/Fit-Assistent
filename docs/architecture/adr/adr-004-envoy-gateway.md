@@ -80,8 +80,8 @@
 1. **Конфигурация кластера kind**: [`kind-config.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/kind-config.yaml) — проброс портов 80 (HTTP), 443 (HTTPS) и 9090 (gRPC Gateway) на хост-машину;
 2. **GatewayClass**: [`01-gateway-class.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/01-gateway-class.yaml) — контроллер `gateway.envoyproxy.io/gatewayclass-controller`;
 3. **Gateway**: [`02-gateway.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/02-gateway.yaml) — слушатели gRPC (порт 9090) и HTTP (порт 80);
-4. **Тестовый Echo-сервис**: [`03-echo-service.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/03-echo-service.yaml) — Deployment и Service `echo-grpc-service:9090` (`appProtocol: grpc`, образ `rancher/grpc-echo:v1.0.0`);
-5. **GRPCRoute**: [`04-grpc-route.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/04-grpc-route.yaml) — маршрутизация вызовов `echo.EchoServer` на `echo-grpc-service`;
+4. **Манифесты сервисов**: [`infrastructure/k8s/apps/`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/apps/) — структура микросервисов (`profile-service`, `catalog-price-service` и др.) с отдельными `deployment.yaml`, `service.yaml`, `configmap.yaml`, `secret.yaml`, `grpc-route.yaml`;
+5. **GRPCRoute**: маршрутизация вызовов gRPC-сервисов (например, `ProfileService`, `CatalogService`) на соответствующие бэкенд-сервисы;
 6. **SecurityPolicy**: [`05-security-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/05-security-policy.yaml) — валидация JWT Keycloak;
 7. **BackendTrafficPolicy**: [`06-backend-traffic-policy.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/gateway/06-backend-traffic-policy.yaml) — Rate Limiter 100 req/min на пользователя;
 8. **Helmfile**: [`helmfile.yaml`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/infrastructure/k8s/charts/helmfile.yaml) — декларативная установка Envoy Gateway v1.2.4.

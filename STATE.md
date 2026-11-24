@@ -3,16 +3,52 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-21
+Обновлено: 2026-11-24
 
-### Android — ручная проверка сервисов (2026-11-21)
+### T-056 — итоги GetDay по приёмам пищи
 
-- Skills: `android-compose-feature`, `testing-and-verification`, `contracts-proto-and-avro`. Роль: `implementer`. `diagnose-build-failure` использован для проверки отсутствующего в кеше AAPT2 и настройки Android-генерации Protobuf.
-- В debug APK добавлена отдельная иконка «Проверка сервисов FitAssistant». Profile: GetProfile и UpdateProfile с тестовыми данными. Diary: AddEntry, GetDailyEntries, GetRange, DeleteMeal. Catalog: SearchProducts. Recipe AI: поток GenerateWeekMenu через заданный тестовый HTTPS Envoy Gateway. Для четырёх gRPC-сервисов есть Health.Check, для Keycloak — discovery и проверка существующей сессии.
-- Локальные вызовы идут на 10.0.2.2; порты по умолчанию соответствуют Docker Compose и редактируются на экранах. Diary передаёт идентификатор текущей сессии напрямую на локальный порт, а повтор отправляет тот же payload и idempotency-key. Записаны два теста ожидаемого поведения повторов.
-- PASS: `assembleDebug` и `testDebugUnitTest --tests '*ServiceCheckUpdateTest'` прошли офлайн с AAPT2 из SDK и `--configure-on-demand`. Два теста проверили блокировку двойного запуска, сохранение запроса и ключей при повторах и запрет повторного добавления удалённой записи. В merged release manifest диагностическая Activity отсутствует. `git diff --check` для Android-изменений — без ошибок.
-- PASS: APK установлен на Android-эмулятор, открыты все пять экранов, подготовка тестовой записи сформировала UUID. Проверено отображение сетевых ошибок.
-- BLOCKED: gRPC Health и Keycloak discovery на локальных портах не получили ответа, слушающие процессы не обнаружены, Docker Engine недоступен. Сквозные бизнес-вызовы не подтверждены. Для SearchProducts требуется серверный gRPC-обработчик каталога; для GenerateWeekMenu — работающий тестовый HTTPS Envoy Gateway с маршрутом к Recipe AI.
+- Активны spring-grpc-service, contracts-proto-and-avro, testing-and-verification; роль implementer.
+- Реализованы чистый агрегатор сохранённых нутриентов, четыре группы BREAKFAST/LUNCH/DINNER/SNACK и совместимое поле meal_totals в GetDailyEntries. Одна выборка дня, без повторного расчёта порций и запросов каталога.
+- Созданы MealNutritionSummary, DiaryNutritionAggregator и три целевых тестовых класса. Обновлены DailyEntries, DiaryService, gRPC-маппер/обработчик, diary.proto и README. БЖУ суммируются сотыми долями грамма; переполнение итогов возвращает RESOURCE_EXHAUSTED.
+
+### T-055 — consumer регистрации пользователей
+
+- Реализован Kafka-consumer регистрации пользователей UserRegisteredEvent с инициализацией дневника и защитой от повторов.
+- Подключена миграция 003-diary-registration-consumer.yaml и интеграционные тесты.
+
+### T-053 — оформление коммитов после восстановления файла
+
+- По поручению пользователя изменения разделены на четыре коммита: общий outbox; интеграция Diary и тесты; Docker; документация.
+- Первый коммит Avro сохранён: 4aa9ff8. Потерянный backend/outbox/build.gradle.kts восстановлен пользователем из 38189db после конфликта инструмента IDE. Остальные изменения T-053 сохранились.
+- PASS после восстановления: :backend:diary-service:compileKotlin и :backend:outbox:ktlintCheck (offline); состав индекса и git diff --cached --check проверены перед каждым коммитом.
+- Созданы 91dcf11 (общий outbox), da45026 (Diary и тесты), a28325d (Docker). README, архитектурное описание и этот журнал включены в заключительный коммит документации. Сообщения на русском без служебных префиксов. Push не выполнялся.
+
+### T-053 — реализация завершена: автоматическая доставка и порядок
+
+- Активны spring-grpc-service и testing-and-verification; роль implementer. Поручено завершить всю T-053.
+- План: общий JDBC store/processor, session advisory lock одного отправителя, sequence и сериализация append одного пользователя, канонический UUID key, ACK/PUBLISHED и retry/backoff/FAILED, интеграционные проверки, Docker и документация.
+- Существующие принятые изменения сохраняются; shared/contracts/build.gradle.kts не переписывается. Проверки используют временные контейнеры.
+- Созданы общий JDBC store/processor/settings, Diary scheduler и миграция 005; append использует transaction advisory lock пользователя и канонический UUID key. PASS: compileKotlin и расширенный набор Diary с Kafka/Schema Registry outage, ACK/replay, конкурентными appends и обработчиками.
+- Усилен случай потери DB-соединения: стабильный transactional.id с suffix cache=1, reset producer под advisory lock и Kafka fencing; потребители read_committed. По независимому ревью добавлен verifyOwnership callback внутри Kafka-транзакции после init/begin до send: исходное соединение и точный advisory lock проверяются через pg_locks. Тест задержки старого владельца до Kafka init и takeover PASS; замечание P1 закрыто ревьюером.
+- PASS: все 24 Diary теста (17 publishing + 6 T-052 + 1 JPA), 0 failures/errors/skipped; bootJar. Проверены миграция существующего backlog 004→005, FIFO, canonical key, traceparent, scheduler, реальные Kafka/Schema Registry outages, ACK gate, конкуренция обработчиков/appends, backoff/FAILED/manual retry, повтор после ACK/DB failure и takeover/fencing. Финальное форматирование нового кода завершено: общий outbox ktlint PASS, в изменённых Diary-файлах нарушений нет. Общий Diary lint остаётся FAIL на прежних ID/JPA/generated файлах.
+- BLOCKED (проверка среды): полная Docker-сборка из исходников дошла до Gradle, но Maven Central и Google Maven не ответили при загрузке зависимостей (repo.maven.apache.org:443 и dl.google.com:443 failed to respond). Зависимости/репозитории не менялись ради обхода. COPY backend/shared/contracts/proto и передача контекста выполнены успешно; сборка исходников внутри Docker требует доступных репозиториев.
+- PASS: runtime-образ fitassistant/diary-service:t053-runtime-check собран из локального проверенного bootJar без Gradle/network. Временный Dockerfile находится в игнорируемом backend/diary-service/build/t053-runtime/. Проверен запуск образа с отдельной временной PostgreSQL 17: Started DiaryApplicationKt, gRPC 9093, UID 10001, миграция 005 подтверждена запросом databasechangelog. Эта проверка не подменяет полную Docker-сборку из исходников; Kafka-доставка отдельно подтверждена 24 интеграционными тестами.
+- Временные runtime-контейнеры приложения/PostgreSQL, их анонимные volumes и отдельная сеть удалены. Рабочие данные не затрагивались. Независимое ревью после исправления гонки владения — без блокирующих замечаний. Коммитов/push нет.
+- T-053 реализована целиком; незавершённых исходников по задаче нет. Эксплуатационные условия: общий transaction-id-prefix всем репликам одной очереди и отдельный для независимых очередей; потребители read_committed; неизменное число партиций; при первом обновлении остановить старые writers на время миграции. Гарантия at least once, дедупликация потребителем по (userId, mealId).
+
+### T-053 — этап 1 завершён: общий контракт и Kafka-публикатор
+
+- Skills: spring-grpc-service, testing-and-verification; diagnose-build-failure для сбоев проверок. Роль implementer, независимое read-only ревью test-reviewer завершено без оставшихся блокирующих замечаний.
+- Реализованы пункты 1–4 раздела «Логика и смысл»: общий JVM-модуль :backend:outbox с OutboxMessage/OutboxMessageId и OutboxPublisher, Diary-публикатор и явная конфигурация producer. Сохранение T-052 и Avro-схема не изменены.
+- Публикатор восстанавливает CaloriesConsumedEvent из сохранённого бинарного Avro; KafkaAvroSerializer добавляет Confluent-обрамление/schema ID вне транзакции БД. Topic diary.entry.created, key — сохранённый partition_key, traceparent — сохранённый входящий заголовок. В producer включены acks=all и enable.idempotence=true.
+- Вызов внутри DB-транзакции, неправильный topic/user key, обрезанный payload и лишние байты отклоняются до отправки. UUID сравниваются по значению: uppercase UUID допустим, исходный partition_key при отправке сохраняется.
+- Публикация вызывается явно; даже после успешного future строка остаётся PENDING, статусом будет управлять следующий этап. Автоматического запуска нет. T-053 целиком не закрыта.
+- PASS: compileKotlin; финальный полный :backend:diary-service:test — 12/12, 0 failures/errors/skipped (5 новых Kafka-тестов, 6 T-052 и 1 JPA). Проверены реальный RPC, идемпотентный повтор, чтение specific Avro из Kafka, user key/traceparent, отсутствие заголовка, сохранённый снимок после удаления meal, uppercase UUID и отказы до отправки.
+- PASS: :backend:outbox:ktlintCheck, форматирование новых Diary-файлов (нет замечаний в свежих отчётах ktlint), Android Studio Gradle Sync, IDE inspections без ошибок, git diff --check.
+- FAIL: общий :backend:diary-service:ktlintCheck — прежние четыре ID-модели, порядок импортов DiaryEntryPersistenceTest и generated protobuf. Линтеры и старые файлы не менялись.
+- Диагностика: Testcontainers отклонил tag@digest при проверке совместимости образа; исправлено на digest-only того же образа из Compose. Отдельный запуск Diary lint также падал в :shared:contracts:processResources с ConcurrentModificationException при разрешении SourceDirectorySet; полный запуск test затем lint проходит этот шаг. Пользовательский shared/contracts/build.gradle.kts не менялся. Финальная команда: ./gradlew -PbackendOnly=true :backend:diary-service:test :backend:outbox:ktlintCheck :backend:diary-service:ktlintCheck --continue --offline --console=plain --no-daemon --max-workers=1; exit 1 только из-за прежних lint-нарушений.
+- Проверки выполнялись на временных PostgreSQL/Kafka/Schema Registry; рабочие данные и внешние сервисы не затрагивались. Коммитов нет.
+- Следующая атомарная задача (этап 2): общий JDBC store и процессор очереди, фиксация PUBLISHED после Kafka ACK, повторы/backoff, порядок событий пользователя и координация обработчиков. Учесть каноническое представление user key при проектировании строгого порядка; затем сквозная проверка рестартов/ошибок, поставка Docker и закрытие T-053.
 
 ### T-052 — атомарное сохранение записи и outbox (2026-11-15)
 
@@ -22,13 +58,18 @@
 - PASS: ./gradlew :backend:diary-service:test --offline --console=plain — BUILD SUCCESSFUL, 7/7 тестов (6 новых gRPC/Spring/PostgreSQL + существующий JPA), 0 failures/errors/skipped. Проверены чтение Avro из BYTEA, traceparent, PENDING/partition_key, повтор, гонка 8 вызовов, конфликт payload/ID, откат при ошибке outbox и после обеих вставок, повтор после отката и валидация.
 - FAIL: общий ktlintCheck — прежние ID-модели, generated protobuf и порядок импортов DiaryEntryPersistenceTest; форматирование нового теста исправлено точечно. Проверки выполнялись только на временной PostgreSQL; рабочие данные, Kafka и Schema Registry не затрагивались. git diff --check — без ошибок. Коммиты и переключения веток не выполнялись.
 
-### T-058–T-065 — неделя меню Recipe AI (2026-11-21)
+### T-055 / KAN-73 — входящий consumer регистрации (2026-11-15)
 
-- Реализовано в ветке KAN-76. Skills: `legacy-migration`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`, `diagnose-build-failure`. Роль: `implementer`.
-- Legacy-источник: AiService из ветки KAN-20, commit `7257a3f`. Перенесён сценарий генерации под бюджет. Catalog API взят из ветки T-048 с теми же сообщениями и RPC.
-- Добавлены GenerateWeekMenu, пересчёт калорий и стоимости по данным Catalog, Gemini LlmClient, корутинные Retry/CircuitBreaker/TimeLimiter, Redis-кэш, прогрев и атомарная квота. Для входного gRPC настроен доверенный канал mTLS от Envoy и Global Rate Limit. Ключ Gemini поступает из env/Secret.
-- PASS: Gradle `check` и `bootJar`, 7 тестов прошли. `buf lint` и `buf breaking` относительно develop прошли. Статическая проверка объединённого Docker Compose и `git diff --check` прошли.
-- BLOCKED: Redis Testcontainers пропущен из-за недоступного Docker Engine. Сквозной запуск с реальным Catalog, Gemini и Envoy не выполнялся. Текущей ветке для рабочего Catalog нужен сервер из T-048 или развёрнутый совместимый сервис.
+- Активные Skills: `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`; `twg`/`twg-jira` использованы только для чтения Jira. Роль: `implementer`.
+- Прочитаны KAN-70/71/72/73/75; T-055 требует UserRegisteredEvent → инициализация дневника, с processed_events, retry и DLT по шаблону T-054. Исходящий CaloriesConsumedEvent относится к отдельным T-052/T-053.
+- Kafka Profile изучена в develop c86dfe0: user.registered, Avro UserRegisteredEvent; текущая T-052 остаётся на abcfe1e, слияние и коммиты не выполняются. Схема Avro не меняется.
+- Реализованы consumer/конфигурация и транзакционная инициализация: diary_users хранит userId/registered_at/initialized_at без email и фиктивных приёмов пищи. processed_events и diary_users записываются вместе; ACK выполняется после коммита.
+- В схеме регистрации нет отдельного eventId: постоянный семантический ключ UserRegisteredEvent:userId гарантирует одну инициализацию при повторной доставке на новом offset. Записи дневника не зависят от скорости доставки регистрации и не удаляются при повторе.
+- Добавлены миграция 003-diary-registration-consumer.yaml, зависимость от :shared:contracts, ограниченные retry и user.registered.DLT. DLT поддерживает исходные байты ошибки десериализации и различные SpecificRecord через RecordNameStrategy; неуспешная отправка в DLT не подтверждает исходный offset. Существующий gRPC integration test сохранён, Kafka в нём явно отключена.
+- PASS: offline Gradle test — все 26 тестов diary-service, 0 failures/errors/skipped (9 новых Kafka + 9 gRPC + 7 идемпотентности + 1 JPA). Использованы временные PostgreSQL 17, Kafka 4.2.2 и Schema Registry 8.2.4. Проверены wire Avro, ACK после коммита, повтор на новом offset, гонка 8 доставок, rollback/3 попытки, DLT валидации/неверного Avro/другого типа Avro, продолжение партиции, сохранение прежних записей и gRPC health SERVING.
+- FAIL: общий ktlintCheck — прежнее форматирование четырёх ID-моделей, DiaryEntryPersistenceTest и generated protobuf Kotlin. В новых файлах ошибок нет; линтер и generated-код не менялись. git diff --check — без ошибок.
+- При диагностике тестового стенда исправлены JDBC-передача Instant через Timestamp и подключение Schema Registry к отдельной сети Testcontainers: имя registrationNetwork исключает затенение свойства GenericContainer.network. diagnose-build-failure использован для диагностики и точечного исправления форматирования.
+- Рабочие данные и Compose-стенд не менялись; Profile producer отдельно не запускался, совместимость подтверждена чтением develop и отправкой реального Avro-контракта в тестовый брокер. T-052/T-053, общий исходящий outbox, изменения Jira, слияние веток и коммиты не выполнялись.
 
 ### Упрощение типов и подключение Diary RPC (2026-11-15)
 
@@ -120,14 +161,381 @@
 
 ---
 
+## Статус проекта: [T-043] Реализован скелет catalog-price-service, Liquibase-миграции, сущности JPA и интеграционные тесты
 ## Статус проекта: [T-016 / T-017 / T-018] Завершены: Скелет profile-service, Liquibase и реализация gRPC-сервиса (ProfileGrpcService + ProfileService + ProfileDtoMapper)
+## Статус проекта: [T-043]—[T-049] Микросервис catalog-price-service полностью разработан, протестирован и упакован в K8s
 
+Ветка: `feature/KAN-61-catalog-skelet`
 Ветка: `feature/KAN-36-liquibase` (Ключ задачи: KAN-36, T-016, T-017, T-018)
 Роли: `implementer` + `test-reviewer`
 
 ---
 
 ### Выполнено
+
+- [x] **[T-049] Манифесты Kubernetes и интеграция с Helmfile:**
+  - Созданы декларативные K8s-манифесты `infrastructure/k8s/apps/catalog-price-service/`:
+    - `deployment.yaml`: non-root securityContext, probes `/actuator/health/liveness` и `/actuator/health/readiness`, limits/requests, envFrom configMap и secret.
+    - `service.yaml`: порты gRPC (9192) и Actuator (8086).
+    - `configmap.yaml` и `secret.yaml`.
+    - `grpc-route.yaml` и `infrastructure/k8s/gateway/04-catalog-grpc-route.yaml`: GRPCRoute для Envoy Gateway маршрутизации `nutritionist.catalog.v1.CatalogService` на порт 9192.
+  - Подключен релиз `catalog-price-service` в `infrastructure/k8s/charts/helmfile.yaml`.
+  - Коммит: `8140d4d chore(deploy): add catalog-price-service to k8s manifests and helmfile`.
+
+- [x] **[T-048] Полный набор E2E тестов и сценарий нагрузочного тестирования:**
+  - Разработан `CatalogEndToEndIntegrationTest.kt` на Testcontainers (PostgreSQL 17 + Redis 7):
+    - Сквозной сценарий жизненного цикла: поиск продуктов с критериями -> выбор карточки -> чтение с кэшированием в Redis -> инвалидация кэша администратором при `upsertPrice` -> верификация обновленной цены и пересчитанной средней цены.
+    - Граничные условия: `NOT_FOUND` для несуществующих UUID, `INVALID_ARGUMENT` для некорректных форматов и отрицательных цен, пустые списки.
+    - Нагрузочный смоук-тест на 50 параллельных корутинах (`async(Dispatchers.IO)`): одновременные `SearchProducts` и `GetAveragePrices` без сбоев пула HikariCP и Redis.
+  - Коммит: `7f22523 test(catalog): T-048 add full integration test suite and load test scenario`.
+
+- [x] **[T-047] Отказоустойчивый Redis cache-aside с Circuit Breaker и метриками:**
+  - Настроен `RedisConfig` и `CatalogCacheService` с сериализацией DTO (`CachedProductDto`, `CachedAveragePriceDto`) в JSON через Jackson.
+  - Интегрирован Resilience4j Circuit Breaker `catalog-redis-cache`: при падении или таймаутах Redis вызовы прозрачно деградируют в PostgreSQL без выброса ошибок наружу.
+  - Micrometer счетчики метрик: `cache_hits_total`, `cache_misses_total` с тегом `cache`.
+  - Инвалидация кэша в `CatalogService.upsertRegionalPrice`.
+  - Интеграционный тест `CatalogCacheResilienceIntegrationTest` (проверка кэш-хитов, промахов, инвалидации и эмуляция сетевого сбоя Redis).
+  - Коммит: `07b694e feat(catalog): T-047 integrate resilient Redis cache-aside with metrics`.
+
+- [x] **[T-046] Начальные данные каталога и региональных цен (Seed Data):**
+  - Созданы CSV-файлы: `initial_regions.csv` (6 регионов РФ), `initial_products.csv` (110 продуктов с КБЖУ), `initial_prices.csv` (660 региональных цен).
+  - Liquibase changelog `002-seed-initial-catalog.xml` с `<loadData>` и безопасными преобразованиями типов.
+  - Интеграционный тест `CatalogSeedDataIntegrationTest`: проверка >= 100 продуктов, >= 6 регионов, корректности расчета средней цены.
+  - Коммит: `76194b5 feat(catalog): T-046 add initial seed data for products and regional prices`.
+
+- [x] **[T-046] Remediation & Hardening :backend:profile-service (AGENTS.md & spring-grpc-service):**
+  - **Thread-safe транзакции и gRPC Context:** Устранён thread hopping в `ProfileGrpcService.kt` — удалён `withContext(dispatchers.io)`, ломавший `@Transactional` / `ThreadLocal` Spring Data JPA; контекст вызова и аутентификации стабилизирован через `GrpcContextElement.current() + MDCContext(mapOf("userId" to request.userId))`.
+  - **AuthContext & Coroutines:** В `AuthContext.kt` реализованы extension-свойства `CoroutineContext.authContext` и `currentCoroutineAuthContext()` с поддержкой `GrpcContextElement` для бесшовной передачи identity пользователя сквозь корутины.
+  - **Native Outbox Locking:** Заменён хрупкий Hibernate-хинт `-2` в `OutboxJpaRepository.kt` на нативный SQL `SELECT * FROM outbox_messages WHERE status = :status ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED` с поддержкой динамического лимита пачки.
+  - **Outbox Retention & Cleanup:** Реализован шедулер `OutboxCleanupJob` (`0 0 3 * * ?`) для удаления `PUBLISHED` сообщений старше 7 дней через нативный запрос `deletePublishedBefore`. Метод `fetchPendingBatch()` в `OutboxProcessor.kt` инкапсулирован как `private`.
+  - **Resilience4j Circuit Breaker & Graceful Degradation:** Настроен `@CircuitBreaker(name = "redis-idempotency", fallbackMethod = ...)` и программная защита через `CircuitBreakerRegistry` в `RedisIdempotencyStore.kt` для методов `tryAcquire`, `complete`, `release`, `get`. При отказе Redis сервис переходит в graceful degradation mode (`IdempotencyResult.Acquired`), не блокируя пользователей.
+  - **Структурированное JSON-логирование:** Настроен `logback-spring.xml` на базе `net.logstash.logback.encoder.LogstashEncoder` с пробросом `traceId`, `spanId`, `userId`, `outboxId` и тегом сервиса `profile-service`. Удалена имитация JSON строковыми паттернами из `application.yml`.
+  - **JPA Best Practices & Immutability:** В `ProfileEntity.kt` и `OutboxMessageEntity.kt` добавлены обязательные комментарии `// mutable by design: JPA managed entity` для изменяемых полей и переопределены `equals`/`hashCode` по бизнес-ключу `id`.
+  - **Ktlint & Build:** Изолирован плагин `ktlint` от кодогенерации protobuf (`/build/` и `/generated/`), устранены все замечания стиля.
+  - **Верификация тестами:** Разработаны `ProfileTransactionThreadSafetyTest`, `OutboxCleanupJobTest`, `RedisIdempotencyCircuitBreakerTest`. Все 83+ теста модуля успешно проходят (`BUILD SUCCESSFUL`), `ktlintCheck` — 0 violations.
+  - Реализован `ProductSearchCriteria` и `KeysetCursor` с Base64-кодированием курсора `(lastValue, lastId)`.
+  - Разработан `ProductSearchRepository` и `ProductSearchRepositoryImpl` на JPA Criteria API без использования `OFFSET`, с динамической фильтрацией по query (триграммный индекс `idx_products_name_trgm`), category (`idx_products_category`), диапазонам калорий и белков (`idx_products_calories_proteins`), сортировками по имени, калориям и белкам.
+  - Настроен `ProductEntity` с `@BatchSize(size = 50)` для предотвращения N+1 при выборке связанных сущностей цен.
+  - Метод `searchProducts` в `CatalogGrpcService` и `CatalogService` полностью интегрирован с keyset-пагинацией.
+  - Разработан интеграционный бенчмарк-тест `ProductSearchBenchmarkIntegrationTest` на 10 000 записей (наполнение batch insert'ом, верификация последовательных непересекающихся страниц, стабильность курсора при параллельных вставках перед курсором, `EXPLAIN ANALYZE` подтверждающий выборку по индексам `idx_products_name` и `idx_products_category`).
+  - Все 21 тест модуля зеленые, `ktlintCheck` пройден без замечаний.
+  - Коммит: `feat(catalog): T-045 implement keyset pagination and indexed search with benchmark`.
+
+- [x] **[T-044] Protobuf-контракты и базовая реализация gRPC-сервиса:**
+  - Создан gRPC-контракт `proto/nutritionist/catalog/v1/catalog.proto` (`SearchProducts`, `GetProduct`, `GetAveragePrices`, `UpsertPrice`, сообщения `NutritionFacts`, `ProductItem`, `RegionalPriceItem`, `AveragePriceItem`, пагинация `page_size`/`page_token`).
+  - Обновлен `proto/buf.gen.yaml` с правилом для `CatalogOuterClass`.
+  - В `backend/catalog-price-service/build.gradle.kts` настроен плагин `com.google.protobuf` (генерация Java + Kotlin coroutines stubs из `proto/`), корректно изолирован `ktlint` от сгенерированных protobuf файлов.
+  - Разработан `CatalogDtoMapper` для конвертации JPA-сущностей в Protobuf-сообщения.
+  - Реализован `CatalogGrpcService` на Kotlin coroutines gRPC (`CatalogServiceCoroutineImplBase`): методы `searchProducts`, `getProduct`, `getAveragePrices`, `upsertPrice` с проверкой прав `ROLE_ADMIN` / `ROLE_SERVICE` через `AuthContext`.
+  - Тестирование: `CatalogGrpcServiceSecurityTest` на Testcontainers PostgreSQL (6 интеграционных тестов: запрет неавторизованным на `upsertPrice`, запрет обычному пользователю, успешный апсерт от ADMIN/SERVICE, анонимное чтение `getProduct` и `getAveragePrices`). Все 16 тестов зеленые, `ktlintCheck` чист.
+  - Коммит: `feat(catalog): T-044 define catalog.proto contract and implement gRPC service stub`.
+
+- [x] **[T-043] Скелет catalog-price-service + Liquibase-миграции:**
+  - Создана Liquibase-схема (`db/changelog/v1/001-init-catalog-schema.xml`, `db.changelog-master.xml`) для таблиц `regions`, `products`, `regional_prices` с версионированием `version BIGINT` и безопасным подключением расширения `pg_trgm` и GIN-индекса.
+  - Разработаны JPA-сущности `RegionEntity`, `ProductEntity` с `@Version` и `@NamedEntityGraph("Product.withPricesAndRegions")`, `RegionalPriceEntity` со связями `LAZY`.
+  - Разработаны репозитории `ProductJpaRepository`, `RegionJpaRepository`, `RegionalPriceJpaRepository` и сервис `CatalogService` с методом `upsertRegionalPrice`.
+  - Инфраструктура: `CoroutineDispatchers`, `AuthContext`, `SecurityGrpcInterceptor`, `GrpcExceptionInterceptor`.
+  - Тестирование: `CatalogPersistenceIntegrationTest` на Testcontainers PostgreSQL 17 (10 тестов: сохранение, `@Version` инкремент, уникальность штрихкода, уникальность региональных цен, уникальность названий регионов, выборка по нутриентам, выборка по категориям, отсутствие N+1 через `@NamedEntityGraph`). Все проверки `ktlintCheck` пройдены.
+  - Коммит: `24b4850 feat(catalog): T-043 setup catalog schema, entities and indexes with Liquibase`.
+
+- [x] **Базовая инфраструктура в Kubernetes (`infrastructure/k8s/infra/`) и связка с Envoy Gateway:**
+  - **PostgreSQL 17 (`infrastructure/k8s/infra/01-postgres.yaml`):**
+    - Создан StatefulSet и сервис `postgres` (порт 5432) в неймспейсе `budget-nutritionist`.
+    - Секрет `postgres-secret` (`POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, `POSTGRES_DB=profile_db`).
+    - ConfigMap `postgres-initdb-config` со скриптом инициализации баз данных `catalog_db`, `diary_db`, `keycloak_db`.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 70` (UID пользователя postgres в Alpine), `allowPrivilegeEscalation: false`, сброс capabilities ALL.
+    - Health probes: `livenessProbe` и `readinessProbe` через `pg_isready`.
+    - Ресурсы: requests 100m/128Mi, limits 500m/512Mi.
+  - **Redis State & Redis Cache (`infrastructure/k8s/infra/02-redis.yaml`):**
+    - Архитектурное разделение согласно `docs/architecture/05-highload-kafka-redis-sizing.md`:
+      - `redis-state`: для идемпотентности gRPC (`IdempotencyServerInterceptor`) и Global Rate Limiting (`BackendTrafficPolicy`), аргументы `--maxmemory 128mb --maxmemory-policy volatile-ttl --appendonly yes`.
+      - `redis-cache`: для L2 кэширования профилей/каталога/рецептов, аргументы `--maxmemory 256mb --maxmemory-policy allkeys-lru`.
+    - Сервисы `redis-state` и `redis-cache` (порт 6379) в неймспейсе `budget-nutritionist`.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 999` (UID redis), `allowPrivilegeEscalation: false`.
+    - Health probes: `livenessProbe` и `readinessProbe` через `redis-cli ping`.
+    - Ресурсы: requests 50m/64Mi, limits 250m/192Mi (state) и 250m/384Mi (cache).
+  - **Keycloak 26 (`infrastructure/k8s/infra/03-keycloak.yaml`):**
+    - Деплоймент и сервис `keycloak` (порт 8080 для HTTP, 9000 для management) в неймспейсе `budget-nutritionist`.
+    - Образ `quay.io/keycloak/keycloak:26.0` в режиме `start-dev --import-realm`.
+    - ConfigMap `keycloak-realm-config` с монтированием `fitassistant-realm.json` в `/opt/keycloak/data/import/`.
+    - Подключение к БД: `KC_DB=postgres`, `KC_DB_URL=jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/keycloak_db`.
+    - Секрет `keycloak-secret` для учетных данных администратора.
+    - Безопасность: `runAsNonRoot: true`, `runAsUser: 1000`, `allowPrivilegeEscalation: false`.
+    - Health probes: `livenessProbe` (`/realms/master`) и `readinessProbe` (`/realms/FitAssistant`) на порту 8080.
+  - **Обновление Helmfile и политик сетевого периметра:**
+    - `infrastructure/k8s/charts/helmfile.yaml`: перенаправлен Envoy Gateway Rate Limiter на `redis-state.budget-nutritionist.svc.cluster.local:6379`, добавлены декларативные описания инфры.
+    - `infrastructure/k8s/gateway/06-backend-traffic-policy.yaml`: EnvoyProxy redis url обновлен на `redis-state.budget-nutritionist.svc.cluster.local:6379`.
+    - `infrastructure/k8s/gateway/05-security-policy.yaml`: `remoteJWKS.uri` обновлен на межнеймспейсный FQDN `http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs`.
+  - **Связка и конфигурация `profile-service` (`infrastructure/k8s/apps/profile-service/`):**
+    - `PROFILE_DB_URL`: `jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db`
+    - `DB_USERNAME` и `DB_PASSWORD`: маппинг из `postgres-secret`.
+    - `SPRING_DATA_REDIS_HOST`: `redis-state.budget-nutritionist.svc.cluster.local` (порт `6379`).
+    - `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI`: `http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs`.
+    - `SPRING_GRPC_SERVER_ADDRESS`: `0.0.0.0` (разрешено прослушивание gRPC со всех интерфейсов).
+    - `SERVER_PORT` и `MANAGEMENT_PORT`: `8080` (соответствие `containerPort` и HTTP health probes).
+  - **Скрипты автоматического запуска и проверки:**
+    - Разработан `infrastructure/k8s/verify-cluster.sh` (Bash).
+    - Разработан `infrastructure/k8s/verify-cluster.ps1` (PowerShell).
+    - Обновлен `scripts/verify-envoy-gateway.sh` с учетом применения манифестов `infrastructure/k8s/infra/`.
+
+- [x] **Единый KMP-валидатор профиля пользователя и онбординга (`ProfileValidator` в `:mobile:shared`):**
+  - **Доменный слой (`:mobile:shared/src/commonMain`):**
+    - Создан чистый sealed-интерфейс ошибок `FieldValidationError` (`Empty`, `NotANumber`, `NegativeOrZero`, `OutOfRange`, `TooShort`) в пакете `dev.andre.nutritionist.domain.validation`.
+    - Реализован `ProfileValidator` с чистыми функциями валидации (`validateName`, `validateHeight`, `validateWeight`, `validateTargetWeight`, `validateAge`, `validateWeeklyBudget`, `validateDailyCalories`).
+    - Границы синхронизированы с серверным `ProfileRequestValidator`:
+      - Рост: `50 .. 300` см
+      - Вес: `20.0 .. 500.0` кг (поддержка запятой и точки как десятичных разделителей)
+      - Возраст: `14 .. 120` лет
+      - Недельный бюджет: `1.0 .. 1_000_000.0`
+      - Длина имени: `>= 2` символов
+    - Реализована комплексная валидация онбординга `ProfileValidator.validateOnboarding(OnboardingData)`.
+    - Чистота KMP: ни одной платформенной зависимости (`android.*`, `androidx.*`, `java.*`, `R.string`), запрет `!!`.
+  - **UI-слой (`:mobile:androidApp`):**
+    - Создан маппер ошибок `FieldValidationError.toMessageRes(): Int` с исчерпывающим `when` без `else`.
+    - Удалён устаревший платформенный класс `ProfileFieldsValidation.kt`.
+    - Очищен `RegistrationWizardScreen.kt`: заменены разрозненные inline-проверки на доменный `ProfileValidator`. Ошибки хранятся как типизированные `FieldValidationError?` и разрешаются в `@Composable` через `toMessageRes()`.
+    - Диалоги редактирования `EditWeightDialog.kt` и `EditBudgetDialog.kt` переведены на вызовы `ProfileValidator`.
+    - Обновлён `ProfileScreenUnitTest.kt` на тестирование `ProfileValidator` и `toMessageRes()`.
+    - Добавлены тесты в `RegistrationWizardScreenTest.kt` на блокировку перехода при некорректном росте и бюджете.
+  - **Тестирование и верификация:**
+    - Разработан исчерпывающий набор юнит-тестов `ProfileValidatorTest.kt` в `commonTest` (17 тестов, граничные значения, некорректные типы, пустые строки, комплексный онбординг).
+    - `:mobile:shared:allTests` (`testAndroidHostTest`): 111 passed, 0 failed.
+    - `:mobile:androidApp:testDebugUnitTest`: 72 passed, 0 failed.
+    - `:mobile:androidApp:assembleDebug` и `:mobile:shared:assemble`: BUILD SUCCESSFUL.
+
+- [x] **Устранение дублирования бизнес-логики и переход на SSOT на бэкенде (profile-service) для норм КБЖУ:**
+  - **Ликвидация клиентской формулы Миффлина — Сан-Жеора (`:mobile:shared`):**
+    - Удалён дублирующий калькулятор `NutritionGoalCalculator.kt` и его устаревший тест `NutritionGoalCalculatorTest.kt` из `:mobile:shared`. Единственным источником истины (SSOT) для расчёта норм является `profile-service`.
+    - Добавлены значения по умолчанию и константа `NutritionGoal.EMPTY` (`targetCalories = 0, targetProteinsGrams = 0.0, targetFatsGrams = 0.0, targetCarbsGrams = 0.0, targetWeightKg = 0.0`).
+    - Упрощён `OnboardingDataMapper.kt`: `OnboardingData.toProfile()` передаёт `NutritionGoal.EMPTY`, а бэкенд вычисляет нормы, возвращает их в ответе `UpdateProfile` и они атомарно кэшируются в локальный Room.
+    - Обновлён `OnboardingDataMapperTest.kt` на проверку генерации `NutritionGoal.EMPTY`.
+  - **Доменный калькулятор дневного баланса и остатка (`DailyNutritionBalanceCalculator` в `:mobile:shared`):**
+    - Создана иммутабельная модель съеденного `ConsumedNutrition(calories, proteinsGrams, fatsGrams, carbsGrams)`.
+    - Созданы результирующие модели баланса `DailyMacroBalance` и `DailyNutritionBalance` с вычислением остатков, процента выполнения цели и флагов превышения нормы.
+    - Реализован чистый офлайн-калькулятор `DailyNutritionBalanceCalculator.calculate(goal, consumed)` с защитой от деления на 0 и округлением до 1 знака.
+    - Реализована функция распределения бюджета приёма пищи `getRemainingBudgetForMeal(balance, mealType)` (исчерпывающий `when` по `MealType`: завтрак 25%, обед 35%, ужин 25%, перекус 15%).
+    - Модель `MealType` вынесена в `dev.andre.nutritionist.domain.model` (`:mobile:shared`), в `:mobile:androidApp` сделан `typealias`.
+    - Разработан набор unit-тестов `DailyNutritionBalanceCalculatorTest` (6 тестов: базовый день, перебор калорий, защита от деления на 0, граничные макросы, распределение по приёмам пищи, нулевой бюджет при переборе).
+  - **Интеграция с Presentation / UI (`:mobile:androidApp`):**
+    - В `DashboardUiStateMapper` интегрирован `DailyNutritionBalanceCalculator` для расчета сводки `NutritionSummaryUiModel` и макросов `MacroNutrientUiModel`.
+    - В UI передаются вычисленные остатки («Осталось 450 ккал», «Перебор 250 ккал», остатки макросов).
+  - **Верификация:**
+    - 82/82 тестов в `:mobile:shared:allTests` (`testAndroidHostTest`) GREEN.
+    - 70/70 тестов в `:mobile:androidApp:testDebugUnitTest` GREEN.
+    - `:mobile:androidApp:assembleDebug` BUILD SUCCESSFUL.
+
+- [x] **Редизайн главного экрана приложения (Dashboard / Дневник питания КБЖУ в стиле Antigravity):**
+  - **Маппинг данных и архитектура представления (`:mobile:androidApp`):**
+    - Создана модель `MealType` (`BREAKFAST`, `LUNCH`, `DINNER`, `SNACK`) с исчерпывающим `when` без `else`.
+    - Разработаны UI-модели состояния: `MacroNutrientUiModel`, `NutritionSummaryUiModel`, `MealEntryUiModel`, `MealSectionUiModel`, `DayOfWeekUiModel`, `DashboardUiState`.
+    - Реализован чистый маппер `DashboardUiStateMapper`, агрегирующий употреблённые калории и макросы (Б/Ж/У) и сопоставляющий их с целевыми показателями `Profile.nutritionGoal` с бэкенда (`targetCalories`, `targetProteinsGrams`, `targetFatsGrams`, `targetCarbsGrams`).
+  - **UI-компоненты Antigravity Design System (`:mobile:androidApp`):**
+    - `DashboardWeekStreakBar.kt`: недельная полоса («Пн»–«Вс») с круглыми индикаторами, чекмарком выполненного дня, бейджем серии (стрика) с иконкой пламени и подписью дней серии.
+    - `DashboardNutritionKpiBar.kt`: горизонтальная сводная плашка с 5 колонками (Жиры | Углев | Белк | Цель % | Калории) с крупным шрифтом значений и целевыми значениями из профиля.
+    - `MealItemRow.kt`: строка добавленного блюда с иконкой, названием, порцией, раскладкой БЖУ и калориями.
+    - `MealSectionCard.kt`: карточка приёма пищи со скруглением `Spacing.cardRadius`, тематическими иконками (`FitIcons.Sun`, `FitIcons.Noon`, `FitIcons.Sunset`, `FitIcons.Moon`), бейджем калоража, кнопкой добавления `+` (`testTag("add_meal_<TYPE>")`), раскрывающимся списком блюд и быстрыми действиями («Копировать», «+ Сохранить Еду», «+ Камера»).
+    - Кнопка дополнительной активности: «+ Добавить Упражнение/Сон» (`FitIcons.Exercise`).
+    - `FitIcons.kt`: добавлены векторные иконки `Sun`, `Noon`, `Sunset`, `Moon`, `Plus`, `Flame`, `Check`, `ChevronDown`, `ChevronUp`, `ChevronRight`, `Bowl`, `Exercise`, `Info`, `Camera`, `Copy`.
+  - **Разделение Route / Screen (`:mobile:androidApp`):**
+    - `MainScreen.kt`: чисто декларативный stateless-компонент, принимающий `DashboardUiState` и события (`onAddMealClick`, `onMealItemClick`, `onToggleMealSection`, `onCompleteProfileClick`, `onNavigateToProfile`, `onDestinationSelected`, `onAddExerciseSleepClick`).
+    - `DashboardRoute.kt`: stateful-компонент, наблюдающий за `ProfileViewModel` и `authRepository`, связывающий данные через `DashboardUiStateMapper` и управляющий навигацией и состоянием раскрытия карточек.
+  - **Локализация (`strings.xml` и `values-ru/strings.xml`):**
+    - Добавлены двуязычные строковые ресурсы для всех приёмов пищи, КБЖУ, стрика, быстрых действий и дополнительной активности.
+  - **Тестирование и верификация (Robolectric):**
+    - В `MainScreenTest.kt` разработаны тесты на:
+      1. Отображение заголовка `FitTopBar` ("FitApp").
+      2. Отображение баннера незаполненного профиля и клик.
+      3. Скрытие баннера при заполненном профиле.
+      4. Динамическое отображение целей КБЖУ из `Profile.nutritionGoal` и употреблённых макросов.
+      5. Отображение всех 4 приёмов пищи по порядку («Завтрак», «Обед», «Ужин», «Перекус»).
+      6. Раскрытие секции «Ужин», отображение блюда с калориями и быстрых действий.
+      7. Клики по кнопкам добавления `+` с передачей соответствующего `MealType`.
+      8. Клик по строке блюда с передачей идентификатора.
+      9. Отображение даты и стрика.
+    - 9/9 тестов в `MainScreenTest` GREEN.
+    - 70/70 тестов в `:mobile:androidApp:testDebugUnitTest` GREEN.
+    - `:mobile:androidApp:assembleDebug` BUILD SUCCESSFUL.
+
+- [x] **Точечное модальное редактирование параметров профиля (Вес, Активность, Цель, Бюджет):**
+  - **MVI/KoTEA контракт (`:mobile:shared`):**
+    - В `ProfileUiModel` добавлены сырые типизированные свойства `rawWeightKg: Double`, `rawActivityLevel: ActivityLevel`, `rawGoalType: GoalType`, `rawWeeklyBudget: Double` для предзаполнения полей ввода и радиокнопок диалогов.
+    - В `ProfileUiStateMapper` реализован проброс этих полей из сущности `Profile`.
+    - В `ProfileEvent.Ui` добавлены точечные события: `ChangeWeight(val weightKg: Double)`, `ChangeActivity(val activityLevel: ActivityLevel)`, `ChangeGoal(val goalType: GoalType)`, `ChangeBudget(val weeklyBudget: Double)`.
+    - В редьюсере `ProfileUpdate` (чистый `DslUpdate`) добавлена обработка новых событий: создание мутированного `updatedProfile`, выставление `isSaving = true` и отправка команды `ProfileCommand.UpdateProfile(updatedProfile)`. При получении `ProfileLoaded` сохраняются `displayName` и `age`, сбрасывается `isSaving = false` и эмитится `ProfileNews.ProfileSaved`.
+  - **Компоненты диалогов и кликабельность (`:mobile:androidApp`):**
+    - `MetricCard.kt`: добавлен параметр `onClick: (() -> Unit)? = null` с поддержкой Material 3 клика и визуальным индикатором редактирования `FitIcons.Edit`.
+    - `FitIcons.kt`: добавлена векторная иконка `FitIcons.Edit`.
+    - Созданы компактные диалоги по правилу Single Responsibility File Rule в `dev.andre.nutritionist.android.ui.dialogs`:
+      - `EditWeightDialog.kt` (ввод веса с валидацией 20..300 кг).
+      - `EditActivityDialog.kt` (радиокнопки 4 уровней активности `ActivityLevel`).
+      - `EditGoalDialog.kt` (выбор цели питания `GoalType`).
+      - `EditBudgetDialog.kt` (ввод недельного бюджета с валидацией > 0).
+    - `ProfileSuccessContent.kt`: добавлено локальное состояние `activeDialog: ProfileEditField?`, клики по карточкам открывают соответствующие модальные диалоги.
+    - В меню «Настройки» убран принудительный редирект на полный визард онбординга.
+    - Добавлены строковые ресурсы в `res/values/strings.xml` и `res/values-ru/strings.xml`.
+  - **Тестирование и верификация:**
+    - `ProfileUiStateMapperTest.kt`: тест маппинга сырых полей для диалогов.
+    - `ProfileUpdateTest.kt`: 4 новых теста на обработку `ChangeWeight`, `ChangeActivity`, `ChangeGoal`, `ChangeBudget` и генерацию `ProfileCommand.UpdateProfile`.
+    - `ProfileScreenUnitTest.kt`: 5 новых Compose UI тестов на Robolectric (тесты 14-18): проверка открытия диалогов при клике на карточки, ввод/выбор значений, вызовы `ProfileEvent.Ui.*` и валидация.
+    - 79/79 тестов в `:mobile:shared:allTests` GREEN.
+    - 66/66 тестов в `:mobile:androidApp:testDebugUnitTest` GREEN.
+    - `:mobile:androidApp:assembleDebug` BUILD SUCCESSFUL.
+
+- [x] **Устранение дублирования ввода имени и фамилии при регистрации через Keycloak:**
+  - **Архитектурное решение:** Keycloak является центральным Identity Provider (OIDC / OAuth 2.1 PKCE) и уже собирает имя, фамилию, email и пароль при регистрации пользователя. Дублирование устранено в мобильном клиенте (`mobile:androidApp`): убран избыточный `OnboardingNameStep` из мастера регистрации.
+  - `RegistrationWizardScreen.kt`:
+    - Количество страниц визарда уменьшено с 5 до 4:
+      - Шаг 0: Физические параметры (`OnboardingBodyStep` — рост, вес, возраст, пол).
+      - Шаг 1: Физическая активность (`OnboardingActivityStep` — уровень активности).
+      - Шаг 2: Бюджет питания (`OnboardingBudgetStep` — недельный бюджет).
+      - Шаг 3: Цель питания (`OnboardingGoalStep` — выбор цели и завершение).
+    - Убран неиспользуемый `firstNameError` и валидация имени на стороне клиента.
+    - `DotsIndicator`: переведен на `totalDots = 4`.
+    - `isFinalStep` настроен на индекс 3.
+  - `RegistrationWizardRoute.kt`:
+    - Добавлен параметр `initialData: OnboardingData = OnboardingData()` для проброса предзаполненного имени.
+  - `AppNavHost.kt`:
+    - Имя пользователя извлекается из токена Keycloak через `authRepository.getUserDisplayName()` и передается в визард как `initialData = OnboardingData(firstName = userDisplayName ?: "")`.
+    - Все шаги визарда персонализируются именем пользователя из Keycloak (например, «Aleksey, расскажи о себе»).
+  - `RegistrationWizardScreenTest.kt`:
+    - Обновлены тесты на Robolectric под 4-шаговый визард (проверка персонализированного заголовка на шаге 0, валидация роста/веса/возраста, переход к шагу активности, завершение всех 4 шагов с сохранением собранных параметров).
+    - 3/3 теста в `RegistrationWizardScreenTest` GREEN, 61/61 тестов в `:mobile:androidApp:testDebugUnitTest` GREEN, `:mobile:androidApp:assembleDebug` BUILD SUCCESSFUL.
+
+- [x] **Реорганизация UX онбординга, ликвидация `runBlocking` в AuthRepository и стабилизация Transactional Outbox в `profile-service`:**
+  - **Ликвидация `runBlocking` (`mobile:androidApp`):**
+    - В `AuthStorage` и `EncryptedPrefsAuthStorage` добавлен потокобезопасный синхронный метод чтения кэшированного состояния `getAuthStateJsonSync(): String?`.
+    - В `AuthRepositoryImpl` из блока `init` полностью убран `runBlocking(dispatchers.io)`, инициализация восстановлена через синхронный вызов `authStorage.getAuthStateJsonSync()`, полностью удалён импорт `kotlinx.coroutines.runBlocking`.
+    - В `AuthRepositoryImplTest` добавлен тест `initialization restores cached session synchronously from authStorage without runBlocking`.
+  - **UX онбординга и баннер «Заполнить профиль» (`mobile:androidApp` & `mobile:shared`):**
+    - В `ProfileUiModel` добавлено свойство `val isComplete: Boolean = true`, а в `ProfileUiStateMapper` реализован расчет `isComplete = heightCm > 0 && weightKg > 0.0`.
+    - Создан компонент `CompleteProfileBanner.kt` (Single Responsibility File Rule) в `dev.andre.nutritionist.android.ui.components` с кнопкой перехода в мастер онбординга.
+    - В `MainScreen.kt` интегрировано отображение `CompleteProfileBanner` в верхней части экрана под `FitTopBar`.
+    - Создан stateful `DashboardRoute.kt`, наблюдающий за профилем через `ProfileViewModel`: при ошибке загрузки (404/ошибка) или незаполненном профиле (`isComplete == false`) выставляется флаг `showCompleteProfileBanner = true`.
+    - В `AppNavHost.kt` маршрут `Dashboard` переведён на `DashboardRoute`. При входе пользователя без профиля отображается баннер с кнопкой «Заполнить профиль», ведущий на `AppDestination.Registration.route`.
+    - В `ProfileScreen.kt` и `ProfileSuccessContent.kt` добавлена кнопка и пункт меню «Заполнить анкету заново» (`R.string.profile_fill_survey_again`).
+    - В `res/values/strings.xml` и `res/values-ru/strings.xml` добавлены локализованные строки для баннера и повторного заполнения анкеты.
+    - Тесты: добавлены тесты в `MainScreenTest` и `ProfileScreenUnitTest` (61/61 тестов в `:mobile:androidApp:testDebugUnitTest` GREEN).
+  - **Диагностика и исправление Outbox (`backend:profile-service`):**
+    - В `ProfileService.kt` уточнено условие `isNewProfile`: если профиль был пустышкой (`heightCm <= 0` или `weightKg <= 0`), генерация `UserRegisteredEvent` надёжно срабатывает при первом заполнении реальных данных онбординга. Добавлено логирование `logger.info("Scheduling UserRegisteredEvent to outbox for userId={}", entity.userId)` и `logger.debug("Skipping UserRegisteredEvent: profile already exists for userId={}", command.userId.raw)`.
+    - В `OutboxJpaRepository.kt` добавлен метод `resetFailedToPending()` для восстановления сообщений со статусом `FAILED` обратно в `PENDING` с обнулением счётчика попыток.
+    - В `OutboxProcessor.kt` добавлена задержка `retryBackoffMs` в `application.yml` (`outbox.retry-backoff-ms: 2000`), автоматический сброс зависших `FAILED` сообщений при старте сервиса (`@PostConstruct`) и периодический шедулер `retryFailedMessagesScheduled()`.
+    - В тестах `AbstractPostgresIntegrationTest`, `ProfileServiceApplicationTests`, `ProfileOutboxIntegrationTest` настроен динамический порт gRPC `spring.grpc.server.port: 0`, исключающий коллизии портов с работающим Envoy Gateway (порт 9090).
+    - Разработаны интеграционные тесты `stub profile with zero parameters triggers outbox event upon first real parameters submission` и `resetFailedToPending recovers failed outbox messages for successful publishing` (82/82 тестов в `:backend:profile-service:test` GREEN).
+
+
+- [x] **Начальный скелет микросервиса `:backend:catalog-price-service` и Liquibase-миграции каталога продуктов, магазинов и цен:**
+  - **Liquibase-миграции (`catalog_db`):** Создан мастер-лог `src/main/resources/db/changelog/db.changelog-master.xml` и ченджсет `v1/001-init-catalog-schema.xml`. Описаны таблицы `stores` (UUID PK, `name`, `chain_name`, `address`, `is_active`, `created_at`), `products` (UUID PK, `name`, `barcode`, `calories_per_100g`, `proteins_per_100g`, `fats_per_100g`, `carbs_per_100g`, `version` BIGINT, `created_at`) и `prices` (UUID PK, FK на `products(id)` ON DELETE CASCADE, FK на `stores(id)` ON DELETE CASCADE, `price`, `currency`, `unit`, `updated_at`, уникальное ограничение `uq_product_store`). Добавлены индексы `idx_products_nutrition`, `idx_products_barcode`, `idx_products_name`, `idx_prices_store_product`, `idx_prices_updated_at`.
+  - **JPA-сущности и репозитории (`dev.andre.nutritionist.catalog.persistence`):**
+    - Реализованы JPA-сущности `StoreEntity`, `ProductEntity` и `PriceEntity`.
+    - Все связи `@ManyToOne` и `@OneToMany` строго `FetchType.LAZY`. Категорический запрет `FetchType.EAGER` соблюдён.
+    - Настроена оптимистичная блокировка через `@Version var version: Long = 0L` на `ProductEntity`.
+    - На `ProductEntity` объявлен граф `@NamedEntityGraph(name = "Product.withPricesAndStores", attributeNodes = [NamedAttributeNode("prices", subgraph = "prices-subgraph")], subgraphs = [NamedSubgraph(name = "prices-subgraph", attributeNodes = [NamedAttributeNode("store")])])` для полного решения проблемы N+1.
+    - В `ProductJpaRepository` добавлен метод `findWithPricesAndStoresById` с `@EntityGraph` (`EntityGraphType.LOAD`), а также фильтрация по диапазону калорий и минимальному белку `findByCaloriesPer100gBetweenAndProteinsPer100gGreaterThanEqual`.
+    - Созданы `StoreJpaRepository` и `PriceJpaRepository` (с запросом `JOIN FETCH` цен с магазинами).
+  - **Архитектурный каркас (по эталону `profile-service`):**
+    - `CoroutineDispatchers` и `DefaultCoroutineDispatchers` (`dev.andre.nutritionist.catalog.coroutines`).
+    - `GrpcExceptionInterceptor` (`dev.andre.nutritionist.catalog.grpc.interceptor`) с маппингом доменных и персистентных исключений в gRPC статусы (`NOT_FOUND`, `INVALID_ARGUMENT`, `ALREADY_EXISTS`, `ABORTED`, `INTERNAL`).
+    - `SecurityGrpcInterceptor` и `AuthContext` (`dev.andre.nutritionist.catalog.grpc.security`) для проброса пользователя и ролей из Envoy Gateway и MDC-логирования `userId`.
+    - Актуализирован `application.yml`: Hikari pool (10 соединений, таймаут 3000), порт gRPC 9192, web/actuator порт 8086, отключен `open-in-view: false`, `hibernate.ddl-auto: "none"`, JSON pattern логирования.
+  - **Сервисный слой (`CatalogService`):**
+    - Реализованы `@Transactional(readOnly = true)` методы поиска и получения каталога, а также `@Transactional` метод `upsertPrice` без единого сетевого вызова внутри транзакции.
+  - **Тестирование и верификация (Testcontainers PostgreSQL 17):**
+    - Настроен `AbstractPostgresIntegrationTest` с `PostgreSQLContainer("postgres:17-alpine")`.
+    - Разработан `CatalogPersistenceIntegrationTest`: проверен прокат Liquibase-миграций, сохранение сущностей, работа `@NamedEntityGraph` без `LazyInitializationException` вне транзакции, фильтрация по КБЖУ, срабатывание уникального ограничения `uq_product_store` с выбросом `DataIntegrityViolationException`, а также идемпотентный `upsertPrice`.
+    - Добавлен `CatalogPriceApplicationTests` на поднятие Spring-контекста.
+    - Все 6/6 тестов `:backend:catalog-price-service:test` и `ktlintCheck` успешно пройдены (GREEN).
+
+- [x] **Устранение разрыва данных между онбордингом и профилем, интеграция gRPC/Room сохранения OnboardingData и удаление хардкода "John"/"28":**
+  - **Причина разрыва и падения бэкенда с 404 (Profile not found):** В `AppNavHost.kt` лямбда `onFinish` в `RegistrationWizardRoute` не принимала `OnboardingData` и не инициировала сохранение профиля. Из-за этого при переходе на экран профиля `GetProfile(userId)` на бэкенде падал с `NoSuchElementException("Profile not found: ...")`. В UI отображался захардкоженный "John" (`R.string.profile_default_user_name`) и возраст "28".
+  - **Причина отсутствия сетевых вызовов/логов в `profile-service` и перезаписи метрик веса/роста/активности:** Класс [`AndroidProfileGrpcServiceClient.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/shared/src/androidMain/kotlin/dev/andre/nutritionist/data/remote/grpc/AndroidProfileGrpcServiceClient.kt) был заглушкой (`createDefaultProfileProto`), которая не обращалась к переданному `ManagedChannel` и возвращала захардкоженный дефолтный профиль (175 см, 70 кг, Male, Light activity). При открытии экрана профиля `refreshProfile()` вызывал этот мок и перезаписывал Room-кэш, а сетевой gRPC-вызов на бэкенд не отправлялся (в логах `profile-service` была тишина).
+  - **Реализация реального gRPC-клиента в `:mobile:shared`:**
+    - В [`AndroidProfileGrpcServiceClient.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/shared/src/androidMain/kotlin/dev/andre/nutritionist/data/remote/grpc/AndroidProfileGrpcServiceClient.kt) реализованы `MethodDescriptor` для `GetProfile` и `UpdateProfile` сервиса `com.budgetntr.profile.v1.ProfileService`.
+    - Написаны бинарные Protobuf маршаллеры `GetProfileRequestMarshaller`, `UpdateProfileRequestMarshaller` и `ProfileProtoMarshaller` на базе `CodedOutputStream`/`CodedInputStream`, полностью согласованные со схемой `proto/nutritionist/profile/v1/profile.proto`.
+    - Асинхронный вызов `channel.unaryCall` построен на базе корутин (`suspendCancellableCoroutine`) и `io.grpc.stub.ClientCalls.asyncUnaryCall` с поддержкой отмены корутин (`call.cancel`).
+    - В [`ProfileRepositoryImpl.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/shared/src/commonMain/kotlin/dev/andre/nutritionist/data/repository/ProfileRepositoryImpl.kt) реализовано немедленное сохранение в Room перед сетевым запросом и `recover`, гарантирующий offline-first работу без потери введённых данных.
+    - В [`ProfileSuccessContent.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/ProfileSuccessContent.kt) добавлена карточка «Рост» (`heightLabel`), теперь все метрики (Вес, Рост, Активность, Цель, Бюджет) динамически отображаются на экране.
+    - Написаны тесты бинарного маршаллинга в [`AndroidProfileGrpcServiceClientTest.kt`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/mobile/shared/src/androidHostTest/kotlin/dev/andre/nutritionist/data/remote/grpc/AndroidProfileGrpcServiceClientTest.kt).
+    - Успешно пройдены все тесты: `:mobile:shared:allTests` (74 passed), `:mobile:androidApp:testDebugUnitTest` (56 passed) и сборка `:mobile:androidApp:assembleDebug`.
+  - **Доменные вычисления и маппинг (`:mobile:shared`):** 
+    - `OnboardingData` перенесён в доменный слой `:mobile:shared` (`dev.andre.nutritionist.domain.model.OnboardingData`).
+    - Реализован чистый KMP-калькулятор `NutritionGoalCalculator` с детерминированным расчётом базового обмена веществ (BMR) по формуле Миффлина — Сан-Жеора, коэффициентами активности (PAL), фактором цели и расчётом КБЖУ.
+    - Создан `OnboardingDataMapper` (`toProfile(...)`) для преобразования данных онбординга в доменный `Profile` с типизированными идентификаторами `UserId` и `ProfileId`.
+  - **MVI KoTEA Presentation (`ProfileCommand`, `ProfileEvent`, `ProfileUpdate`, `ProfileCommandsFlowHandler`, `ProfileUiStateMapper`):**
+    - В `ProfileCommand` добавлена команда `UpdateProfile(val profile: Profile)`.
+    - В `ProfileEvent.Ui` добавлены события `SaveOnboardingProfile(data, userId)` и `UpdateProfile(profile)`.
+    - `ProfileCommandsFlowHandler` обрабатывает сохранение: вызывает `profileRepository.updateProfile(command.profile)` (сохранение через gRPC в `profile-service` PostgreSQL и кэширование в Room `ProfileDao`) и при успехе эмитит `ProfileEvent.Internal.ProfileLoaded(updatedProfile)`.
+    - В `ProfileUpdate` добавлен флаг `isSaving`, при успешном сохранении профиля эмитится одноразовое уведомление `ProfileNews.ProfileSaved`.
+    - В `ProfileUiModel` добавлено поле `displayName: String`. `ProfileUiStateMapper` заполняет имя пользователя с фоллбэком на `userId.raw`.
+  - **Интеграция AppAuth & UI (`AuthRepository`, `AppNavHost.kt`, `ProfileSuccessContent.kt`, `ProfileScreen.kt`):**
+    - В `AuthRepository` / `AuthRepositoryImpl` добавлен метод `getUserDisplayName(): String?`, извлекающий `given_name` -> `name` -> `preferred_username` из ID Token.
+    - В `AppNavHost.kt` маршрут `AppDestination.Registration` подключен к `ProfileViewModel`: отображает `FullScreenLoading` во время сохранения и переходит на `Dashboard` только после эмиссии `ProfileNews.ProfileSaved`.
+    - В `ProfileSuccessContent.kt` убран хардкод `R.string.profile_default_user_name` ("John"), отображается динамический `profile.displayName.ifBlank { profile.userId.raw }`.
+    - В `ProfileScreen.kt` убран хардкод "John" и "28", значения берутся из актуального состояния `ProfileState.Content.Success`.
+  - **Тестирование и верификация:**
+    - `NutritionGoalCalculatorTest`: проверка расчёта формулы Миффлина — Сан-Жеора для всех полов и уровней активности.
+    - `OnboardingDataMapperTest`: проверка корректности маппинга данных онбординга в доменный профиль.
+    - `ProfileUiStateMapperTest`: проверка проброса `displayName` и корректного фоллбэка на `userId.raw`.
+    - `ProfileCommandsFlowHandlerTest`: проверка вызова `updateProfile` -> эмит `ProfileLoaded(profile)`.
+    - `ProfileUpdateTest`: проверка `SaveOnboardingProfile` -> команда `UpdateProfile` и эмит `ProfileSaved`.
+    - `AuthRepositoryImplTest`: проверка извлечения `given_name` и `preferred_username` из JWT токенов.
+    - `ProfileScreenUnitTest` (Robolectric): 11 UI-тестов, проверка отображения реального имени и метрик без "John" и "28".
+    - Все 71 тест `:mobile:shared:allTests` — GREEN.
+    - Все 56 тестов `:mobile:androidApp:testDebugUnitTest` — GREEN.
+    - Сборка `:mobile:androidApp:assembleDebug` — BUILD SUCCESSFUL.
+
+- [x] **Исправление зависания («Connecting to Keycloak…») и ошибки «ERR_CONNECTION_REFUSED / localhost:8080» при авторизации и регистрации:**
+  - **Причина зависания:** В `AppNavHost.kt` на уровне корня висел `LaunchedEffect(authViewModel) { authViewModel.news.collect { ... } }`. Так как `StoreImpl.news` построен на одноканальной очереди `Channel<News>` (`receiveAsFlow()`), `AppNavHost` перехватывал событие `AuthNews.LaunchAuthTab(intent)`, и дочерний `LoginRoute` его не получал, оставаясь в бесконечной загрузке.
+  - **Причина ошибки ERR_CONNECTION_REFUSED:** В `infrastructure/docker-compose.local.yml` было захардкожено `KC_HOSTNAME: http://localhost:8080`. В результате Keycloak генерировал HTML-формы логина и ссылки регистрации со строгим экшеном `http://localhost:8080/...`. На Android-эмуляторе `localhost` указывает на сам эмулятор (127.0.0.1 ОС Android), где порт 8080 не слушается, что приводило к ошибке `This site can't be reached / localhost refused to connect / ERR_CONNECTION_REFUSED`.
+  - **Решение:**
+    1. Из `infrastructure/docker-compose.local.yml` удалён фиксированный `KC_HOSTNAME: http://localhost:8080`, включен динамический резолв хоста `KC_HOSTNAME_STRICT: "false"`. Теперь при запросе с эмулятора (`Host: 10.0.2.2:8080`) Keycloak динамически отдаёт все ссылки и формы на `10.0.2.2:8080`, а при запросе с хоста — на `localhost:8080`.
+    2. В `mobile/androidApp`: в `AuthConfig.kt` эндпоинты по умолчанию настроены на `10.0.2.2:8080` (стандартный хост-мост Android Emulator).
+    3. В `AppNavHost.kt` удален перехватывающий `LaunchedEffect(authViewModel)`. Слушатель `authViewModel.news` перенесён локально в `ProfileRoute.kt` для обработки `NavigateToAuth` только на экране профиля.
+    4. В `AuthContract.kt` и `AuthUpdate.kt` добавлен `AuthEvent.Ui.AuthCancelled` (`AuthState.Content.Idle`).
+    5. В `AuthCommandsFlowHandler.kt` перехвачена ошибка `AuthorizationException.GeneralErrors.USER_CANCELED_AUTH_FLOW`, которая теперь плавно переводит экран в `Idle` без пугающего сообщения об ошибке.
+    6. Добавлен юнит-тест в `AuthUpdateTest.kt`. Все 50/50 unit-тестов `:mobile:androidApp:testDebugUnitTest` GREEN.
+    7. Проверено в живом Android эмуляторе: и вход через Keycloak, и регистрация нового аккаунта открываются мгновенно, страницы рендерятся без ошибок связи, а при закрытии вкладки приложение возвращается в исходное состояние.
+
+- [x] **Шаг 6 (T-042): Демо среза №1 — сквозная цепочка Авторизация (Keycloak OAuth 2.1 PKCE) → Gateway → profile-service → PostgreSQL:**
+  - **Ревизия экранов входа (`LoginScreen.kt`, `SignUpScreen.kt`):** Устранены бутафорские поля паролей и mock 4-значных SMS/email кодов. Реализован лаконичный и современный экран входа: «Войти через Keycloak / Аккаунт» (AppAuth PKCE), «Войти через Google» (`kc_idp_hint=google`), быстрая регистрация («Создать аккаунт» с `prompt=create`), чистый экран `SignUpScreen.kt` без mock-полей.
+  - **MVI Presentation & AppAuth (`AuthViewModel`, `AuthContract`, `AuthCommandsFlowHandler`):** Расширены события и команды авторизации (`idpHint`, `prompt`). В `AuthRepository` добавлен метод `getUserId(): UserId?` с безопасным извлечением `sub` claim из токена. В `AuthRepositoryImpl` токены надёжно хранятся в Android Keystore (`EncryptedPrefsAuthStorage`), а `AuthCallCredentials` автоматически прикрепляет токен к gRPC-запросам без блокировки потоков.
+  - **Сквозная навигация и перехват Intent (`MainActivity.kt`, `AppNavHost.kt`, `LoginRoute.kt`):** `MainActivity` перехватывает deep link `com.budgetntr.fitassistant://oauth2redirect`, передаёт Intent в `AuthViewModel.processAuthResponse()`, переводит авторизованного пользователя на `Dashboard` и динамически передаёт `userId = authRepository.getUserId()` в `ProfileRoute`.
+  - **Envoy Gateway & gRPC (`05-security-policy.yaml`, `AndroidDataModule.kt`):** Запросы направляются на `10.0.2.2:9090` (Envoy Gateway), шлюз валидирует JWT по JWKS Keycloak realm `FitAssistant`, пробрасывает заголовок `x-user-id: <subKeycloak>`, `SecurityGrpcInterceptor` валидирует права доступа к профилю, `ProfileService` читает/пишет данные в PostgreSQL `profile_db`, а `ProfileScreen` отображает реальные данные КБЖУ, веса и бюджета.
+  - **Тестирование и верификация (AGENTS.md §6):**
+    - Unit-тесты `:mobile:androidApp:testDebugUnitTest`: 42/42 GREEN (`LoginScreenTest`, `SignUpScreenTest`, `AuthUpdateTest`, `AuthCommandsFlowHandlerTest`, `AuthRepositoryImplTest`).
+    - Unit-тесты `:mobile:shared:allTests`: 59/59 GREEN.
+    - Сборка `:mobile:androidApp:assembleDebug`: BUILD SUCCESSFUL.
+    - Устранено падение AppAuth `IllegalArgumentException: only https connections are permitted`: реализован `AppAuthConnectionBuilder`, в `AppAuthConfiguration` включен `skipIssuerHttpsCheck(true)`, в `res/xml/network_security_config.xml` разрешен cleartext HTTP для `10.0.2.2`, а в `AuthConfig` добавлены прямые эндпоинты `authEndpoint` и `tokenEndpoint` (`http://10.0.2.2:8080/...`) для стабильной работы в Android эмуляторе. Проверено в живом эмуляторе — Custom Tabs успешно открывает страницу Keycloak.
+  - **Локальный запуск и верификация сервисов (Docker & profile-service bootRun):**
+    - В `infrastructure/docker-compose.local.yml` внешний порт PostgreSQL переведён на `5433` во избежание конфликта с локальной службой Windows, в `.env` актуализированы `PROFILE_DB_URL`, `CATALOG_DB_URL`, `DIARY_DB_URL`. Все 5 контейнеров (Postgres, Keycloak, Redis, Kafka, Schema Registry) запущены и находятся в статусе `Up (healthy)`.
+    - В `application.yml` сервиса `profile-service` исправлен парсинг Logback JSON pattern (устранено некорректное экранирование `\"`), веб-порт Tomcat переведён на `8085` (`server.port: 8085` и `management.server.port: 8085`) во избежание конфликта с Keycloak (порт `8080`).
+    - Успешно проверен запуск `./gradlew :backend:profile-service:bootRun`: Liquibase применил миграции к `profile_db`, HikariCP подключен, Tomcat поднят на порту `8085`, gRPC Server слушает порт `9090`, Actuator health (`liveness` и `readiness`) возвращает `UP`.
+    - Все 80/80 unit и integration тестов `:backend:profile-service:test` пройдены успешно (GREEN).
+
+- [x] **Идемпотентность в profile-service (Redis State Machine & Concurrency Protection):**
+  - **Конечный автомат состояний в Redis:** Добавлен sealed interface [`IdempotencyResult`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/IdempotencyStore.kt) (`Acquired`, `InProgress`, `Cached`, `PayloadMismatch`).
+  - **Атомарный захват и валидация:** В [`RedisIdempotencyStore`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/RedisIdempotencyStore.kt) реализован атомарный `SETNX` со статусом `PROCESSING` и lock TTL 60с, хэширование тела запроса (SHA-256) и сохранение в компактном бинарном формате. При параллельных запросах конкуренты получают `Status.ABORTED`, при несовпадении хэша — `Status.INVALID_ARGUMENT`, при повторе — мгновенный возврат кэшированного ответа из Redis без обращения к БД.
+  - **Освобождение при сбоях:** При ошибках валидации или исключениях в сервисе перехватчик [`IdempotencyServerInterceptor`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/grpc/idempotency/IdempotencyServerInterceptor.kt) автоматически удаляет ключ из Redis (`release`), что позволяет клиенту выполнить retry без ожидания истечения lock TTL.
+  - **Тестирование и верификация:** 
+    - Добавлены тесты в [`ProfileGrpcServiceIntegrationTest`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/test/kotlin/dev/andre/nutritionist/profile/grpc/ProfileGrpcServiceIntegrationTest.kt): проверка обнаружения параллельных in-flight запросов (`ABORTED`), защита от повторного использования ключа с другим payload (`INVALID_ARGUMENT`), очистка блокировки при ошибке валидации с последующим успешным retry.
+    - Все 80/80 тестов в `:backend:profile-service:test` пройдены успешно (GREEN).
+    - `ktlintCheck` и `detekt` пройдены без единого замечания.
+
+- [x] **Шаг 5 (T-024 / T-025): Transactional Outbox в profile-service, событие UserRegisteredEvent и E2E интеграция:**
+  - **[T-024] Схема и сущности Outbox:** Создан Liquibase changeset `003-create-outbox-table.xml` (таблица `outbox_messages` с `id UUID PK`, `aggregate_type`, `aggregate_id`, `topic`, `payload BYTEA`, `status`, `attempts`, `created_at`, `published_at`, и частичным индексом `idx_outbox_pending` по `created_at WHERE status = 'PENDING'`). Созданы JPA Entity [`OutboxMessageEntity`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/entity/OutboxMessageEntity.kt) и репозиторий [`OutboxJpaRepository`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/repository/OutboxJpaRepository.kt) с пессимистической блокировкой `FOR NO KEY UPDATE SKIP LOCKED` (`@Lock(LockModeType.PESSIMISTIC_WRITE)` и `jakarta.persistence.lock.timeout = -2`).
+  - **[T-024] Надежная публикация вне транзакции:** Реализован локальный in-memory конвертер Avro [`OutboxPayloadConverter`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/service/OutboxPayloadConverter.kt) без сетевого I/O внутри БД-транзакции. Создан [`OutboxService`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/service/OutboxService.kt) (`@Transactional(propagation = Propagation.MANDATORY)`). Создан фоновый процессор [`OutboxProcessor`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/outbox/processor/OutboxProcessor.kt) (`@Scheduled` каждые 500мс, атомарная выборка батча через `TransactionTemplate`, отправка в Kafka через `KafkaTemplate` строго вне БД-транзакции, ключ партиции строго `aggregateId` (`userId`) для гарантии FIFO, фиксация статуса `PUBLISHED` при ACK, инкремент попыток и статус `FAILED` при исчерпании лимита, структурированные логи с MDC `userId`/`outboxId`, метрики Micrometer `outbox.messages.published` и `outbox.pending.count`).
+  - **[T-025] Интеграция с регистрацией пользователя:** В [`ProfileService`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/service/ProfileService.kt) метод `upsertProfile` сохраняет событие `UserRegisteredEvent` через `OutboxService` строго при создании нового профиля (`isNewProfile = existing == null`). Повторные обновления профиля не вызывают генерацию событий регистрации.
+  - **Конфигурация Kafka Producer:** Создан [`KafkaProducerConfig`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/src/main/kotlin/dev/andre/nutritionist/profile/config/KafkaProducerConfig.kt) с гарантией надёжности: `acks = all`, `enable.idempotence = true`, `KafkaAvroSerializer`.
+  - **Документация архитектуры:** В [`backend/profile-service/README.md`](file:///C:/Users/andre/AndroidStudioProjects/FitAssistent2/backend/profile-service/README.md) добавлен раздел 5 «Архитектура Kafka, партиционирование и надежность доставки» с расчетом числа партиций по формуле Джея Крепса ($P = \max(\lceil T_{target} / T_{consumer} \rceil, N_{consumers}) = 3$), описанием преимуществ KRaft на VPS, ручным управлением оффсетами (`AckMode.MANUAL_IMMEDIATE`, `enable.auto.commit = false`) и защитой от Stop-The-World Rebalance.
+  - **Тестирование и верификация:** 
+    - `ProfilePersistenceTests`: проверка Liquibase, pessimistic lock `SKIP LOCKED`, обновление статусов и retry-механизм.
+    - `ProfileOutboxIntegrationTest`: сквозной интеграционный тест с реальными Testcontainers (PostgreSQL 17 + Redis 7 + Confluent Kafka 7.7 + Schema Registry 7.7) — регистрация -> сохранение в Outbox -> отправка воркером -> получение реальным Kafka Consumer с валидацией партиционирования по `userId`, полей Avro (`email`, `source`, `id`, `registrationTimestamp`) и отсутствия дубликатов при повторных обновлениях.
+    - Полная проверка: 77/77 тестов GREEN (`:backend:profile-service:test`), `ktlintCheck` и `detekt` без ошибок.
+
+- [x] **Шаг 6 (T-026 / T-027 / T-028 / T-029): Миграция инфраструктуры Envoy Gateway на боевой profile-service, TLS, Keycloak JWT и Rate Limiting:**
+  - **[T-026] Helmfile & TLS:** Обновлен `infrastructure/k8s/charts/helmfile.yaml` (Envoy Gateway v1.2.4 с Redis бэкендом). Создан секрет `02-tls-secret.yaml` с самоподписанным сертификатом (CN: `api.budget-nutritionist.app`, SAN: `localhost`, `127.0.0.1`, `envoy-gateway`). В `02-gateway.yaml` настроен HTTPS listener (порт 443, `tls.mode: Terminate`) и сохранён insecure HTTP listener (порт 9090).
+  - **[T-027] Profile Service & GRPCRoute:** Создан манифест `03-profile-service.yaml` (Deployment: non-root UID 10001, лимиты 512M/500m, Actuator liveness/readiness пробы на 8080; Service: gRPC 9090 и Actuator 8080). Создан `04-profile-grpc-route.yaml` с привязкой сервиса `com.budgetntr.profile.v1.ProfileService` к `main-gateway`. Актуализирован `infrastructure/docker/Dockerfile.service` (многоэтапная сборка JDK 21 / JRE 21, запуск от UID 10001, обязательное копирование `proto/` и `shared/`).
+  - **[T-028] SecurityPolicy с Keycloak JWT:** В `05-security-policy.yaml` настроена валидация JWT Keycloak (`issuer`, `remoteJWKS`) и проброс клеймов `sub` -> `x-user-id` и `realm_access.roles` -> `x-user-roles`. Запросы без токена блокируются шлюзом со статусом `UNAUTHENTICATED` (HTTP 401).
+  - **[T-029] Двухуровневый Rate Limiter:** В `06-backend-traffic-policy.yaml` настроен Local Rate Limit (in-memory Token Bucket 20 req/s, burst 50) и Global Rate Limit (100 req/min на пользователя по заголовку `x-user-id` Distinct с хранением счётчиков в Redis). Обновлены смоук-скрипты `scripts/verify-envoy-gateway.sh` и `scripts/verify-envoy-gateway.ps1` для сквозного тестирования 3 сценариев (unauth 401, keycloak jwt success, burst 120 rate limit 429).
 
 - [x] **Шаг 1:** Создание `AGENTS.md` (корневой rulebook) — 361 строка, все правила Kotlin/KMP/Mobile/Backend/Testing.
 - [x] **Шаг 1:** Создание `docs/architecture/01-overview-kmp-infra.md` — структура `:shared`, Koin, Room KMP, gRPC, Docker Compose, CI/CD.

@@ -1,11 +1,11 @@
 package dev.andre.nutritionist.diary.persistence
 
-import dev.andre.nutritionist.diary.persistence.entity.DiaryEntryEntity
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
 import dev.andre.nutritionist.diary.domain.model.FoodItemId
 import dev.andre.nutritionist.diary.domain.model.IdempotencyKey
 import dev.andre.nutritionist.diary.domain.model.MealType
 import dev.andre.nutritionist.diary.domain.model.UserId
+import dev.andre.nutritionist.diary.persistence.entity.DiaryEntryEntity
 import liquibase.Contexts
 import liquibase.LabelExpression
 import liquibase.Liquibase

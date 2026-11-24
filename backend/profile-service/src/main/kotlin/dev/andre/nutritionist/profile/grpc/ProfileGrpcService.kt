@@ -5,6 +5,7 @@ import com.budgetntr.proto.profile.v1.ProfileProto
 import com.budgetntr.proto.profile.v1.ProfileServiceGrpcKt
 import com.budgetntr.proto.profile.v1.UpdateProfileRequest
 import dev.andre.nutritionist.profile.coroutines.CoroutineDispatchers
+import dev.andre.nutritionist.profile.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.profile.domain.mapper.toCommand
 import dev.andre.nutritionist.profile.domain.mapper.toProto
 import dev.andre.nutritionist.profile.domain.model.UserId
@@ -12,6 +13,7 @@ import dev.andre.nutritionist.profile.grpc.security.currentAuthContext
 import dev.andre.nutritionist.profile.grpc.validation.ProfileRequestValidator
 import dev.andre.nutritionist.profile.service.ProfileService
 import io.grpc.Status
+import io.grpc.kotlin.GrpcContextElement
 import kotlinx.coroutines.slf4j.MDCContext
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -21,7 +23,7 @@ import org.springframework.grpc.server.service.GrpcService
 class ProfileGrpcService(
     private val profileService: ProfileService,
     private val validator: ProfileRequestValidator,
-    private val dispatchers: CoroutineDispatchers,
+    private val dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ProfileServiceGrpcKt.ProfileServiceCoroutineImplBase() {
     private val logger = LoggerFactory.getLogger(ProfileGrpcService::class.java)
 
@@ -29,7 +31,7 @@ class ProfileGrpcService(
         validator.validate(request)
         checkAccess(request.userId)
 
-        return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to request.userId))) {
             logger.info("getProfile called: userId={}", request.userId)
 
             val profile =
@@ -45,7 +47,7 @@ class ProfileGrpcService(
         validator.validate(request)
         checkAccess(request.userId)
 
-        return withContext(MDCContext(mapOf("userId" to request.userId)) + dispatchers.io) {
+        return withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(mapOf("userId" to request.userId))) {
             logger.info(
                 "updateProfile called: userId={}, heightCm={}, weightKg={}, weeklyBudget={}",
                 request.userId,

@@ -12,6 +12,7 @@ import dev.andre.nutritionist.profile.outbox.service.OutboxPayloadConverter
 import dev.andre.nutritionist.profile.outbox.service.OutboxService
 import dev.andre.nutritionist.profile.persistence.entity.ProfileEntity
 import dev.andre.nutritionist.profile.persistence.repository.ProfileJpaRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -23,19 +24,27 @@ class ProfileService(
     private val profileRepository: ProfileJpaRepository,
     private val outboxService: OutboxService,
 ) {
+    private val logger = LoggerFactory.getLogger(ProfileService::class.java)
+
     @Transactional(readOnly = true)
     fun getProfileByUserId(userId: UserId): ProfileEntity? = profileRepository.findByUserId(userId.raw)
 
     @Transactional
     fun upsertProfile(command: UpsertProfileCommand): ProfileEntity {
         val existing = profileRepository.findByUserId(command.userId.raw)
-        val isNewProfile = existing == null
+        val isFilledCommand = command.heightCm > 0 && command.weightKg > BigDecimal.ZERO
+        val wasIncomplete = existing == null || (existing.heightCm <= 0 || existing.weightKg <= BigDecimal.ZERO)
+        val isNewProfile = isFilledCommand && wasIncomplete
+
         val finalGoal = resolveNutritionGoal(command)
         val entity = existing?.updateFrom(command, finalGoal) ?: command.toNewEntity(finalGoal)
         val saved = profileRepository.save(entity)
 
         if (isNewProfile) {
+            logger.info("Scheduling UserRegisteredEvent to outbox for userId={}", entity.userId)
             publishUserRegisteredOutbox(saved, command)
+        } else {
+            logger.debug("Skipping UserRegisteredEvent: profile already exists for userId={}", command.userId.raw)
         }
 
         return saved
