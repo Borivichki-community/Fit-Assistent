@@ -29,8 +29,37 @@ import org.koin.core.context.stopKoin
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+import dev.andre.nutritionist.domain.model.MealRecord
+import dev.andre.nutritionist.domain.model.MealRecordId
+import dev.andre.nutritionist.domain.model.SyncStatus
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+
 class FakeDiaryRepository : DiaryRepository {
-    // Fake implementation for KMP requirement
+    private val records = mutableListOf<MealRecord>()
+    private val recordsFlow = MutableStateFlow<List<MealRecord>>(emptyList())
+
+    override fun observeDailyRecords(fromEpochMs: Long, toEpochMs: Long): Flow<List<MealRecord>> = recordsFlow
+
+    override suspend fun getDailyRecords(fromEpochMs: Long, toEpochMs: Long): Result<List<MealRecord>> =
+        Result.success(records.filter { it.recordedAt.toEpochMilliseconds() in fromEpochMs..toEpochMs })
+
+    override suspend fun addEntry(record: MealRecord): Result<MealRecord> {
+        records.add(record)
+        recordsFlow.value = records.toList()
+        return Result.success(record)
+    }
+
+    override suspend fun deleteEntry(id: MealRecordId): Result<Unit> {
+        records.removeAll { it.id == id }
+        recordsFlow.value = records.toList()
+        return Result.success(Unit)
+    }
+
+    override suspend fun getPendingRecords(): List<MealRecord> =
+        records.filter { it.syncStatus == SyncStatus.PENDING }
+
+    override suspend fun syncPendingRecords(): Result<Int> = Result.success(0)
 }
 
 @RunWith(RobolectricTestRunner::class)

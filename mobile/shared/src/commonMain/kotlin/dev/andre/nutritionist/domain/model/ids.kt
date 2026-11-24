@@ -18,6 +18,18 @@ value class RecipeId(val raw: String)
 value class DiaryEntryId(val raw: String)
 
 @JvmInline
+value class MealRecordId(val raw: String)
+
+@JvmInline
+value class ProductId(val raw: String)
+
+@JvmInline
+value class RegionId(val raw: String)
+
+@JvmInline
+value class PlanId(val raw: String)
+
+@JvmInline
 value class FoodItemId(val raw: String)
 
 @JvmInline

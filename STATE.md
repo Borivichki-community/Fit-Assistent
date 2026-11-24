@@ -5,6 +5,51 @@
 
 Обновлено: 2026-11-24
 
+### KAN-84 — Реализация KMP Domain и Data слоёв в :mobile:shared [T-066 — T-069] + Live E2E (2026-11-24)
+
+- **Активные Skills:** `kmp-shared-feature`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`. Роль: `implementer`.
+- **[T-066] Rich Domain Models & Nutrition Calculator (`commonMain`):**
+  - Созданы строгие доменные сущности с `@JvmInline value class` для всех идентификаторов: `MealRecordId`, `IdempotencyKey`, `MealPlanId`, `ProductId`, `StoreId`, `RecipeId`, `DiaryEntryId`, `FoodItemId`, `UserId`, `ProfileId`.
+  - Реализованы чистые Value Objects: `NutritionFacts`, `Money` (с валидацией неотрицательности и точностью до копеек), `MealRecord`, `MealPlan`, `GeneratedMealItem`, `Product`, `Price`, `MealType`, `EntrySourceType`, `SyncStatus`, `TargetPeriod`.
+  - Реализован чистый калькулятор питания `NutritionCalculator` (формула Миффлина — Сан-Жеора для BMR, TDEE с коэффициентом физической активности, дефицит/профицит калорий под цель, макронутриенты БЖУ) и `DailyNutritionBalanceCalculator`.
+  - 100% покрытие unit-тестами в `commonTest` (Fakes, без MockK).
+- **[T-067] UseCase генерации бюджетного меню (`commonMain`):**
+  - Реализован `GenerateBudgetMenuUseCase` (`operator fun invoke(params): Flow<GenerateBudgetMenuState>`).
+  - Fail-fast валидация входных параметров: калории > 0, бюджет > 0, корректный период (`DomainError.ValidationError`).
+  - Реактивный поток состояний: `Validating` → `GeneratingPlan` (вызов `RecipeRepository.generateMealPlan`) → `CheckingPrices` (проверка цен в реальном времени через `CatalogRepository.searchProducts`) → `Ready` / `PriceWarning` / `Failed`.
+  - Полный набор юнит-тестов с Turbine и Fake-репозиториями в `commonTest`.
+- **[T-068] gRPC Клиенты & Data Sources (`androidMain`):**
+  - Реализованы gRPC клиенты и Remote Data Sources для всех внешних сервисов:
+    - `CatalogGrpcRemoteDataSource` (`AndroidCatalogGrpcServiceClient`) для `catalog-price-service:9192`.
+    - `DiaryGrpcRemoteDataSource` (`AndroidDiaryGrpcServiceClient`) для `diary-service:9193`.
+    - `RecipeGrpcRemoteDataSource` (`AndroidRecipeGrpcServiceClient`) для `recipe-ai-service:9194`.
+  - Реализован `UnifiedGrpcClientInterceptor`:
+    - Автоматическая инжекция `Authorization: Bearer <token>` через `AuthTokenProvider`.
+    - Инжекция OpenTelemetry `traceparent: 00-<traceId>-<spanId>-01`.
+    - Идемпотентность: проброс `idempotency-key` из `CallOptions` / `Context` / генерация UUID для мутирующих методов.
+    - Поддержка `x-user-id` и `x-dev-bypass` для прямого межсервисного тестирования.
+  - Реализован `GrpcErrorMapper` с маппингом gRPC кодов `Status.Code` на чистые доменные ошибки `DomainError` (`NetworkError`, `AuthenticationError`, `ValidationError`, `ConflictError`, `ServerError` и др.).
+  - Реализованы Protobuf marshallers для Android среды без runtime кодогенерации протобафа.
+- **[T-069] Offline-first Room KMP 2.8.x & Diary Repository:**
+  - Создана таблица `meal_records` в `AppDatabase` с полями: `id`, `meal_type`, `recorded_at`, `source_type`, `source_id`, `name_snapshot`, `weight_grams`, `calories`, `proteins`, `fats`, `carbs`, `cost_kopecks`, `idempotency_key`, `sync_status`.
+  - Экспортирована схема Room v2 (`mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/2.json`).
+  - Реализован `MealRecordDao` (Flow, CRUD, batch sync queries).
+  - Реализован `MealRecordEntityMapper` (двусторонний чистый маппер Entity ↔ Domain).
+  - Реализован `DiaryRepositoryImpl`:
+    - Offline-first паттерн: локальная запись сохраняется со статусом `SyncStatus.PENDING`.
+    - Немедленная попытка синхронизации в `diary-service`. При успехе статус обновляется на `SyncStatus.SYNCED`.
+    - При сбое сети статус остаётся `SyncStatus.PENDING` для отложенной синхронизации через `SyncDiaryWorker` с сохранением исходного `IdempotencyKey`.
+- **[Live Microservices E2E Verification]:**
+  - Запущены все 4 локальных микросервиса: `catalog-price-service` (9192), `diary-service` (9193), `recipe-ai-service` (9194), `profile-service` (9090) с PostgreSQL (5433), Redis (6379), Kafka (9092) и Schema Registry (8081).
+  - Автоматизированный сквозной тест `LiveMicroservicesE2ETest` подтвердил 100% работоспособность цепочки:
+    1. Поиск продуктов в каталоге (`catalog-price-service:9192`): найдены 4 позиции куриного мяса из PostgreSQL.
+    2. Генерация сбалансированного блюда (`recipe-ai-service:9194`): получен `PlanId` с блюдом «Сбалансированное блюдо: Авокадо Хасс спелое» (625.6 ккал, 258.53 RUB).
+    3. Offline-first сохранение в Room DB (статус `PENDING`) → удалённая отправка в `diary-service:9193` → обновление в Room до `SYNCED`.
+    4. Transactional Outbox в `diary-service` опубликовал событие `diary.entry.created` в Kafka с Avro-схемой.
+    5. Проверка идемпотентности: повторный gRPC-запрос с тем же `IdempotencyKey` вернул кэшированную запись через `IdempotencyService` (`Idempotency response replayed`) без дублирования.
+    6. Запрос суточных записей `GetDailyEntries` подтвердил наличие сохранённой записи и корректный подсчёт суточных нутриентов.
+- **Тестовый статус:** 158 из 158 тестов успешно пройдены (100% GREEN) в `:mobile:shared:allTests`.
+
 ### KAN-76 — Генерация рецептов и планов питания (Блоки 1-4 завершены) (2026-11-24)
 
 - Активны `contracts-proto-and-avro`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
