@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-diary-entry-snapshot-source
+      author: team
+      dbms: postgresql
+      changes:
+        - addColumn:
+            tableName: diary_entries
+            columns:
+              - column:
+                  name: source_type
+                  type: VARCHAR(32)
+                  defaultValue: "PRODUCT"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_id
+                  type: UUID
+              - column:
+                  name: name_snapshot
+                  type: VARCHAR(255)
+              - column:
+                  name: weight_grams
+                  type: NUMERIC(10,3)
+        - sql:
+            sql: >-
+              UPDATE diary_entries
+              SET source_id = food_item_id,
+                  name_snapshot = food_name,
+                  weight_grams = quantity_grams
+              WHERE name_snapshot IS NULL;
+        - dropNotNullConstraint:
+            tableName: diary_entries
+            columnName: food_item_id
+            columnDataType: UUID
+        - dropNotNullConstraint:
+            tableName: diary_entries
+            columnName: food_name
+            columnDataType: VARCHAR(255)
+        - dropNotNullConstraint:
+            tableName: diary_entries
+            columnName: quantity_grams
+            columnDataType: NUMERIC(10,3)
+        - addNotNullConstraint:
+            tableName: diary_entries
+            columnName: name_snapshot
+            columnDataType: VARCHAR(255)
+        - addNotNullConstraint:
+            tableName: diary_entries
+            columnName: weight_grams
+            columnDataType: NUMERIC(10,3)

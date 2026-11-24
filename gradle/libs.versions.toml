@@ -103,6 +103,7 @@ spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" 
 spring-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 spring-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+slf4j-api = { module = "org.slf4j:slf4j-api" }
 
 spring-starter-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 spring-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }

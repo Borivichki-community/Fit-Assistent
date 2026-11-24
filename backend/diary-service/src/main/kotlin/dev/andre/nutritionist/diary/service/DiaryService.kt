@@ -1,10 +1,10 @@
 package dev.andre.nutritionist.diary.service
 
+import dev.andre.nutritionist.diary.domain.calculator.DiaryNutritionAggregator
 import dev.andre.nutritionist.diary.domain.model.AddEntryCommand
 import dev.andre.nutritionist.diary.domain.model.DailyEntries
 import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
-import dev.andre.nutritionist.diary.domain.model.NutritionSummary
 import dev.andre.nutritionist.diary.domain.model.UserId
 import dev.andre.nutritionist.diary.domain.repository.DiaryRepository
 import dev.andre.nutritionist.diary.outbox.DiaryOutboxRepository
@@ -23,9 +23,9 @@ class DiaryService(
         command: AddEntryCommand,
         traceparent: String? = null,
     ): DiaryEntry {
-        require(command.foodName.isNotBlank() && command.foodName.length <= 255) { "Invalid food_name" }
-        require(command.quantityGrams.isFinite() && command.quantityGrams > 0 && command.quantityGrams <= 9_999_999.999) {
-            "Invalid quantity_grams"
+        require(command.nameSnapshot.isNotBlank() && command.nameSnapshot.length <= 255) { "Invalid name_snapshot" }
+        require(command.weightGrams.isFinite() && command.weightGrams > 0 && command.weightGrams <= 9_999_999.999) {
+            "Invalid weight_grams"
         }
         require(command.nutrition.calories in 0..99_999) { "Invalid calories" }
         listOf(command.nutrition.proteins, command.nutrition.fats, command.nutrition.carbs).forEach {
@@ -57,18 +57,7 @@ class DiaryService(
         userId: UserId,
         from: Instant,
         until: Instant,
-    ): DailyEntries {
-        val entries = getRange(userId, from, until)
-        return DailyEntries(
-            entries,
-            NutritionSummary(
-                entries.fold(0) { total, entry -> Math.addExact(total, entry.nutrition.calories) },
-                entries.sumOf { it.nutrition.proteins },
-                entries.sumOf { it.nutrition.fats },
-                entries.sumOf { it.nutrition.carbs },
-            ),
-        )
-    }
+    ): DailyEntries = DiaryNutritionAggregator.aggregate(getRange(userId, from, until))
 
     @Transactional(readOnly = true)
     fun getRange(

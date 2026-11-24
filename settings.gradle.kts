@@ -43,6 +43,7 @@ include(":shared:contracts")
 include(":backend:profile-service")
 include(":backend:catalog-price-service")
 include(":backend:diary-service")
+include(":backend:outbox")
 include(":backend:recipe-ai-service")
 
 //не подключенный в разработку модуль food cv

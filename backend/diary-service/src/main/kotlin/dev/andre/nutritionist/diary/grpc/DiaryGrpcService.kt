@@ -86,6 +86,7 @@ class DiaryGrpcService(
                 .newBuilder()
                 .addAllEntries(day.entries.map(mapper::toProto))
                 .setDailyTotal(mapper.toProto(day.dailyTotal))
+                .addAllMealTotals(day.mealTotals.map(mapper::toProto))
                 .build()
         }
     }
@@ -121,6 +122,8 @@ class DiaryGrpcService(
                     throw Status.ALREADY_EXISTS.withDescription("Diary entry or creation key already exists").asRuntimeException()
                 } catch (error: NoSuchElementException) {
                     throw Status.NOT_FOUND.withDescription(error.message).asRuntimeException()
+                } catch (error: ArithmeticException) {
+                    throw Status.RESOURCE_EXHAUSTED.withDescription("Nutrition total exceeds supported range").asRuntimeException()
                 } catch (error: IllegalArgumentException) {
                     throw Status.INVALID_ARGUMENT.withDescription(error.message).asRuntimeException()
                 } catch (error: DateTimeException) {

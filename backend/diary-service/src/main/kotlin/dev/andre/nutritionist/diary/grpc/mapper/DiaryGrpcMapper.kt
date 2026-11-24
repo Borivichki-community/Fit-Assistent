@@ -1,17 +1,21 @@
 package dev.andre.nutritionist.diary.grpc.mapper
 
 import com.budgetntr.proto.diary.v1.AddEntryRequest
+import com.budgetntr.proto.diary.v1.DiaryEntryItem
 import com.budgetntr.proto.diary.v1.DiaryEntryProto
+import com.budgetntr.proto.diary.v1.EntrySourceType as EntrySourceTypeProto
 import com.google.protobuf.Timestamp
 import dev.andre.nutritionist.diary.domain.model.AddEntryCommand
 import dev.andre.nutritionist.diary.domain.model.CostSnapshot
 import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
-import dev.andre.nutritionist.diary.domain.model.FoodItemId
+import dev.andre.nutritionist.diary.domain.model.EntrySourceType
 import dev.andre.nutritionist.diary.domain.model.IdempotencyKey
+import dev.andre.nutritionist.diary.domain.model.MealNutritionSummary
 import dev.andre.nutritionist.diary.domain.model.MealType
 import dev.andre.nutritionist.diary.domain.model.Money
 import dev.andre.nutritionist.diary.domain.model.NutritionSummary
+import dev.andre.nutritionist.diary.domain.model.SourceId
 import dev.andre.nutritionist.diary.domain.model.UserId
 import org.springframework.stereotype.Component
 import java.time.LocalDate
@@ -19,6 +23,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Instant
 import com.budgetntr.proto.diary.v1.CostSnapshot as CostSnapshotProto
+import com.budgetntr.proto.diary.v1.MealNutritionSummary as MealNutritionSummaryProto
 import com.budgetntr.proto.diary.v1.Money as MoneyProto
 import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
 
@@ -28,14 +33,30 @@ class DiaryGrpcMapper {
         request: AddEntryRequest,
         userId: UserId,
         key: IdempotencyKey,
-    ): AddEntryCommand =
-        AddEntryCommand(
+    ): AddEntryCommand {
+        val sourceType =
+            when (request.sourceType) {
+                EntrySourceTypeProto.ENTRY_SOURCE_TYPE_RECIPE -> EntrySourceType.RECIPE
+                EntrySourceTypeProto.ENTRY_SOURCE_TYPE_CUSTOM -> EntrySourceType.CUSTOM
+                else -> EntrySourceType.PRODUCT
+            }
+        val sourceId =
+            when {
+                request.hasSourceId() && request.sourceId.isNotBlank() -> SourceId(UUID.fromString(request.sourceId))
+                request.foodItemId.isNotBlank() -> SourceId(UUID.fromString(request.foodItemId))
+                else -> null
+            }
+        val nameSnapshot = if (request.nameSnapshot.isNotBlank()) request.nameSnapshot else request.foodName
+        val weightGrams = if (request.weightGrams > 0.0) request.weightGrams else request.quantityGrams
+
+        return AddEntryCommand(
             entryId = DiaryEntryId(UUID.fromString(request.entryId)),
             userId = userId,
             idempotencyKey = key,
-            foodItemId = FoodItemId(UUID.fromString(request.foodItemId)),
-            foodName = request.foodName,
-            quantityGrams = request.quantityGrams,
+            sourceType = sourceType,
+            sourceId = sourceId,
+            nameSnapshot = nameSnapshot,
+            weightGrams = weightGrams,
             nutrition =
                 NutritionSummary(
                     request.nutrition.calories,
@@ -54,15 +75,21 @@ class DiaryGrpcMapper {
                     )
                 },
         )
+    }
 
-    fun toProto(entry: DiaryEntry): DiaryEntryProto {
+    fun toProto(entry: DiaryEntry): DiaryEntryItem {
         val builder =
-            DiaryEntryProto
+            DiaryEntryItem
                 .newBuilder()
                 .setId(entry.id.raw.toString())
-                .setFoodItemId(entry.foodItemId.raw.toString())
-                .setFoodName(entry.foodName)
-                .setQuantityGrams(entry.quantityGrams)
+                .setSourceType(
+                    when (entry.sourceType) {
+                        EntrySourceType.PRODUCT -> EntrySourceTypeProto.ENTRY_SOURCE_TYPE_PRODUCT
+                        EntrySourceType.RECIPE -> EntrySourceTypeProto.ENTRY_SOURCE_TYPE_RECIPE
+                        EntrySourceType.CUSTOM -> EntrySourceTypeProto.ENTRY_SOURCE_TYPE_CUSTOM
+                    },
+                ).setNameSnapshot(entry.nameSnapshot)
+                .setWeightGrams(entry.weightGrams)
                 .setNutrition(toProto(entry.nutrition))
                 .setRecordedAt(
                     Timestamp
@@ -70,6 +97,41 @@ class DiaryGrpcMapper {
                         .setSeconds(entry.recordedAt.epochSeconds)
                         .setNanos(entry.recordedAt.nanosecondsOfSecond),
                 ).setMealType(entry.mealType.name)
+
+        entry.sourceId?.let { builder.setSourceId(it.raw.toString()) }
+        entry.sourceId?.let { builder.setFoodItemId(it.raw.toString()) }
+        builder.setFoodName(entry.nameSnapshot)
+        builder.setQuantityGrams(entry.weightGrams)
+
+        entry.cost?.let { cost ->
+            val snapshot = CostSnapshotProto.newBuilder().setTotal(toProto(cost.total))
+            cost.unitPrice?.let { snapshot.setUnitPrice(toProto(it)) }
+            cost.priceBasisMilligrams?.let(snapshot::setPriceBasisMilligrams)
+            builder.setCost(snapshot)
+        }
+        return builder.build()
+    }
+
+    fun toLegacyProto(entry: DiaryEntry): DiaryEntryProto {
+        val builder =
+            DiaryEntryProto
+                .newBuilder()
+                .setId(entry.id.raw.toString())
+                .setFoodName(entry.nameSnapshot)
+                .setNameSnapshot(entry.nameSnapshot)
+                .setQuantityGrams(entry.weightGrams)
+                .setWeightGrams(entry.weightGrams)
+                .setNutrition(toProto(entry.nutrition))
+                .setRecordedAt(
+                    Timestamp
+                        .newBuilder()
+                        .setSeconds(entry.recordedAt.epochSeconds)
+                        .setNanos(entry.recordedAt.nanosecondsOfSecond),
+                ).setMealType(entry.mealType.name)
+        entry.sourceId?.let {
+            builder.setFoodItemId(it.raw.toString())
+            builder.setSourceId(it.raw.toString())
+        }
         entry.cost?.let { cost ->
             val snapshot = CostSnapshotProto.newBuilder().setTotal(toProto(cost.total))
             cost.unitPrice?.let { snapshot.setUnitPrice(toProto(it)) }
@@ -86,6 +148,13 @@ class DiaryGrpcMapper {
             .setProteins(nutrition.proteins)
             .setFats(nutrition.fats)
             .setCarbs(nutrition.carbs)
+            .build()
+
+    fun toProto(meal: MealNutritionSummary): MealNutritionSummaryProto =
+        MealNutritionSummaryProto
+            .newBuilder()
+            .setMealType(meal.mealType.name)
+            .setNutrition(toProto(meal.nutrition))
             .build()
 
     fun dateBounds(
