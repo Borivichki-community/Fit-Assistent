@@ -38,6 +38,8 @@ abstract class AbstractPostgresIntegrationTest {
             registry.add("spring.jpa.hibernate.ddl-auto") { "none" }
             registry.add("spring.data.redis.host", redis::getHost)
             registry.add("spring.data.redis.port") { redis.getMappedPort(6379) }
+            registry.add("spring.grpc.server.port") { "0" }
+            registry.add("server.port") { "0" }
             registry.add("outbox.enabled") { "false" }
         }
     }

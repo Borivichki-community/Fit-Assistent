@@ -8,7 +8,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * Хранит идентификатор пользователя ([userId]), набор ролей ([roles])
  * и признак успешной аутентификации ([isAuthenticated]).
- * Пробрасывается через gRPC [Context] и доступен в Kotlin Coroutines.
+ * Пробрасывается через gRPC [Context] и доступен в Kotlin Coroutines благодаря [io.grpc.kotlin.GrpcContextElement].
  */
 data class AuthContext(
     val userId: String?,
@@ -34,6 +34,8 @@ data class AuthContext(
 
 /**
  * Получение текущего [AuthContext] из gRPC [Context.current].
+ * При использовании [io.grpc.kotlin.GrpcContextElement] в контексте корутины
+ * [Context.current] автоматически восстанавливается на любом потоке выполнения.
  */
 fun currentAuthContext(): AuthContext = AuthContext.AUTH_CONTEXT_KEY.get() ?: AuthContext.UNAUTHENTICATED
 
@@ -42,3 +44,8 @@ fun currentAuthContext(): AuthContext = AuthContext.AUTH_CONTEXT_KEY.get() ?: Au
  */
 val CoroutineContext.authContext: AuthContext
     get() = currentAuthContext()
+
+/**
+ * Приостанавливаемая функция для безопасного получения текущего [AuthContext] внутри корутины.
+ */
+suspend fun currentCoroutineAuthContext(): AuthContext = currentAuthContext()

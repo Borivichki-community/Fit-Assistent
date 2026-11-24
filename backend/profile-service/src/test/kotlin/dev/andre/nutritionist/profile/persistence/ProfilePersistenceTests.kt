@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.dao.DataIntegrityViolationException
-import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.util.UUID
@@ -135,7 +134,7 @@ class ProfilePersistenceTests : AbstractPostgresIntegrationTest() {
 
         val pending =
             transactionTemplate.execute {
-                outboxRepository.findByStatusWithLock(OutboxStatus.PENDING, PageRequest.of(0, 10))
+                outboxRepository.findByStatusWithLock(OutboxStatus.PENDING.name, 10)
             }
         assertNotNull(pending)
         requireNotNull(pending)

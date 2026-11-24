@@ -79,6 +79,25 @@ outbox:
   send-timeout-seconds: ${OUTBOX_SEND_TIMEOUT_SECONDS:10}
   retry-backoff-ms: ${OUTBOX_RETRY_BACKOFF_MS:2000}
   failed-retry-interval-ms: ${OUTBOX_FAILED_RETRY_INTERVAL_MS:60000}
+  cleanup:
+    enabled: ${OUTBOX_CLEANUP_ENABLED:true}
+    cron: "${OUTBOX_CLEANUP_CRON:0 0 3 * * ?}"
+    retention-days: ${OUTBOX_CLEANUP_RETENTION_DAYS:7}
+    strategy: ${OUTBOX_CLEANUP_STRATEGY:BATCH}
+    batch-size: ${OUTBOX_CLEANUP_BATCH_SIZE:1000}
+    max-retries: ${OUTBOX_CLEANUP_MAX_RETRIES:3}
+    retry-backoff-ms: ${OUTBOX_CLEANUP_RETRY_BACKOFF_MS:1000}
+
+# ── Resilience4j ──────────────────────────────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      redis-idempotency:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
 
 server:
   port: ${SERVER_PORT:8085}
@@ -115,11 +134,8 @@ management:
     sampling:
       probability: 1.0
 
-# ── Logging (JSON — базовый шаблон) ──────────────────────────────────────────
+# ── Logging (структурированное JSON-логирование через logback-spring.xml) ─────
 logging:
   level:
     root: INFO
     dev.andre.nutritionist: INFO
-  pattern:
-    console: >-
-      {"timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}","level":"%level","service":"${spring.application.name}","traceId":"%X{traceId}","spanId":"%X{spanId}","userId":"%X{userId}","message":"%msg"}%n

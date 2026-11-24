@@ -1,12 +1,3 @@
-# infrastructure/k8s/gateway/03-profile-service.yaml
-# Развёртывание микросервиса profile-service в Kubernetes
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: budget-nutritionist
-  labels:
-    app.kubernetes.io/part-of: fitassistant
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -52,35 +43,20 @@ spec:
             - name: actuator
               containerPort: 8080
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: profile-service-config
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "dev"
-            - name: SPRING_GRPC_SERVER_ADDRESS
-              value: "0.0.0.0"
-            - name: PROFILE_GRPC_PORT
-              value: "9090"
-            - name: SERVER_PORT
-              value: "8080"
-            - name: MANAGEMENT_PORT
-              value: "8080"
-            - name: PROFILE_DB_URL
-              value: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
+                  name: profile-service-secret
+                  key: DB_USERNAME
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: SPRING_DATA_REDIS_HOST
-              value: "redis-state.budget-nutritionist.svc.cluster.local"
-            - name: SPRING_DATA_REDIS_PORT
-              value: "6379"
-            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-              value: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"
+                  name: profile-service-secret
+                  key: DB_PASSWORD
           resources:
             requests:
               cpu: 200m
@@ -112,27 +88,3 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: profile-service
-  namespace: budget-nutritionist
-  labels:
-    app: profile-service
-    service: profile
-    app.kubernetes.io/name: profile-service
-    app.kubernetes.io/part-of: fitassistant
-spec:
-  type: ClusterIP
-  ports:
-    - name: grpc
-      port: 9090
-      targetPort: 9090
-      appProtocol: grpc
-    - name: actuator
-      port: 8080
-      targetPort: 8080
-      appProtocol: http
-  selector:
-    app: profile-service

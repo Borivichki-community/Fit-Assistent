@@ -49,10 +49,14 @@ fun ProductEntity.toProto(regionFilterId: UUID? = null): ProductItem {
             .setCreatedAt(createdAt.toProtoTimestamp())
 
     val filteredPrices =
-        if (regionFilterId != null) {
-            prices.filter { it.region.id == regionFilterId }
+        if (org.hibernate.Hibernate.isInitialized(prices)) {
+            if (regionFilterId != null) {
+                prices.filter { it.region.id == regionFilterId }
+            } else {
+                prices
+            }
         } else {
-            prices
+            emptyList()
         }
     builder.addAllPrices(filteredPrices.map { it.toProto() })
 

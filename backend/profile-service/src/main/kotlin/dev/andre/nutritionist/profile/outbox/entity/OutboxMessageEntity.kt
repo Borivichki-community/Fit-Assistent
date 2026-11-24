@@ -27,11 +27,19 @@ class OutboxMessageEntity(
     val payload: ByteArray,
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    var status: OutboxStatus = OutboxStatus.PENDING,
+    var status: OutboxStatus = OutboxStatus.PENDING, // mutable by design: JPA managed entity
     @Column(name = "attempts", nullable = false)
-    var attempts: Int = 0,
+    var attempts: Int = 0, // mutable by design: JPA managed entity
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
     @Column(name = "published_at")
-    var publishedAt: Instant? = null,
-)
+    var publishedAt: Instant? = null, // mutable by design: JPA managed entity
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is OutboxMessageEntity) return false
+        return id == other.id
+    }
+
+    override fun hashCode(): Int = id.hashCode()
+}

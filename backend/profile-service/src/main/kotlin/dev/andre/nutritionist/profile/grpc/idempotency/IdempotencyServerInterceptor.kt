@@ -73,6 +73,7 @@ class IdempotencyServerInterceptor(
                 is IdempotencyResult.Acquired -> {
                     super.onMessage(message)
                 }
+
                 is IdempotencyResult.Cached -> {
                     isShortCircuited = true
                     capturingCall.isCompleted = true
@@ -84,6 +85,7 @@ class IdempotencyServerInterceptor(
                     serverCall.sendMessage(cachedResp)
                     serverCall.close(Status.OK, Metadata())
                 }
+
                 is IdempotencyResult.InProgress -> {
                     isShortCircuited = true
                     capturingCall.isCompleted = true
@@ -94,6 +96,7 @@ class IdempotencyServerInterceptor(
                         Metadata(),
                     )
                 }
+
                 is IdempotencyResult.PayloadMismatch -> {
                     isShortCircuited = true
                     capturingCall.isCompleted = true

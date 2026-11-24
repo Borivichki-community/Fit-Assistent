@@ -105,6 +105,7 @@
 
 ## Статус проекта: [T-043] Реализован скелет catalog-price-service, Liquibase-миграции, сущности JPA и интеграционные тесты
 ## Статус проекта: [T-016 / T-017 / T-018] Завершены: Скелет profile-service, Liquibase и реализация gRPC-сервиса (ProfileGrpcService + ProfileService + ProfileDtoMapper)
+## Статус проекта: [T-043]—[T-049] Микросервис catalog-price-service полностью разработан, протестирован и упакован в K8s
 
 Ветка: `feature/KAN-61-catalog-skelet`
 Ветка: `feature/KAN-36-liquibase` (Ключ задачи: KAN-36, T-016, T-017, T-018)
@@ -114,7 +115,46 @@
 
 ### Выполнено
 
-- [x] **[T-045] Keyset-пагинация и индексированный поиск:**
+- [x] **[T-049] Манифесты Kubernetes и интеграция с Helmfile:**
+  - Созданы декларативные K8s-манифесты `infrastructure/k8s/apps/catalog-price-service/`:
+    - `deployment.yaml`: non-root securityContext, probes `/actuator/health/liveness` и `/actuator/health/readiness`, limits/requests, envFrom configMap и secret.
+    - `service.yaml`: порты gRPC (9192) и Actuator (8086).
+    - `configmap.yaml` и `secret.yaml`.
+    - `grpc-route.yaml` и `infrastructure/k8s/gateway/04-catalog-grpc-route.yaml`: GRPCRoute для Envoy Gateway маршрутизации `nutritionist.catalog.v1.CatalogService` на порт 9192.
+  - Подключен релиз `catalog-price-service` в `infrastructure/k8s/charts/helmfile.yaml`.
+  - Коммит: `8140d4d chore(deploy): add catalog-price-service to k8s manifests and helmfile`.
+
+- [x] **[T-048] Полный набор E2E тестов и сценарий нагрузочного тестирования:**
+  - Разработан `CatalogEndToEndIntegrationTest.kt` на Testcontainers (PostgreSQL 17 + Redis 7):
+    - Сквозной сценарий жизненного цикла: поиск продуктов с критериями -> выбор карточки -> чтение с кэшированием в Redis -> инвалидация кэша администратором при `upsertPrice` -> верификация обновленной цены и пересчитанной средней цены.
+    - Граничные условия: `NOT_FOUND` для несуществующих UUID, `INVALID_ARGUMENT` для некорректных форматов и отрицательных цен, пустые списки.
+    - Нагрузочный смоук-тест на 50 параллельных корутинах (`async(Dispatchers.IO)`): одновременные `SearchProducts` и `GetAveragePrices` без сбоев пула HikariCP и Redis.
+  - Коммит: `7f22523 test(catalog): T-048 add full integration test suite and load test scenario`.
+
+- [x] **[T-047] Отказоустойчивый Redis cache-aside с Circuit Breaker и метриками:**
+  - Настроен `RedisConfig` и `CatalogCacheService` с сериализацией DTO (`CachedProductDto`, `CachedAveragePriceDto`) в JSON через Jackson.
+  - Интегрирован Resilience4j Circuit Breaker `catalog-redis-cache`: при падении или таймаутах Redis вызовы прозрачно деградируют в PostgreSQL без выброса ошибок наружу.
+  - Micrometer счетчики метрик: `cache_hits_total`, `cache_misses_total` с тегом `cache`.
+  - Инвалидация кэша в `CatalogService.upsertRegionalPrice`.
+  - Интеграционный тест `CatalogCacheResilienceIntegrationTest` (проверка кэш-хитов, промахов, инвалидации и эмуляция сетевого сбоя Redis).
+  - Коммит: `07b694e feat(catalog): T-047 integrate resilient Redis cache-aside with metrics`.
+
+- [x] **[T-046] Начальные данные каталога и региональных цен (Seed Data):**
+  - Созданы CSV-файлы: `initial_regions.csv` (6 регионов РФ), `initial_products.csv` (110 продуктов с КБЖУ), `initial_prices.csv` (660 региональных цен).
+  - Liquibase changelog `002-seed-initial-catalog.xml` с `<loadData>` и безопасными преобразованиями типов.
+  - Интеграционный тест `CatalogSeedDataIntegrationTest`: проверка >= 100 продуктов, >= 6 регионов, корректности расчета средней цены.
+  - Коммит: `76194b5 feat(catalog): T-046 add initial seed data for products and regional prices`.
+
+- [x] **[T-046] Remediation & Hardening :backend:profile-service (AGENTS.md & spring-grpc-service):**
+  - **Thread-safe транзакции и gRPC Context:** Устранён thread hopping в `ProfileGrpcService.kt` — удалён `withContext(dispatchers.io)`, ломавший `@Transactional` / `ThreadLocal` Spring Data JPA; контекст вызова и аутентификации стабилизирован через `GrpcContextElement.current() + MDCContext(mapOf("userId" to request.userId))`.
+  - **AuthContext & Coroutines:** В `AuthContext.kt` реализованы extension-свойства `CoroutineContext.authContext` и `currentCoroutineAuthContext()` с поддержкой `GrpcContextElement` для бесшовной передачи identity пользователя сквозь корутины.
+  - **Native Outbox Locking:** Заменён хрупкий Hibernate-хинт `-2` в `OutboxJpaRepository.kt` на нативный SQL `SELECT * FROM outbox_messages WHERE status = :status ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED` с поддержкой динамического лимита пачки.
+  - **Outbox Retention & Cleanup:** Реализован шедулер `OutboxCleanupJob` (`0 0 3 * * ?`) для удаления `PUBLISHED` сообщений старше 7 дней через нативный запрос `deletePublishedBefore`. Метод `fetchPendingBatch()` в `OutboxProcessor.kt` инкапсулирован как `private`.
+  - **Resilience4j Circuit Breaker & Graceful Degradation:** Настроен `@CircuitBreaker(name = "redis-idempotency", fallbackMethod = ...)` и программная защита через `CircuitBreakerRegistry` в `RedisIdempotencyStore.kt` для методов `tryAcquire`, `complete`, `release`, `get`. При отказе Redis сервис переходит в graceful degradation mode (`IdempotencyResult.Acquired`), не блокируя пользователей.
+  - **Структурированное JSON-логирование:** Настроен `logback-spring.xml` на базе `net.logstash.logback.encoder.LogstashEncoder` с пробросом `traceId`, `spanId`, `userId`, `outboxId` и тегом сервиса `profile-service`. Удалена имитация JSON строковыми паттернами из `application.yml`.
+  - **JPA Best Practices & Immutability:** В `ProfileEntity.kt` и `OutboxMessageEntity.kt` добавлены обязательные комментарии `// mutable by design: JPA managed entity` для изменяемых полей и переопределены `equals`/`hashCode` по бизнес-ключу `id`.
+  - **Ktlint & Build:** Изолирован плагин `ktlint` от кодогенерации protobuf (`/build/` и `/generated/`), устранены все замечания стиля.
+  - **Верификация тестами:** Разработаны `ProfileTransactionThreadSafetyTest`, `OutboxCleanupJobTest`, `RedisIdempotencyCircuitBreakerTest`. Все 83+ теста модуля успешно проходят (`BUILD SUCCESSFUL`), `ktlintCheck` — 0 violations.
   - Реализован `ProductSearchCriteria` и `KeysetCursor` с Base64-кодированием курсора `(lastValue, lastId)`.
   - Разработан `ProductSearchRepository` и `ProductSearchRepositoryImpl` на JPA Criteria API без использования `OFFSET`, с динамической фильтрацией по query (триграммный индекс `idx_products_name_trgm`), category (`idx_products_category`), диапазонам калорий и белков (`idx_products_calories_proteins`), сортировками по имени, калориям и белкам.
   - Настроен `ProductEntity` с `@BatchSize(size = 50)` для предотвращения N+1 при выборке связанных сущностей цен.
@@ -168,7 +208,7 @@
     - `infrastructure/k8s/charts/helmfile.yaml`: перенаправлен Envoy Gateway Rate Limiter на `redis-state.budget-nutritionist.svc.cluster.local:6379`, добавлены декларативные описания инфры.
     - `infrastructure/k8s/gateway/06-backend-traffic-policy.yaml`: EnvoyProxy redis url обновлен на `redis-state.budget-nutritionist.svc.cluster.local:6379`.
     - `infrastructure/k8s/gateway/05-security-policy.yaml`: `remoteJWKS.uri` обновлен на межнеймспейсный FQDN `http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs`.
-  - **Связка и конфигурация `profile-service` (`infrastructure/k8s/gateway/03-profile-service.yaml`):**
+  - **Связка и конфигурация `profile-service` (`infrastructure/k8s/apps/profile-service/`):**
     - `PROFILE_DB_URL`: `jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/profile_db`
     - `DB_USERNAME` и `DB_PASSWORD`: маппинг из `postgres-secret`.
     - `SPRING_DATA_REDIS_HOST`: `redis-state.budget-nutritionist.svc.cluster.local` (порт `6379`).
