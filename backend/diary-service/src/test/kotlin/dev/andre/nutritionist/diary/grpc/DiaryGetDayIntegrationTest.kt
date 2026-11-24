@@ -187,9 +187,11 @@ class DiaryGetDayIntegrationTest
             jdbc.update(
                 """
                 INSERT INTO diary_entries
-                    (id, user_id, idempotency_key, food_item_id, food_name, quantity_grams,
+                    (id, user_id, idempotency_key, source_type, source_id, name_snapshot, weight_grams,
+                     food_item_id, food_name, quantity_grams,
                      calories, proteins, fats, carbs, meal_type, recorded_at)
-                SELECT gen_random_uuid(), ?, gen_random_uuid()::text, gen_random_uuid(), 'Snapshot', 800,
+                SELECT gen_random_uuid(), ?, gen_random_uuid()::text, 'PRODUCT', gen_random_uuid(), 'Snapshot', 800,
+                       gen_random_uuid(), 'Snapshot', 800,
                        150, 0.1, 0.2, 0.3, ?, CAST(? AS timestamptz)
                 FROM generate_series(1, ?)
                 """.trimIndent(),

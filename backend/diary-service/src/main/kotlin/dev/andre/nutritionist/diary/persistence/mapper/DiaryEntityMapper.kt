@@ -5,6 +5,7 @@ import dev.andre.nutritionist.diary.domain.model.CostSnapshot
 import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.Money
 import dev.andre.nutritionist.diary.domain.model.NutritionSummary
+import dev.andre.nutritionist.diary.domain.model.SourceId
 import dev.andre.nutritionist.diary.persistence.entity.DiaryEntryEntity
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -18,9 +19,10 @@ class DiaryEntityMapper {
             id = command.entryId,
             userId = command.userId,
             idempotencyKey = command.idempotencyKey,
-            foodItemId = command.foodItemId,
-            foodName = command.foodName,
-            quantityGrams = BigDecimal.valueOf(command.quantityGrams).setScale(3, RoundingMode.HALF_UP),
+            sourceType = command.sourceType,
+            sourceId = command.sourceId?.raw,
+            nameSnapshot = command.nameSnapshot,
+            weightGrams = BigDecimal.valueOf(command.weightGrams).setScale(3, RoundingMode.HALF_UP),
             calories = BigDecimal.valueOf(command.nutrition.calories.toLong()).setScale(2),
             proteins = BigDecimal.valueOf(command.nutrition.proteins).setScale(2, RoundingMode.HALF_UP),
             fats = BigDecimal.valueOf(command.nutrition.fats).setScale(2, RoundingMode.HALF_UP),
@@ -38,15 +40,19 @@ class DiaryEntityMapper {
                     ?.let { BigDecimal.valueOf(it, 2) },
             unitPriceMinor = command.cost?.unitPrice?.amountMinor,
             priceBasisMilligrams = command.cost?.priceBasisMilligrams,
+            foodItemId = command.sourceId?.raw ?: command.foodItemId?.raw,
+            foodName = command.nameSnapshot,
+            quantityGrams = BigDecimal.valueOf(command.weightGrams).setScale(3, RoundingMode.HALF_UP),
         )
 
     fun toDomain(entity: DiaryEntryEntity): DiaryEntry =
         DiaryEntry(
             id = entity.id,
             userId = entity.userId,
-            foodItemId = entity.foodItemId,
-            foodName = entity.foodName,
-            quantityGrams = entity.quantityGrams.toDouble(),
+            sourceType = entity.sourceType,
+            sourceId = (entity.sourceId ?: entity.foodItemId)?.let(::SourceId),
+            nameSnapshot = entity.nameSnapshot,
+            weightGrams = entity.weightGrams.toDouble(),
             nutrition =
                 NutritionSummary(
                     entity.calories.intValueExact(),

@@ -40,12 +40,6 @@ avro {
     stringType.set("String")
 }
 
-sourceSets {
-    main {
-        java.srcDir(tasks.named("generateAvroJava"))
-    }
-}
-
 abstract class TestSchemaCompatibilityTask : DefaultTask() {
     @get:InputDirectory
     abstract val schemasDir: DirectoryProperty

@@ -15,6 +15,13 @@ service DiaryService {
   rpc GetRange(GetRangeRequest) returns (GetRangeResponse);
 }
 
+enum EntrySourceType {
+  ENTRY_SOURCE_TYPE_UNSPECIFIED = 0;
+  ENTRY_SOURCE_TYPE_PRODUCT = 1;
+  ENTRY_SOURCE_TYPE_RECIPE = 2;
+  ENTRY_SOURCE_TYPE_CUSTOM = 3;
+}
+
 message Money {
   int64 amount_minor = 1;
   string currency_code = 2;
@@ -34,18 +41,24 @@ message NutritionSummary {
 }
 
 message AddEntryRequest {
-  string food_item_id = 1;
-  double quantity_grams = 2;
+  string entry_id = 1;
+  string meal_type = 2;
   google.protobuf.Timestamp recorded_at = 3;
-  string meal_type = 4;
-  string entry_id = 5;
-  string food_name = 6;
-  NutritionSummary nutrition = 7;
-  CostSnapshot cost = 8;
+  EntrySourceType source_type = 4;
+  optional string source_id = 5;
+  string name_snapshot = 6;
+  double weight_grams = 7;
+  NutritionSummary nutrition = 8;
+  CostSnapshot cost = 9;
+
+  // Legacy-поля для обратной совместимости
+  string food_item_id = 10 [deprecated = true];
+  string food_name = 11 [deprecated = true];
+  double quantity_grams = 12 [deprecated = true];
 }
 
 message AddEntryResponse {
-  DiaryEntryProto entry = 1;
+  DiaryEntryItem entry = 1;
 }
 
 message GetDailyEntriesRequest {
@@ -54,7 +67,7 @@ message GetDailyEntriesRequest {
 }
 
 message GetDailyEntriesResponse {
-  repeated DiaryEntryProto entries = 1;
+  repeated DiaryEntryItem entries = 1;
   NutritionSummary daily_total = 2;
   repeated MealNutritionSummary meal_totals = 3;
 }
@@ -62,6 +75,23 @@ message GetDailyEntriesResponse {
 message MealNutritionSummary {
   string meal_type = 1;
   NutritionSummary nutrition = 2;
+}
+
+message DiaryEntryItem {
+  string id = 1;
+  EntrySourceType source_type = 2;
+  optional string source_id = 3;
+  string name_snapshot = 4;
+  double weight_grams = 5;
+  NutritionSummary nutrition = 6;
+  google.protobuf.Timestamp recorded_at = 7;
+  string meal_type = 8;
+  CostSnapshot cost = 9;
+
+  // Legacy-поля для обратной совместимости
+  string food_item_id = 10 [deprecated = true];
+  string food_name = 11 [deprecated = true];
+  double quantity_grams = 12 [deprecated = true];
 }
 
 message DiaryEntryProto {
@@ -73,6 +103,10 @@ message DiaryEntryProto {
   google.protobuf.Timestamp recorded_at = 6;
   string meal_type = 7;
   CostSnapshot cost = 8;
+  EntrySourceType source_type = 9;
+  optional string source_id = 10;
+  string name_snapshot = 11;
+  double weight_grams = 12;
 }
 
 message DeleteMealRequest {
@@ -88,5 +122,5 @@ message GetRangeRequest {
 }
 
 message GetRangeResponse {
-  repeated DiaryEntryProto entries = 1;
+  repeated DiaryEntryItem entries = 1;
 }

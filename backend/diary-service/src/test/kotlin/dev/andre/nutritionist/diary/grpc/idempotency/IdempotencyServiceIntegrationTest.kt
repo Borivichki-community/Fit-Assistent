@@ -199,10 +199,12 @@ class IdempotencyServiceIntegrationTest {
             jdbc.queryForObject(
                 """
                 INSERT INTO diary_entries (
-                    id, user_id, idempotency_key, food_item_id, food_name, quantity_grams,
+                    id, user_id, idempotency_key, source_type, source_id, name_snapshot, weight_grams,
+                    food_item_id, food_name, quantity_grams,
                     calories, proteins, fats, carbs, meal_type, recorded_at
                 )
-                VALUES (gen_random_uuid(), ?, ?, gen_random_uuid(), 'Oatmeal', 200, 150, 5, 3, 25, 'BREAKFAST', NOW())
+                VALUES (gen_random_uuid(), ?, ?, 'PRODUCT', gen_random_uuid(), 'Oatmeal', 200,
+                    gen_random_uuid(), 'Oatmeal', 200, 150, 5, 3, 25, 'BREAKFAST', NOW())
                 RETURNING id::text
                 """.trimIndent(),
                 String::class.java,

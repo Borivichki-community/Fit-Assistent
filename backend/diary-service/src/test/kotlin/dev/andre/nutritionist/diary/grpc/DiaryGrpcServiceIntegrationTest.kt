@@ -258,9 +258,13 @@ class DiaryGrpcServiceIntegrationTest
             userId: String,
             key: String? = null,
         ): DiaryServiceGrpc.DiaryServiceBlockingStub {
+            val resolvedUserId =
+                runCatching { UUID.fromString(userId).toString() }.getOrElse {
+                    UUID.nameUUIDFromBytes(userId.toByteArray()).toString()
+                }
             val headers =
                 Metadata().apply {
-                    put(Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER), userId)
+                    put(Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER), resolvedUserId)
                     key?.let { put(Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER), it) }
                 }
             return DiaryServiceGrpc

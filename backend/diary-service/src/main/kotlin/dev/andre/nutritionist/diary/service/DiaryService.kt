@@ -23,9 +23,9 @@ class DiaryService(
         command: AddEntryCommand,
         traceparent: String? = null,
     ): DiaryEntry {
-        require(command.foodName.isNotBlank() && command.foodName.length <= 255) { "Invalid food_name" }
-        require(command.quantityGrams.isFinite() && command.quantityGrams > 0 && command.quantityGrams <= 9_999_999.999) {
-            "Invalid quantity_grams"
+        require(command.nameSnapshot.isNotBlank() && command.nameSnapshot.length <= 255) { "Invalid name_snapshot" }
+        require(command.weightGrams.isFinite() && command.weightGrams > 0 && command.weightGrams <= 9_999_999.999) {
+            "Invalid weight_grams"
         }
         require(command.nutrition.calories in 0..99_999) { "Invalid calories" }
         listOf(command.nutrition.proteins, command.nutrition.fats, command.nutrition.carbs).forEach {
