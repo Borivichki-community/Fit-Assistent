@@ -31,7 +31,7 @@ import java.util.UUID
 class RemoteDataSourcesIntegrationTest {
 
     private val dispatchers = DefaultCoroutineDispatchers()
-    private val testUserId = "11111111-1111-1111-1111-111111111111"
+    private val testUserId = UUID.randomUUID().toString()
     private val interceptor = UnifiedGrpcClientInterceptor(
         userIdProvider = { testUserId },
         devBypass = true,

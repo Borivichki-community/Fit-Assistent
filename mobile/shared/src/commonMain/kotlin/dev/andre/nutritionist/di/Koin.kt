@@ -2,11 +2,26 @@ package dev.andre.nutritionist.di
 
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
+import dev.andre.nutritionist.data.local.dao.LocalMealPlanDao
+import dev.andre.nutritionist.data.local.dao.LocalRecipeDao
+import dev.andre.nutritionist.data.local.dao.MealRecordDao
 import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.repository.CatalogRepositoryImpl
+import dev.andre.nutritionist.data.repository.CoachingRepositoryImpl
+import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
+import dev.andre.nutritionist.data.repository.MealPlanRepositoryImpl
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
+import dev.andre.nutritionist.data.repository.RecipeCatalogRepositoryImpl
+import dev.andre.nutritionist.data.repository.RecipeRepositoryImpl
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
+import dev.andre.nutritionist.domain.repository.CatalogRepository
+import dev.andre.nutritionist.domain.repository.CoachingRepository
+import dev.andre.nutritionist.domain.repository.DiaryRepository
+import dev.andre.nutritionist.domain.repository.MealPlanRepository
 import dev.andre.nutritionist.domain.repository.ProfileRepository
+import dev.andre.nutritionist.domain.repository.RecipeCatalogRepository
+import dev.andre.nutritionist.domain.repository.RecipeRepository
 import dev.andre.nutritionist.domain.usecase.ApplyMealPlanDayToDiaryUseCase
 import dev.andre.nutritionist.domain.usecase.LogRecipeToDiaryUseCase
 import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
@@ -26,7 +41,9 @@ val domainModule: Module = module {
 val localDataModule: Module = module {
     single<AppDatabase> { get<DatabaseBuilder<AppDatabase>>().build() }
     single<ProfileDao> { get<AppDatabase>().profileDao() }
-    single<dev.andre.nutritionist.data.local.dao.MealRecordDao> { get<AppDatabase>().mealRecordDao() }
+    single<MealRecordDao> { get<AppDatabase>().mealRecordDao() }
+    single<LocalRecipeDao> { get<AppDatabase>().localRecipeDao() }
+    single<LocalMealPlanDao> { get<AppDatabase>().localMealPlanDao() }
 }
 
 val dataModule: Module = module {
@@ -37,21 +54,41 @@ val dataModule: Module = module {
             dispatchers = get(),
         )
     }
-    single<dev.andre.nutritionist.domain.repository.DiaryRepository> {
-        dev.andre.nutritionist.data.repository.DiaryRepositoryImpl(
+    single<DiaryRepository> {
+        DiaryRepositoryImpl(
             dao = get(),
             remoteDataSource = get(),
             dispatchers = get(),
         )
     }
-    single<dev.andre.nutritionist.domain.repository.CatalogRepository> {
-        dev.andre.nutritionist.data.repository.CatalogRepositoryImpl(
+    single<CatalogRepository> {
+        CatalogRepositoryImpl(
             remoteDataSource = get(),
             dispatchers = get(),
         )
     }
-    single<dev.andre.nutritionist.domain.repository.RecipeRepository> {
-        dev.andre.nutritionist.data.repository.RecipeRepositoryImpl(
+    single<RecipeRepository> {
+        RecipeRepositoryImpl(
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<RecipeCatalogRepository> {
+        RecipeCatalogRepositoryImpl(
+            localRecipeDao = get(),
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<MealPlanRepository> {
+        MealPlanRepositoryImpl(
+            localMealPlanDao = get(),
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<CoachingRepository> {
+        CoachingRepositoryImpl(
             remoteDataSource = get(),
             dispatchers = get(),
         )

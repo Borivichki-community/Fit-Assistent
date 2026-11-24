@@ -5,6 +5,30 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 / T-078 — Мобильный Data-слой: Room KMP v3, gRPC клиенты и offline-first репозитории в :mobile:shared (2026-11-24)
+
+- **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(shared): T-078 implement Room v3 schema, gRPC remote clients and offline-first recipe repositories`.
+- **Room KMP v3 и явная миграция (`commonMain` & `androidMain`):**
+  - `AppDatabase.kt`: версия увеличена до `3`, зарегистрированы сущности `LocalRecipeEntity`, `LocalRecipeIngredientEntity`, `LocalMealPlanEntity`, `LocalMealPlanItemEntity` и DAO `localRecipeDao()`, `localMealPlanDao()`.
+  - `DatabaseMigrations.kt`: реализована явная миграция `MIGRATION_2_3` (создание таблиц `local_recipes`, `local_recipe_ingredients`, `local_meal_plans`, `local_meal_plan_items` с внешними ключами `ON DELETE CASCADE` и индексами), подключена в `AndroidDatabaseBuilder.kt` без `fallbackToDestructiveMigration()`.
+  - Экспортирована схема Room `mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/3.json`.
+- **gRPC клиенты, бинарные маршаллеры и мапперы:**
+  - `RecipeProto.kt` (`commonMain`), `RecipeCatalogMarshallers.kt` (`androidMain`), `AndroidRecipeGrpcServiceClient.kt` и `RecipeGrpcRemoteDataSource.kt`: поддержаны все 18 RPC-методов каталога рецептов, меню и тренерского доступа с прокидыванием `idempotency-key`.
+  - `UnifiedGrpcClientInterceptor.kt`: расширен список мутирующих методов (`Fork*`, `Publish*`, `Invite*`, `Respond*`, `Grant*`, `Revoke*`) для автоматической подстановки `idempotency-key`.
+  - `RecipeCatalogDtoMapper.kt`, `RecipeEntityMapper.kt`, `MealPlanEntityMapper.kt`: двусторонний маппинг DTO ↔ Domain ↔ Room Entity.
+- **Offline-first репозитории и Koin DI:**
+  - `RecipeCatalogRepositoryImpl`: реактивное чтение `observeMyRecipes()`, offline-first `saveRecipe` (`PENDING` → `SYNCED`, переиспользование `idempotencyKey`, замена временного локального ID на серверный, `createRecipe` vs `updateRecipe`), защита локальных `PENDING`-правок от перезаписи при поиске и чтении по ID, `forkRecipe`, `publishRecipe`, `deleteRecipe`.
+  - `MealPlanRepositoryImpl`: удалённая работа с планами питания, кэширование в `LocalMealPlanDao` и offline fallback в `getMealPlanById`.
+  - `CoachingRepositoryImpl`: управление связями тренер-ученик и выдача/отзыв прав доступа.
+  - `Koin.kt` и `AndroidDataModule.kt`: зарегистрированы новые DAO, gRPC-клиенты/DataSource (с `GrpcErrorMapper.map`) и репозитории; `mobile/androidApp` UI не изменялся.
+- **Тестирование и верификация:**
+  - `commonTest` (без MockK): `FakeLocalRecipeDao`, `FakeRecipeRemoteDataSource`, `RecipeCatalogRepositoryImplTest`.
+  - `androidHostTest`: `LocalRecipeDaoTest`, `RecipeDatabaseMigrationTest` (валидация `MIGRATION_2_3`), `AndroidRecipeGrpcSerializationTest` (wire-level round-trip маршаллеров), изоляция `testUserId` в `RemoteDataSourcesIntegrationTest`.
+  - `:mobile:shared:allTests` — **BUILD SUCCESSFUL** (187 тестов пройдено, 0 ошибок, 0 пропущено).
+  - `:mobile:shared:assemble` — **BUILD SUCCESSFUL**.
+  - `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
 ### KAN-16 / T-077 — KMP Domain-слой в :mobile:shared (commonMain, без UI): каталог рецептов, планы питания и тренерский доступ (2026-11-24)
 
 - **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

@@ -1,20 +1,56 @@
 package dev.andre.nutritionist.data.remote.grpc
 
+import com.budgetntr.proto.recipe.v1.CreateMealPlanRequest
+import com.budgetntr.proto.recipe.v1.CreateMealPlanResponse
+import com.budgetntr.proto.recipe.v1.CreateRecipeRequest
+import com.budgetntr.proto.recipe.v1.CreateRecipeResponse
+import com.budgetntr.proto.recipe.v1.DeleteMealPlanRequest
+import com.budgetntr.proto.recipe.v1.DeleteMealPlanResponse
+import com.budgetntr.proto.recipe.v1.DeleteRecipeRequest
+import com.budgetntr.proto.recipe.v1.DeleteRecipeResponse
+import com.budgetntr.proto.recipe.v1.ForkRecipeRequest
+import com.budgetntr.proto.recipe.v1.ForkRecipeResponse
 import com.budgetntr.proto.recipe.v1.GenerateMealPlanRequest
 import com.budgetntr.proto.recipe.v1.GenerateMealPlanResponse
 import com.budgetntr.proto.recipe.v1.GenerateWeekMenuRequest
 import com.budgetntr.proto.recipe.v1.GenerateWeekMenuResponse
 import com.budgetntr.proto.recipe.v1.GeneratedMealProto
+import com.budgetntr.proto.recipe.v1.GetMealPlanRequest
+import com.budgetntr.proto.recipe.v1.GetMealPlanResponse
+import com.budgetntr.proto.recipe.v1.GetRecipeRequest
+import com.budgetntr.proto.recipe.v1.GetRecipeResponse
+import com.budgetntr.proto.recipe.v1.GrantAccessRequest
+import com.budgetntr.proto.recipe.v1.GrantAccessResponse
+import com.budgetntr.proto.recipe.v1.InviteStudentRequest
+import com.budgetntr.proto.recipe.v1.InviteStudentResponse
+import com.budgetntr.proto.recipe.v1.ListCoachLinksRequest
+import com.budgetntr.proto.recipe.v1.ListCoachLinksResponse
 import com.budgetntr.proto.recipe.v1.MealTypeProto
 import com.budgetntr.proto.recipe.v1.MenuIngredientProto
 import com.budgetntr.proto.recipe.v1.MenuMealProto
 import com.budgetntr.proto.recipe.v1.MenuSourceProto
+import com.budgetntr.proto.recipe.v1.PublishRecipeRequest
+import com.budgetntr.proto.recipe.v1.PublishRecipeResponse
+import com.budgetntr.proto.recipe.v1.RespondCoachInviteRequest
+import com.budgetntr.proto.recipe.v1.RespondCoachInviteResponse
+import com.budgetntr.proto.recipe.v1.RevokeAccessRequest
+import com.budgetntr.proto.recipe.v1.RevokeAccessResponse
+import com.budgetntr.proto.recipe.v1.SearchMealPlansRequest
+import com.budgetntr.proto.recipe.v1.SearchMealPlansResponse
+import com.budgetntr.proto.recipe.v1.SearchRecipesRequest
+import com.budgetntr.proto.recipe.v1.SearchRecipesResponse
 import com.budgetntr.proto.recipe.v1.TargetNutritionProto
 import com.budgetntr.proto.recipe.v1.TargetPeriodProto
+import com.budgetntr.proto.recipe.v1.UpdateMealPlanRequest
+import com.budgetntr.proto.recipe.v1.UpdateMealPlanResponse
+import com.budgetntr.proto.recipe.v1.UpdateRecipeRequest
+import com.budgetntr.proto.recipe.v1.UpdateRecipeResponse
 import com.budgetntr.proto.recipe.v1.WeekMenuDayProto
 import com.budgetntr.proto.recipe.v1.WeekMenuSummaryProto
 import com.google.protobuf.CodedInputStream
 import com.google.protobuf.CodedOutputStream
+import dev.andre.nutritionist.data.remote.grpc.interceptors.UnifiedGrpcClientInterceptor
+import io.grpc.CallOptions
 import io.grpc.Channel
 import io.grpc.MethodDescriptor
 import kotlinx.coroutines.flow.Flow
@@ -26,24 +62,81 @@ class AndroidRecipeGrpcServiceClient(
     private val channel: Channel,
 ) : RecipeGrpcServiceClient {
 
-    override suspend fun generateMealPlan(request: GenerateMealPlanRequest): GenerateMealPlanResponse {
-        return channel.unaryCall(generateMealPlanMethod, request)
-    }
+    override suspend fun generateMealPlan(request: GenerateMealPlanRequest): GenerateMealPlanResponse =
+        channel.unaryCall(generateMealPlanMethod, request)
 
-    override fun generateWeekMenu(request: GenerateWeekMenuRequest): Flow<GenerateWeekMenuResponse> {
-        return channel.serverStreamingCall(generateWeekMenuMethod, request)
-    }
+    override fun generateWeekMenu(request: GenerateWeekMenuRequest): Flow<GenerateWeekMenuResponse> =
+        channel.serverStreamingCall(generateWeekMenuMethod, request)
+
+    override suspend fun searchRecipes(request: SearchRecipesRequest): SearchRecipesResponse =
+        channel.unaryCall(searchRecipesMethod, request)
+
+    override suspend fun getRecipe(request: GetRecipeRequest): GetRecipeResponse =
+        channel.unaryCall(getRecipeMethod, request)
+
+    override suspend fun createRecipe(request: CreateRecipeRequest, idempotencyKey: String?): CreateRecipeResponse =
+        channel.unaryCall(createRecipeMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun updateRecipe(request: UpdateRecipeRequest, idempotencyKey: String?): UpdateRecipeResponse =
+        channel.unaryCall(updateRecipeMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun deleteRecipe(request: DeleteRecipeRequest, idempotencyKey: String?): DeleteRecipeResponse =
+        channel.unaryCall(deleteRecipeMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun forkRecipe(request: ForkRecipeRequest, idempotencyKey: String?): ForkRecipeResponse =
+        channel.unaryCall(forkRecipeMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun publishRecipe(request: PublishRecipeRequest, idempotencyKey: String?): PublishRecipeResponse =
+        channel.unaryCall(publishRecipeMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun searchMealPlans(request: SearchMealPlansRequest): SearchMealPlansResponse =
+        channel.unaryCall(searchMealPlansMethod, request)
+
+    override suspend fun getMealPlan(request: GetMealPlanRequest): GetMealPlanResponse =
+        channel.unaryCall(getMealPlanMethod, request)
+
+    override suspend fun createMealPlan(request: CreateMealPlanRequest, idempotencyKey: String?): CreateMealPlanResponse =
+        channel.unaryCall(createMealPlanMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun updateMealPlan(request: UpdateMealPlanRequest, idempotencyKey: String?): UpdateMealPlanResponse =
+        channel.unaryCall(updateMealPlanMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun deleteMealPlan(request: DeleteMealPlanRequest, idempotencyKey: String?): DeleteMealPlanResponse =
+        channel.unaryCall(deleteMealPlanMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun listCoachLinks(request: ListCoachLinksRequest): ListCoachLinksResponse =
+        channel.unaryCall(listCoachLinksMethod, request)
+
+    override suspend fun inviteStudent(request: InviteStudentRequest, idempotencyKey: String?): InviteStudentResponse =
+        channel.unaryCall(inviteStudentMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun respondCoachInvite(
+        request: RespondCoachInviteRequest,
+        idempotencyKey: String?,
+    ): RespondCoachInviteResponse =
+        channel.unaryCall(respondCoachInviteMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun grantAccess(request: GrantAccessRequest, idempotencyKey: String?): GrantAccessResponse =
+        channel.unaryCall(grantAccessMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    override suspend fun revokeAccess(request: RevokeAccessRequest, idempotencyKey: String?): RevokeAccessResponse =
+        channel.unaryCall(revokeAccessMethod, request, idempotencyCallOptions(idempotencyKey))
+
+    private fun idempotencyCallOptions(idempotencyKey: String?): CallOptions =
+        if (!idempotencyKey.isNullOrBlank()) {
+            CallOptions.DEFAULT.withOption(
+                UnifiedGrpcClientInterceptor.IDEMPOTENCY_KEY_CALL_OPTION,
+                idempotencyKey,
+            )
+        } else {
+            CallOptions.DEFAULT
+        }
 
     companion object {
         private const val SERVICE_NAME = "com.budgetntr.recipe.v1.RecipeAiService"
 
         val generateMealPlanMethod: MethodDescriptor<GenerateMealPlanRequest, GenerateMealPlanResponse> =
-            MethodDescriptor.newBuilder<GenerateMealPlanRequest, GenerateMealPlanResponse>()
-                .setType(MethodDescriptor.MethodType.UNARY)
-                .setFullMethodName(MethodDescriptor.generateFullMethodName(SERVICE_NAME, "GenerateMealPlan"))
-                .setRequestMarshaller(GenerateMealPlanRequestMarshaller)
-                .setResponseMarshaller(GenerateMealPlanResponseMarshaller)
-                .build()
+            unaryDescriptor("GenerateMealPlan", GenerateMealPlanRequestMarshaller, GenerateMealPlanResponseMarshaller)
 
         val generateWeekMenuMethod: MethodDescriptor<GenerateWeekMenuRequest, GenerateWeekMenuResponse> =
             MethodDescriptor.newBuilder<GenerateWeekMenuRequest, GenerateWeekMenuResponse>()
@@ -51,6 +144,69 @@ class AndroidRecipeGrpcServiceClient(
                 .setFullMethodName(MethodDescriptor.generateFullMethodName(SERVICE_NAME, "GenerateWeekMenu"))
                 .setRequestMarshaller(GenerateWeekMenuRequestMarshaller)
                 .setResponseMarshaller(GenerateWeekMenuResponseMarshaller)
+                .build()
+
+        val searchRecipesMethod: MethodDescriptor<SearchRecipesRequest, SearchRecipesResponse> =
+            unaryDescriptor("SearchRecipes", SearchRecipesRequestMarshaller, SearchRecipesResponseMarshaller)
+
+        val getRecipeMethod: MethodDescriptor<GetRecipeRequest, GetRecipeResponse> =
+            unaryDescriptor("GetRecipe", GetRecipeRequestMarshaller, GetRecipeResponseMarshaller)
+
+        val createRecipeMethod: MethodDescriptor<CreateRecipeRequest, CreateRecipeResponse> =
+            unaryDescriptor("CreateRecipe", CreateRecipeRequestMarshaller, CreateRecipeResponseMarshaller)
+
+        val updateRecipeMethod: MethodDescriptor<UpdateRecipeRequest, UpdateRecipeResponse> =
+            unaryDescriptor("UpdateRecipe", UpdateRecipeRequestMarshaller, UpdateRecipeResponseMarshaller)
+
+        val deleteRecipeMethod: MethodDescriptor<DeleteRecipeRequest, DeleteRecipeResponse> =
+            unaryDescriptor("DeleteRecipe", DeleteRecipeRequestMarshaller, DeleteRecipeResponseMarshaller)
+
+        val forkRecipeMethod: MethodDescriptor<ForkRecipeRequest, ForkRecipeResponse> =
+            unaryDescriptor("ForkRecipe", ForkRecipeRequestMarshaller, ForkRecipeResponseMarshaller)
+
+        val publishRecipeMethod: MethodDescriptor<PublishRecipeRequest, PublishRecipeResponse> =
+            unaryDescriptor("PublishRecipe", PublishRecipeRequestMarshaller, PublishRecipeResponseMarshaller)
+
+        val searchMealPlansMethod: MethodDescriptor<SearchMealPlansRequest, SearchMealPlansResponse> =
+            unaryDescriptor("SearchMealPlans", SearchMealPlansRequestMarshaller, SearchMealPlansResponseMarshaller)
+
+        val getMealPlanMethod: MethodDescriptor<GetMealPlanRequest, GetMealPlanResponse> =
+            unaryDescriptor("GetMealPlan", GetMealPlanRequestMarshaller, GetMealPlanResponseMarshaller)
+
+        val createMealPlanMethod: MethodDescriptor<CreateMealPlanRequest, CreateMealPlanResponse> =
+            unaryDescriptor("CreateMealPlan", CreateMealPlanRequestMarshaller, CreateMealPlanResponseMarshaller)
+
+        val updateMealPlanMethod: MethodDescriptor<UpdateMealPlanRequest, UpdateMealPlanResponse> =
+            unaryDescriptor("UpdateMealPlan", UpdateMealPlanRequestMarshaller, UpdateMealPlanResponseMarshaller)
+
+        val deleteMealPlanMethod: MethodDescriptor<DeleteMealPlanRequest, DeleteMealPlanResponse> =
+            unaryDescriptor("DeleteMealPlan", DeleteMealPlanRequestMarshaller, DeleteMealPlanResponseMarshaller)
+
+        val listCoachLinksMethod: MethodDescriptor<ListCoachLinksRequest, ListCoachLinksResponse> =
+            unaryDescriptor("ListCoachLinks", ListCoachLinksRequestMarshaller, ListCoachLinksResponseMarshaller)
+
+        val inviteStudentMethod: MethodDescriptor<InviteStudentRequest, InviteStudentResponse> =
+            unaryDescriptor("InviteStudent", InviteStudentRequestMarshaller, InviteStudentResponseMarshaller)
+
+        val respondCoachInviteMethod: MethodDescriptor<RespondCoachInviteRequest, RespondCoachInviteResponse> =
+            unaryDescriptor("RespondCoachInvite", RespondCoachInviteRequestMarshaller, RespondCoachInviteResponseMarshaller)
+
+        val grantAccessMethod: MethodDescriptor<GrantAccessRequest, GrantAccessResponse> =
+            unaryDescriptor("GrantAccess", GrantAccessRequestMarshaller, GrantAccessResponseMarshaller)
+
+        val revokeAccessMethod: MethodDescriptor<RevokeAccessRequest, RevokeAccessResponse> =
+            unaryDescriptor("RevokeAccess", RevokeAccessRequestMarshaller, RevokeAccessResponseMarshaller)
+
+        private fun <Req, Resp> unaryDescriptor(
+            methodName: String,
+            reqMarshaller: MethodDescriptor.Marshaller<Req>,
+            respMarshaller: MethodDescriptor.Marshaller<Resp>,
+        ): MethodDescriptor<Req, Resp> =
+            MethodDescriptor.newBuilder<Req, Resp>()
+                .setType(MethodDescriptor.MethodType.UNARY)
+                .setFullMethodName(MethodDescriptor.generateFullMethodName(SERVICE_NAME, methodName))
+                .setRequestMarshaller(reqMarshaller)
+                .setResponseMarshaller(respMarshaller)
                 .build()
     }
 }
