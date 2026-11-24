@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: diary-service
+  namespace: budget-nutritionist
+  labels:
+    app: diary-service
+    service: diary
+    app.kubernetes.io/name: diary-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diary-service
+  template:
+    metadata:
+      labels:
+        app: diary-service
+        service: diary
+        app.kubernetes.io/name: diary-service
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: diary-service
+          image: diary-service:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc
+              containerPort: 9193
+              protocol: TCP
+            - name: actuator
+              containerPort: 8083
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: diary-service-config
+          env:
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: diary-service-secret
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: diary-service-secret
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

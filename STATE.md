@@ -5,6 +5,42 @@
 
 Обновлено: 2026-11-24
 
+### KAN-76 — Генерация рецептов и планов питания (Блоки 1-4 завершены) (2026-11-24)
+
+- Активны `contracts-proto-and-avro`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
+- **БЛОК 1 (Контракт):**
+  - Обновлён `proto/nutritionist/recipe/v1/recipe.proto`: добавлен RPC `GenerateMealPlan(GenerateMealPlanRequest) returns (GenerateMealPlanResponse)`.
+  - Добавлены enum `TargetPeriod` (DAY, BREAKFAST, LUNCH, DINNER, SNACK), типы `TargetNutrition`, `GenerateMealPlanRequest`, `GenerateMealPlanResponse`, `GeneratedMeal`.
+  - В enum `MealType` добавлен `MEAL_TYPE_SNACK = 4`.
+  - Проверена генерация gRPC stubs в `:shared:contracts` и `:backend:recipe-ai-service`.
+- **БЛОК 2 (Чистая архитектура :backend:recipe-ai-service):**
+  - Произведён переход от плоской структуры пакета `dev.andre.nutritionist.recipe.*` к чистой архитектуре:
+    - `config/` (`RecipeProperties`, `RecipeConfiguration`, `GrpcBootstrapConfiguration`, `RecipeWarmup`)
+    - `domain/model/` (`TargetPeriod`, `GeneratedRecipe`, `MenuRequest`, `UserId`, `ProductId`, `RequestContext`)
+    - `domain/service/` (`RecipeMenuService`, `ResilientMenuGenerator`)
+    - `domain/validator/` (`MenuValidator`)
+    - `infrastructure/grpc/` (`RecipeGrpcService`, `RecipeIdentityInterceptor`)
+    - `infrastructure/grpc/client/` (`CatalogClient`)
+    - `infrastructure/grpc/mapper/` (`RecipeDtoMapper`)
+    - `infrastructure/llm/` (`LlmClient`, `GeminiLlmClient`, `MenuExceptions`)
+    - `infrastructure/llm/prompt/` (`MealPlanPromptBuilder`)
+    - `infrastructure/redis/` (`RedisMenuStore`)
+  - Гибкий генератор промпта `MealPlanPromptBuilder` поддерживает как 7-дневное меню, так и произвольный период/приём пищи (день, завтрак, обед, ужин, перекус) с учётом `user_note`, бюджета и предпочтений.
+  - В `RedisMenuStore` добавлена сериализация `GeneratedMealPlan` через `JsonMapper`.
+  - Все 10 тестов `backend:recipe-ai-service:test` (включая стриминг, WireMock LLM, Resilience4j Circuit Breaker/Retry, Redis квоты и fallback) успешно пройдены.
+- **БЛОК 3 (K8s манифесты и Helmfile):**
+  - Созданы полные манифесты для `recipe-ai-service` в `infrastructure/k8s/apps/recipe-ai-service/`: `configmap.yaml` (порты 9194/8084, `catalog-price-service:9192`), `secret.yaml` (`RECIPE_LLM_API_KEY`), `service.yaml`, `deployment.yaml` (non-root UID 10001, readiness/liveness probes), `grpc-route.yaml` (`com.budgetntr.recipe.v1.RecipeAiService`).
+  - Созданы полные манифесты для `diary-service` в `infrastructure/k8s/apps/diary-service/`: `configmap.yaml` (порты 9193/8083, `diary_db`, Kafka, Redis), `secret.yaml` (`DB_USERNAME`, `DB_PASSWORD`), `service.yaml`, `deployment.yaml` (non-root UID 10001), `grpc-route.yaml` (`com.budgetntr.diary.v1.DiaryService`).
+  - Проверено подключение в `infrastructure/k8s/charts/helmfile.yaml` (разделы 7 `diary-service` и 8 `recipe-ai-service`).
+- **БЛОК 4 (Сквозная цепочка E2E из 4 сервисов):**
+  - Подтверждена локальная инфраструктура (PostgreSQL 5433 с базами `profile_db`, `catalog_db` с 110 продуктами, `diary_db`, Redis 6379, Kafka 9092, Schema Registry 8081).
+  - Собраны `bootJar` для всех 4 сервисов: `profile-service.jar`, `catalog-price-service.jar`, `diary-service.jar`, `recipe-ai-service.jar`.
+  - Реализован и успешно выполнен автоматизированный сквозной тест `E2EFourServiceChainTest` в `:backend:recipe-ai-service`, проверивший выполнение полной цепочки:
+    - **Шаг 1: `UpdateProfile` (ProfileService, 9090):** создан профиль `usr_test_flow` (ккал=2200, бюджет=4500.0 RUB).
+    - **Шаг 2: `SearchProducts` (CatalogService, 9192):** найден продукт «Куриное филе грудки охл» (`20000000-0000-0000-0000-000000000057`, 113 ккал/100г, 23.6г белка).
+    - **Шаг 3: `GenerateMealPlan` (RecipeAiService, 9194):** сгенерирован план ужина `TARGET_PERIOD_DINNER` с блюдом «Куриное филе на пару с отварным рисом» (626.5 ккал, 66г белка, 10.25 руб).
+    - **Шаг 4: `AddEntry` + `GetDailyEntries` (DiaryService, 9193):** блюдо сохранено в дневник питания с `ENTRY_SOURCE_TYPE_RECIPE` и `source_id = plan_id`; вызов `GetDailyEntries` подтвердил наличие записи с точным расчётом суточных итогов (626 ккал, 66.0г белка).
+
 ### T-056 — итоги GetDay по приёмам пищи
 
 - Активны spring-grpc-service, contracts-proto-and-avro, testing-and-verification; роль implementer.

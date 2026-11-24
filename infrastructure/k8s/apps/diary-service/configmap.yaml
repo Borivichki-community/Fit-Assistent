@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: diary-service-config
+  namespace: budget-nutritionist
+  labels:
+    app: diary-service
+    service: diary
+    app.kubernetes.io/name: diary-service
+    app.kubernetes.io/part-of: fitassistant
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SPRING_GRPC_SERVER_ADDRESS: "0.0.0.0"
+  DIARY_GRPC_PORT: "9193"
+  SERVER_PORT: "8083"
+  MANAGEMENT_SERVER_PORT: "8083"
+  DIARY_MANAGEMENT_PORT: "8083"
+  DIARY_DB_URL: "jdbc:postgresql://postgres.budget-nutritionist.svc.cluster.local:5432/diary_db"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka.budget-nutritionist.svc.cluster.local:9092"
+  SCHEMA_REGISTRY_URL: "http://schema-registry.budget-nutritionist.svc.cluster.local:8081"
+  SPRING_DATA_REDIS_HOST: "redis-state.budget-nutritionist.svc.cluster.local"
+  SPRING_DATA_REDIS_PORT: "6379"

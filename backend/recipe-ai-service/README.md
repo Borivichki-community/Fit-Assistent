@@ -1,106 +1,48 @@
-# Recipe AI Service (`:backend:recipe-ai-service`)
+# Recipe AI Service
 
-> Микросервис генерации персонализированных блюд и меню под остаток суточного калоража и оставшийся бюджет с использованием ИИ (Gemini / LLM) и RAG по базе рецептов.
+`:backend:recipe-ai-service` генерирует недельное меню по суточной цели в ккал и недельному пределу в копейках RUB. Можно передать UUID исключённых и предпочтительных продуктов. Исключения обязательны, предпочтения учитываются среди доступных кандидатов.
 
-> **Статус:** целевой API генерации; рабочей реализации и recipe_ai.proto пока нет. Персональный баланс на сервере не ведётся.
+## Контракт
 
----
+[`GenerateWeekMenu`](../../proto/nutritionist/recipe/v1/recipe.proto) принимает `daily_calories`, `weekly_budget_minor`, `excluded_product_ids` и `preferred_product_ids`. После проверки всей недели сервер передаёт семь событий `DAY_READY` в порядке 1–7, затем одно `FINAL` с итоговой оценкой и источником меню.
 
-## 1. База данных и хранилище
+- Catalog отдаёт продукты и среднюю цену за 100 г. Клиент собирает до двух страниц и дополнительно запрашивает первые 12 доступных предпочтений. В LLM передаются до 35 кандидатов с известной ценой. Если даже минимальная оценка по этим продуктам выше бюджета, LLM не вызывается.
+- Gemini получает структурированную схему и возвращает семь дней с завтраком, обедом и ужином. Сервис проверяет ID продуктов и целые граммы, сам рассчитывает калории и цены. По умолчанию калории каждого дня должны быть в пределах ±10%, а стоимость всей недели — в пределах бюджета. Стоимость каждого продукта в порции округляется до копейки.
+- Обращения к Catalog ограничены дедлайном на попытку. На `UNAVAILABLE` и `DEADLINE_EXCEEDED` выполняется до трёх попыток с backoff. У вызова LLM до двух попыток с таймаутом 12 секунд на каждую. Retry обрабатывает временные HTTP/сетевые ошибки и невалидное меню.
+- Redis хранит результат 24 часа. Ключ учитывает пользователя, модель, параметры и состав снимка кандидатов. Предгенерированные меню для точной пары ккал × бюджет живут 48 часов. Fallback применим только к запросам без предпочтений и исключений. При отсутствии подходящего меню сервер завершает поток с `UNAVAILABLE`.
+- На пользователя выделяется 10 попыток LLM за сутки UTC. Повторы занимают отдельную попытку. Когда Redis квоты недоступен, платная генерация останавливается. Общий лимит маршрута Envoy составляет 30 запросов в минуту. Actuator экспортирует состояние Circuit Breaker, число попыток, токены и оценку стоимости по заданному тарифу.
 
-- **СУБД / Кэш:** Redis 7 (порт `6379`).
-- **Назначение Redis:**
-  - Ключ кэша: SHA-256 канонического полного запроса, субъекта авторизации, версии модели и версии используемых данных каталога. Учитываются КБЖУ, денежный предел, исключения, избранное и тип приёма пищи; частичный ключ по калориям/бюджету запрещён.
-  - Векторный поиск/RAG — отдельное будущее расширение; текущая спецификация не требует нового индекса.
-  - Fallback-буфер при сбоях или таймаутах внешнего API нейросети.
+## Конфигурация
 
----
+| Переменная | Назначение |
+|---|---|
+| `RECIPE_LLM_API_KEY` | Ключ Gemini из окружения или Secret `recipe-llm`, поле `api-key` |
+| `RECIPE_LLM_MODEL` | Идентификатор модели Gemini |
+| `RECIPE_CATALOG_TARGET` | Адрес gRPC Catalog с методами `SearchProducts`, `GetProduct` и `GetAveragePrices` |
+| `RECIPE_CATALOG_PLAINTEXT` | Явное включение plaintext для локального Catalog. По умолчанию используется TLS |
+| `RECIPE_CATALOGCAFILE` | Путь к PEM CA для TLS Catalog, если CA отсутствует в системном trust store |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Подключение к Redis |
+| `RECIPE_WARMUP_TARGETS` | Пары вида `1800:300000,2200:400000`. Пустой список отключает фоновые вызовы Gemini |
+| `RECIPE_LLM_INPUT_USD_PER_MILLION`, `RECIPE_LLM_OUTPUT_USD_PER_MILLION` | Тариф входа и выхода в USD за миллион токенов. Заполняются оба значения |
 
-## 2. Сущности
+Kubernetes-манифесты находятся в [infrastructure/k8s/recipe](../../infrastructure/k8s/recipe/). Для маршрута нужны существующие Envoy, Keycloak, Redis и работающий gRPC Catalog. Ветка T-048 содержит сервер Catalog и его контракт.
 
-- **`GeneratedMenuCache`**:
-  - `cacheKey`: String (MD5/SHA256 от параметров запроса);
-  - `recipesJson`: String (JSON-сериализованный список блюд);
-  - `expiresAt`: Long (TTL 24 часа).
-- **Контекст генерации** приходит от мобильного клиента в каждом запросе. Он включает доступные для этой генерации калории и БЖУ, выделенный денежный лимит, исключённые ингредиенты и ID выбранного избранного.
-- Мобильный клиент сам определяет, сколько оставшегося недельного бюджета выделить на блюдо или день. На сервер не передаётся инструкция вычитать прошлые расходы; пользовательская сумма для рекомендаций не является платёжным лимитом.
+Для TLS нужны три объекта. В namespace `budget-nutritionist` секрет `recipe-server-tls` содержит `tls.crt`, `tls.key` и `client-ca.crt`. Сертификат сервера должен иметь SAN `recipe-ai-service.budget-nutritionist.svc.cluster.local`, его CA размещается в ConfigMap `recipe-server-ca` в поле `ca.crt`. В namespace `envoy-gateway-system` TLS Secret `recipe-envoy-client-tls` содержит сертификат клиента с субъектом `CN=fitassistant-envoy` и закрытый ключ. JWT с `sub` проверяется в Envoy. Recipe AI принимает утверждённый шлюзом `sub` через канал mTLS.
 
----
+После подготовки сертификатов и образа:
 
-## 3. Protobuf Контракт
-
-- **Файл контракта:** `proto/nutritionist/recipe/v1/recipe_ai.proto`
-- **Пакет:** `com.budgetntr.recipe.v1` (Java/Kotlin: `com.budgetntr.proto.recipe.v1`)
-
-```protobuf
-syntax = "proto3";
-
-package com.budgetntr.recipe.v1;
-
-service RecipeAiService {
-  // GenerateDishSuggestion генерирует блюдо строго под оставшиеся КБЖУ и оставшиеся деньги
-  rpc GenerateDishSuggestion(GenerateDishRequest) returns (GenerateDishResponse);
-
-  // GenerateDailyMealPlan составляет полный рацион на день с минимизацией стоимости
-  rpc GenerateDailyMealPlan(DailyMealPlanRequest) returns (DailyMealPlanResponse);
-}
-
-message Money {
-  int64 amount_minor = 1;
-  string currency_code = 2;
-}
-
-message GenerationContext {
-  double available_calories = 1;
-  double available_proteins_grams = 2;
-  double available_fats_grams = 3;
-  double available_carbs_grams = 4;
-  Money spending_limit = 5;
-  repeated string exclude_ingredients = 6;
-  repeated string preferred_food_item_ids = 7;
-  repeated string preferred_recipe_ids = 8;
-  repeated string preferred_daily_meal_plan_ids = 9;
-}
-
-message GenerateDishRequest {
-  GenerationContext context = 1;
-  string meal_type = 2;
-}
-
-message GenerateDishResponse {
-  string recipe_name = 1;
-  string description = 2;
-  repeated string instructions = 3;
-  double estimated_calories = 4;
-  Money estimated_price = 5;
-  repeated AiIngredientProto ingredients = 6;
-}
-
-message AiIngredientProto {
-  string food_item_id = 1;
-  string name = 2;
-  double quantity_grams = 3;
-}
-
-message DailyMealPlanRequest {
-  GenerationContext context = 1;
-}
-
-message DailyMealPlanResponse {
-  repeated GenerateDishResponse meals = 1;
-  double total_calories = 2;
-  Money estimated_price = 3;
-}
+```bash
+kubectl -n envoy-gateway-system patch envoyproxy custom-proxy-config --type=merge \
+  --patch-file infrastructure/k8s/recipe/envoy-client-tls.patch.yaml
+kubectl apply -f infrastructure/k8s/recipe/recipe.yaml
 ```
 
----
+Для локального запуска через Compose gRPC без входного mTLS доступен для health-проверок. Для вызова генерации нужен TLS-профиль `gateway` и сертификат клиента Envoy. Пути к серверному PEM, ключу и CA клиента можно задать через `RECIPE_TLS_CERTIFICATE`, `RECIPE_TLS_PRIVATE_KEY` и `RECIPE_TLS_CLIENT_CA` с префиксом `file:`.
 
-## 4. Данные для генерации и отказоустойчивость
+## Проверки
 
-- Мобильный клиент вычисляет контекст по текущему профилю и дневнику Room, включая ещё не отправленные записи. Избранное берётся из локального желаемого состояния, включая офлайн-нажатия. Для генерации не нужно предварительно отправлять весь дневник или ждать Kafka.
-- `context` и `spending_limit` обязательны; лимиты конечны и неотрицательны, деньги — RUB/копейки. Отрицательный остаток клиент показывает как превышение и не запускает генерацию с отрицательным пределом. При неполной истории или неизвестных стоимостях UI сообщает, что бюджет приблизительный, и пользователь задаёт лимит генерации явно.
-- Recipe AI использует переданный лимит для подбора кандидатов по текущим данным каталога. Он может оценивать стоимость будущего предложения при подборе, но не рассчитывает заново расходы дневника и не изменяет бюджет профиля. `estimated_price` не гарантирует цену покупки; отсутствующее поле означает неизвестную оценку.
-- Итог выбранной порции мобильный доменный слой рассчитывает по выбранным пользователем ценам и количеству, затем сохраняет снимок в дневнике. Сервер не выдаёт свой результат за подтверждённую стоимость клиента.
-- ID предпочтений относятся только к существующим объектам каталога. Сервер проверяет доступ к ним и пропускает удалённые/недоступные предпочтения; ограничения по исключённым ингредиентам имеют приоритет. Список предпочтений из запроса не изменяет серверное избранное.
-- Подписки на `diary.entry.created`, `user.profile.updated`, `user.favorite.changed` не нужны этому сценарию. В Redis нет накапливаемого по событиям персонального денежного баланса. `recipe.generated` остаётся отложенным событием без нового обязательного потребителя.
-- Отказоустойчивость реализуется в инфраструктурном клиенте функциональными корутинными обёртками согласно [ADR-002](../../docs/architecture/adr/adr-002-resilience4j-integration.md), с таймаутом и пробросом отмены. Fallback должен удовлетворять тем же ограничениям; если подходящего кэша нет, возвращается явная недоступность, а не произвольное блюдо.
+```bash
+./gradlew -PbackendOnly=true :backend:recipe-ai-service:check :backend:recipe-ai-service:bootJar
+```
+
+WireMock покрывает успешный запрос, HTTP 500, медленный ответ, таймаут и невалидный JSON. In-process Catalog проверяет повтор запроса при временной ошибке, поток дней и fallback через кэш. Проверка атомарной квоты и хранения меню использует изолированный Redis в Testcontainers.

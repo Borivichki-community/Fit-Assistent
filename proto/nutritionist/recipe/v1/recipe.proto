@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package com.budgetntr.recipe.v1;
+
+option java_multiple_files = true;
+option java_package = "com.budgetntr.proto.recipe.v1";
+option java_outer_classname = "RecipeOuterClass";
+
+// RecipeAiService provides AI-assisted meal and recipe generation with budget and nutrition limits.
+service RecipeAiService {
+  // GenerateWeekMenu streams weekly menu generated day-by-day.
+  rpc GenerateWeekMenu(GenerateWeekMenuRequest) returns (stream GenerateWeekMenuResponse);
+
+  // GenerateMealPlan generates a tailored meal plan for a day or a specific meal.
+  rpc GenerateMealPlan(GenerateMealPlanRequest) returns (GenerateMealPlanResponse);
+}
+
+// TargetPeriod specifies the timeframe or specific meal to plan.
+enum TargetPeriod {
+  TARGET_PERIOD_UNSPECIFIED = 0;
+  TARGET_PERIOD_DAY = 1;          // Full day (breakfast, lunch, dinner, snack)
+  TARGET_PERIOD_BREAKFAST = 2;    // Breakfast only
+  TARGET_PERIOD_LUNCH = 3;        // Lunch only
+  TARGET_PERIOD_DINNER = 4;       // Dinner only
+  TARGET_PERIOD_SNACK = 5;        // Snack only
+}
+
+// TargetNutrition specifies calorie and macronutrient targets.
+message TargetNutrition {
+  double calories = 1;
+  double proteins_grams = 2;
+  double fats_grams = 3;
+  double carbs_grams = 4;
+}
+
+// GenerateMealPlanRequest provides parameters for generating a single meal or daily plan.
+message GenerateMealPlanRequest {
+  TargetPeriod period = 1;
+  TargetNutrition target_nutrition = 2;
+  int64 max_budget_minor = 3;
+  string currency = 4;
+  string region_id = 5;
+  repeated string preferred_products = 6;
+  repeated string excluded_products = 7;
+  string user_note = 8;
+}
+
+// GenerateMealPlanResponse contains the generated meal plan and cooking guide.
+message GenerateMealPlanResponse {
+  string plan_id = 1;
+  TargetPeriod period = 2;
+  repeated GeneratedMeal meals = 3;
+  TargetNutrition total_nutrition = 4;
+  int64 estimated_cost_minor = 5;
+  string currency = 6;
+  string cooking_instructions = 7;
+  MenuSource source = 8;
+}
+
+// GeneratedMeal represents an individual meal in the plan.
+message GeneratedMeal {
+  MealType type = 1;
+  string title = 2;
+  repeated MenuIngredient ingredients = 3;
+  TargetNutrition nutrition = 4;
+  int64 estimated_cost_minor = 5;
+  int32 cooking_time_minutes = 6;
+}
+
+// GenerateWeekMenuRequest provides parameters for weekly menu generation.
+message GenerateWeekMenuRequest {
+  int32 daily_calories = 1;
+  int64 weekly_budget_minor = 2;
+  repeated string excluded_product_ids = 3;
+  repeated string preferred_product_ids = 4;
+}
+
+// GenerateWeekMenuResponse streams individual days and a summary.
+message GenerateWeekMenuResponse {
+  oneof event {
+    WeekMenuDay day_ready = 1;
+    WeekMenuSummary final = 2;
+  }
+}
+
+// WeekMenuDay holds meals and metrics for a single day.
+message WeekMenuDay {
+  int32 day_number = 1;
+  repeated MenuMeal meals = 2;
+  double calories = 3;
+  int64 estimated_cost_minor = 4;
+}
+
+// MenuMeal represents a meal in the weekly menu.
+message MenuMeal {
+  MealType type = 1;
+  string name = 2;
+  repeated MenuIngredient ingredients = 3;
+  double calories = 4;
+  int64 estimated_cost_minor = 5;
+}
+
+// MealType classifies the meal.
+enum MealType {
+  MEAL_TYPE_UNSPECIFIED = 0;
+  MEAL_TYPE_BREAKFAST = 1;
+  MEAL_TYPE_LUNCH = 2;
+  MEAL_TYPE_DINNER = 3;
+  MEAL_TYPE_SNACK = 4;
+}
+
+// MenuIngredient represents an ingredient with grams and product reference.
+message MenuIngredient {
+  string product_id = 1;
+  string name = 2;
+  int32 grams = 3;
+}
+
+// WeekMenuSummary provides overall stats for the weekly menu.
+message WeekMenuSummary {
+  double calories = 1;
+  int64 estimated_cost_minor = 2;
+  string currency = 3;
+  MenuSource source = 4;
+}
+
+// MenuSource indicates how the menu was obtained.
+enum MenuSource {
+  MENU_SOURCE_UNSPECIFIED = 0;
+  MENU_SOURCE_GENERATED = 1;
+  MENU_SOURCE_CACHE = 2;
+  MENU_SOURCE_FALLBACK = 3;
+}
+
+// WeekMenu contains the complete 7-day menu.
+message WeekMenu {
+  repeated WeekMenuDay days = 1;
+  WeekMenuSummary summary = 2;
+}

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recipe-ai-service
+  namespace: budget-nutritionist
+  labels:
+    app: recipe-ai-service
+    service: recipe
+    app.kubernetes.io/name: recipe-ai-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recipe-ai-service
+  template:
+    metadata:
+      labels:
+        app: recipe-ai-service
+        service: recipe
+        app.kubernetes.io/name: recipe-ai-service
+        app.kubernetes.io/part-of: fitassistant
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: recipe-ai-service
+          image: recipe-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc
+              containerPort: 9194
+              protocol: TCP
+            - name: actuator
+              containerPort: 8084
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: recipe-ai-service-config
+          env:
+            - name: RECIPE_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recipe-ai-service-secret
+                  key: RECIPE_LLM_API_KEY
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
