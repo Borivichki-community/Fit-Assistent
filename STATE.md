@@ -3,7 +3,20 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-24
+Обновлено: 2026-11-25
+
+### Fix CI — Устранение гонки в `LocalRecipeDaoTest` и дедупликация `observeMyRecipes` (2026-11-25)
+
+- **Активные Skills:** `diagnose-build-failure`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`.
+- **Причина сбоя CI (`:mobile:shared:allTests`):**
+  - В `LocalRecipeDaoTest.observeMyRecipes_filtersSystemAndDeletedAndEmitsReactively` последовательные `upsertRecipeWithIngredients` для `SYSTEM` и `USER` рецептов с асинхронным `InvalidationTracker` Room на `Dispatchers.IO` могли приводить к повторной эмиссии `[user-1]` в `Flow`, из-за чего `awaitItem()` после `markDeleted` получал устаревший непустой список.
+- **Исправление:**
+  - `mobile/shared/src/commonMain/kotlin/dev/andre/nutritionist/data/repository/RecipeCatalogRepositoryImpl.kt`: добавлен `.distinctUntilChanged()` в `observeMyRecipes()` для исключения дублирующих эмиссий Room при инвалидации `local_recipes` / `local_recipe_ingredients`.
+  - `mobile/shared/src/androidHostTest/kotlin/dev/andre/nutritionist/data/local/LocalRecipeDaoTest.kt`: добавлен `.distinctUntilChanged()` в поток теста и убран обходной цикл `while (items.isEmpty())`.
+- **Верификация:**
+  - `:mobile:shared:allTests` (`:mobile:shared:testAndroidHostTest` — 187 passed, 0 skipped, 0 failed) — **BUILD SUCCESSFUL**.
+  - `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
 
 ### KAN-16 — Доступ тренера к дневнику ученика в :backend:diary-service (Fail-Closed + Redis Cache) (2026-11-24)
 

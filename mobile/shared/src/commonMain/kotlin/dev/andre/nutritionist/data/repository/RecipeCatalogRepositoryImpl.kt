@@ -16,6 +16,7 @@ import dev.andre.nutritionist.domain.model.SyncStatus
 import dev.andre.nutritionist.domain.repository.RecipeCatalogRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -29,6 +30,7 @@ class RecipeCatalogRepositoryImpl(
 
     override fun observeMyRecipes(): Flow<List<Recipe>> =
         localRecipeDao.observeMyRecipes()
+            .distinctUntilChanged()
             .map { entities -> entities.map { it.toDomain() } }
             .flowOn(dispatchers.io)
 

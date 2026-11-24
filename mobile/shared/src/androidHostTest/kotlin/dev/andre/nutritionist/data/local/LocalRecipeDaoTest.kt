@@ -7,6 +7,7 @@ import dev.andre.nutritionist.data.local.dao.LocalRecipeDao
 import dev.andre.nutritionist.data.local.entity.LocalRecipeEntity
 import dev.andre.nutritionist.data.local.entity.LocalRecipeIngredientEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -62,7 +63,7 @@ class LocalRecipeDaoTest {
 
     @Test
     fun observeMyRecipes_filtersSystemAndDeletedAndEmitsReactively() = runTest {
-        dao.observeMyRecipes().test {
+        dao.observeMyRecipes().distinctUntilChanged().test {
             assertTrue(awaitItem().isEmpty())
 
             val systemRecipe = createRecipeEntity(
@@ -81,11 +82,7 @@ class LocalRecipeDaoTest {
             )
             dao.upsertRecipeWithIngredients(userRecipe, emptyList())
 
-            // mutable by design: skipping empty emissions from filtered SYSTEM insert
-            var items = awaitItem()
-            while (items.isEmpty()) {
-                items = awaitItem()
-            }
+            val items = awaitItem()
             assertEquals(1, items.size)
             assertEquals("user-1", items.first().recipe.id)
 
