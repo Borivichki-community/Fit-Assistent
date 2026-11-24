@@ -5,6 +5,33 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 / T-075 — Расширение Protobuf-контракта recipe.proto каталогом рецептов, меню и правами тренера (2026-11-24)
+
+- **Активные Skills:** `contracts-proto-and-avro`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `0ccc923` (`feat(proto): T-075 expand recipe.proto with recipe catalog, meal plans and coaching access RPCs`).
+- **Контракт proto/nutritionist/recipe/v1/recipe.proto:**
+  - 100% обратная совместимость: номера и типы всех существующих полей в `GenerateWeekMenu*` и `GenerateMealPlan*` сохранены без изменений.
+  - Добавлены перечисления (Enums):
+    - `AuthorType` (`AUTHOR_TYPE_UNSPECIFIED = 0`, `AUTHOR_TYPE_SYSTEM = 1`, `AUTHOR_TYPE_USER = 2`, `AUTHOR_TYPE_COACH = 3`, `AUTHOR_TYPE_AI = 4`)
+    - `ContentVisibility` (`CONTENT_VISIBILITY_UNSPECIFIED = 0`, `CONTENT_VISIBILITY_PRIVATE = 1`, `CONTENT_VISIBILITY_LINK_ONLY = 2`, `CONTENT_VISIBILITY_PUBLIC = 3`)
+    - `AccessMode` (`ACCESS_MODE_UNSPECIFIED = 0`, `ACCESS_MODE_FREE = 1`, `ACCESS_MODE_COACH_ASSIGNED = 2`, `ACCESS_MODE_PAID = 3`)
+    - `GrantSource` (`GRANT_SOURCE_UNSPECIFIED = 0`, `GRANT_SOURCE_COACH_GRANT = 1`, `GRANT_SOURCE_PURCHASE = 2`, `GRANT_SOURCE_SUBSCRIPTION = 3`)
+    - `CoachLinkStatus` (`COACH_LINK_STATUS_UNSPECIFIED = 0`, `COACH_LINK_STATUS_PENDING = 1`, `COACH_LINK_STATUS_ACTIVE = 2`, `COACH_LINK_STATUS_REVOKED = 3`)
+    - `PlanItemType` (`PLAN_ITEM_TYPE_UNSPECIFIED = 0`, `PLAN_ITEM_TYPE_RECIPE = 1`, `PLAN_ITEM_TYPE_PRODUCT = 2`)
+  - Добавлены сущности и DTO-сообщения (Messages):
+    - `RecipeIngredientProto`, `RecipeProto`, `MealPlanItemProto`, `MealPlanTemplateProto`, `CoachStudentLinkProto`, `AccessGrantProto`.
+  - Добавлены RPC-методы в `service RecipeAiService`:
+    - Управление рецептами: `SearchRecipes`, `GetRecipe`, `CreateRecipe`, `UpdateRecipe`, `DeleteRecipe`, `ForkRecipe`, `PublishRecipe`.
+    - Управление планами питания: `SearchMealPlans`, `GetMealPlan`, `CreateMealPlan`, `UpdateMealPlan`, `DeleteMealPlan`.
+    - Тренерский доступ и Entitlements: `InviteStudent`, `RespondCoachInvite`, `ListCoachLinks`, `GrantAccess`, `RevokeAccess`, `CheckCoachAccess`.
+  - Для каждого RPC добавлены строго типизированные `*Request` и `*Response` сообщения с комментариями по конвенциям Protobuf Style Guide.
+- **Верификация и кодогенерация:**
+  - `:backend:recipe-ai-service:generateProto` — успешно сгенерированы Java/Kotlin stubs.
+  - `:backend:recipe-ai-service:compileKotlin` — успешно (старый сервис `RecipeGrpcService` совместим с расширенным `RecipeAiServiceCoroutineImplBase` благодаря default-имплементациям в gRPC).
+  - `:mobile:shared:assemble` — успешно.
+  - `:backend:recipe-ai-service:test` — 16 тестов (100% GREEN, включая `E2EFourServiceChainTest`, `RecipeFlowTest`, `RecipePersistenceIntegrationTest`).
+
+
 ### KAN-16 / T-074 — Подключение PostgreSQL recipe_db, Liquibase миграции и JPA персистентность в :backend:recipe-ai-service (2026-11-24)
 
 - **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
