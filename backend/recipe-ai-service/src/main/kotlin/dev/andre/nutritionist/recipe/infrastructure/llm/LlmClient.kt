@@ -1,4 +1,4 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.infrastructure.llm
 
 fun interface LlmClient {
     suspend fun generate(

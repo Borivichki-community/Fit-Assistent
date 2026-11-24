@@ -1,4 +1,4 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.config
 
 import io.grpc.BindableService
 import io.grpc.protobuf.services.HealthStatusManager

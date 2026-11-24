@@ -1,5 +1,8 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.config
 
+import dev.andre.nutritionist.recipe.domain.model.MenuRequest
+import dev.andre.nutritionist.recipe.domain.service.RecipeMenuService
+import dev.andre.nutritionist.recipe.infrastructure.llm.QuotaExceeded
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -17,7 +20,7 @@ class RecipeWarmup(
             MenuRequest(parts[0].toInt(), parts[1].toLong())
         }
 
-    @Scheduled(initialDelayString = "${'$'}{recipe.warmup-initial-delay:PT30S}", fixedDelayString = "${'$'}{recipe.warmup-interval:PT30M}")
+    @Scheduled(initialDelayString = "\${recipe.warmup-initial-delay:PT30S}", fixedDelayString = "\${recipe.warmup-interval:PT30M}")
     suspend fun warmup() {
         for (target in targets) {
             try {

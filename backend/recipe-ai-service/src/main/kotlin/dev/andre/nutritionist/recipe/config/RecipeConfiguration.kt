@@ -1,5 +1,9 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.config
 
+import dev.andre.nutritionist.recipe.infrastructure.llm.InvalidMenu
+import dev.andre.nutritionist.recipe.infrastructure.llm.MenuUnavailable
+import dev.andre.nutritionist.recipe.infrastructure.llm.ProviderFailure
+import dev.andre.nutritionist.recipe.infrastructure.llm.QuotaExceeded
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics

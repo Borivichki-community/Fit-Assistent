@@ -1,5 +1,6 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.infrastructure.llm
 
+import dev.andre.nutritionist.recipe.config.RecipeProperties
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.future.await
 import org.springframework.stereotype.Component
@@ -17,49 +18,12 @@ class GeminiLlmClient(
     private val http: HttpClient,
     private val json: JsonMapper,
     private val settings: RecipeProperties,
-    private val metrics: MeterRegistry,
+    metrics: MeterRegistry,
 ) : LlmClient {
     private val inputTokens = metrics.counter("recipe.llm.tokens", "direction", "input")
     private val outputTokens = metrics.counter("recipe.llm.tokens", "direction", "output")
     private val cost = metrics.summary("recipe.llm.request.cost.usd")
     private val attempts = metrics.counter("recipe.llm.attempts")
-    private val schema =
-        json.readTree(
-            """
-            {
-              "type": "OBJECT",
-              "required": ["days"],
-              "properties": {
-                "days": {
-                  "type": "ARRAY", "minItems": 7, "maxItems": 7,
-                  "items": {
-                    "type": "OBJECT", "required": ["day", "meals"],
-                    "properties": {
-                      "day": {"type": "INTEGER"},
-                      "meals": {
-                        "type": "ARRAY", "minItems": 3, "maxItems": 3,
-                        "items": {
-                          "type": "OBJECT", "required": ["type", "name", "products"],
-                          "properties": {
-                            "type": {"type": "STRING", "enum": ["breakfast", "lunch", "dinner"]},
-                            "name": {"type": "STRING"},
-                            "products": {
-                              "type": "ARRAY", "minItems": 1, "maxItems": 8,
-                              "items": {
-                                "type": "OBJECT", "required": ["id", "grams"],
-                                "properties": {"id": {"type": "STRING"}, "grams": {"type": "INTEGER"}}
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            """.trimIndent(),
-        )
 
     override suspend fun generate(
         prompt: String,
@@ -72,7 +36,6 @@ class GeminiLlmClient(
                 "generationConfig" to
                     mapOf(
                         "responseMimeType" to "application/json",
-                        "responseSchema" to schema,
                         "maxOutputTokens" to settings.llmMaxOutputTokens,
                     ),
             )
@@ -129,3 +92,7 @@ class GeminiLlmClient(
         cost.record((inputPrice * input.toBigDecimal() + outputPrice * output.toBigDecimal()).movePointLeft(6).toDouble())
     }
 }
+
+class InvalidMenu(
+    message: String,
+) : RuntimeException(message)

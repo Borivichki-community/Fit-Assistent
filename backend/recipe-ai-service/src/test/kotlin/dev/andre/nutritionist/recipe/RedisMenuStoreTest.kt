@@ -1,5 +1,14 @@
 package dev.andre.nutritionist.recipe
 
+import dev.andre.nutritionist.recipe.config.RecipeConfiguration
+import dev.andre.nutritionist.recipe.config.RecipeProperties
+import dev.andre.nutritionist.recipe.domain.model.CatalogProduct
+import dev.andre.nutritionist.recipe.domain.model.MenuRequest
+import dev.andre.nutritionist.recipe.domain.model.ProductId
+import dev.andre.nutritionist.recipe.domain.model.UserId
+import dev.andre.nutritionist.recipe.domain.validator.MenuValidator
+import dev.andre.nutritionist.recipe.infrastructure.llm.QuotaExceeded
+import dev.andre.nutritionist.recipe.infrastructure.redis.RedisMenuStore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -23,14 +32,15 @@ class RedisMenuStoreTest {
     fun `Redis stores warmup menu and atomically caps concurrent quota attempts`() {
         val config = RecipeConfiguration()
         val properties = RecipeProperties(dailyAttemptLimit = 3)
+        val json = JsonMapper.builder().build()
         val connection = LettuceConnectionFactory(redis.host, redis.getMappedPort(6379))
         connection.afterPropertiesSet()
         try {
             val template = StringRedisTemplate(connection)
-            val store = RedisMenuStore(template, properties, Clock.systemUTC(), config.recipeIoDispatcher())
-            val product = CatalogProduct(ProductId("rice"), "Рис", 200.0, 150)
+            val store = RedisMenuStore(template, properties, Clock.systemUTC(), config.recipeIoDispatcher(), json)
+            val product = CatalogProduct(ProductId("rice"), "Рис", 200.0, 7.0, 1.0, 40.0, 150L)
             val menu =
-                MenuValidator(JsonMapper.builder().build(), properties)
+                MenuValidator(json, properties)
                     .validate(RecipeLlmTest.menuJson(), MenuRequest(600, 5000), listOf(product))
             runBlocking {
                 assertTrue(store.beginWarmup("600:5000"))

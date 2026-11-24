@@ -1,16 +1,34 @@
 package dev.andre.nutritionist.recipe
 
-import com.budgetntr.proto.catalog.v1.AveragePrice
+import com.budgetntr.proto.catalog.v1.AveragePriceItem
 import com.budgetntr.proto.catalog.v1.CatalogServiceGrpcKt
 import com.budgetntr.proto.catalog.v1.GetAveragePricesRequest
 import com.budgetntr.proto.catalog.v1.GetAveragePricesResponse
-import com.budgetntr.proto.catalog.v1.Nutrition
-import com.budgetntr.proto.catalog.v1.Product
+import com.budgetntr.proto.catalog.v1.NutritionFacts
+import com.budgetntr.proto.catalog.v1.ProductItem
 import com.budgetntr.proto.catalog.v1.SearchProductsRequest
 import com.budgetntr.proto.catalog.v1.SearchProductsResponse
+import com.budgetntr.proto.recipe.v1.GenerateMealPlanRequest
 import com.budgetntr.proto.recipe.v1.GenerateWeekMenuRequest
 import com.budgetntr.proto.recipe.v1.MenuSource
 import com.budgetntr.proto.recipe.v1.RecipeAiServiceGrpcKt
+import com.budgetntr.proto.recipe.v1.TargetNutrition
+import com.budgetntr.proto.recipe.v1.TargetPeriod
+import dev.andre.nutritionist.recipe.config.RecipeConfiguration
+import dev.andre.nutritionist.recipe.config.RecipeProperties
+import dev.andre.nutritionist.recipe.domain.model.CatalogProduct
+import dev.andre.nutritionist.recipe.domain.model.MenuRequest
+import dev.andre.nutritionist.recipe.domain.model.ProductId
+import dev.andre.nutritionist.recipe.domain.model.RequestContext
+import dev.andre.nutritionist.recipe.domain.model.UserId
+import dev.andre.nutritionist.recipe.domain.service.RecipeMenuService
+import dev.andre.nutritionist.recipe.domain.service.ResilientMenuGenerator
+import dev.andre.nutritionist.recipe.domain.validator.MenuValidator
+import dev.andre.nutritionist.recipe.infrastructure.grpc.RecipeGrpcService
+import dev.andre.nutritionist.recipe.infrastructure.grpc.RecipeIdentityInterceptor
+import dev.andre.nutritionist.recipe.infrastructure.grpc.client.CatalogClient
+import dev.andre.nutritionist.recipe.infrastructure.llm.prompt.MealPlanPromptBuilder
+import dev.andre.nutritionist.recipe.infrastructure.redis.RedisMenuStore
 import io.grpc.Context
 import io.grpc.Metadata
 import io.grpc.Status
@@ -22,6 +40,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -42,10 +61,11 @@ class RecipeFlowTest {
         val meters = SimpleMeterRegistry()
         val breakers = configuration.recipeCircuitBreakers(settings, meters)
         val request = MenuRequest(600, 5000)
-        val product = CatalogProduct(ProductId(PRODUCT_ID), "Рис", 200.0, 150L)
+        val product = CatalogProduct(ProductId(PRODUCT_ID), "Рис", 200.0, pricePer100gMinor = 150L)
         val payload = RecipeLlmTest.menuJson(PRODUCT_ID)
         val precomputed = validator.validate(payload, request, listOf(product))
         val paidCalls = AtomicInteger()
+        val promptBuilder = MealPlanPromptBuilder(json)
         val generator =
             ResilientMenuGenerator(
                 { _, _ ->
@@ -53,7 +73,7 @@ class RecipeFlowTest {
                     payload
                 },
                 validator,
-                json,
+                promptBuilder,
                 breakers,
                 configuration.recipeRetries(settings),
                 configuration.recipeTimeLimiter(settings),
@@ -137,6 +157,67 @@ class RecipeFlowTest {
         }
     }
 
+    @Test
+    fun `generateMealPlan returns validated meal plan for single meal`() {
+        val settings = RecipeProperties(llmApiKey = "fake")
+        val configuration = RecipeConfiguration()
+        val json = JsonMapper.builder().build()
+        val validator = MenuValidator(json, settings)
+        val redis = mock(RedisMenuStore::class.java)
+        val meters = SimpleMeterRegistry()
+        val breakers = configuration.recipeCircuitBreakers(settings, meters)
+        val mealPlanJson = """
+            {
+              "cooking_instructions": "Сварите рис в подсоленной воде 15 минут.",
+              "meals": [
+                {
+                  "type": "dinner",
+                  "title": "Отварной рис",
+                  "cooking_time_minutes": 15,
+                  "products": [
+                    { "id": "$PRODUCT_ID", "grams": 150 }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val promptBuilder = MealPlanPromptBuilder(json)
+        val generator =
+            ResilientMenuGenerator(
+                { _, _ -> mealPlanJson },
+                validator,
+                promptBuilder,
+                breakers,
+                configuration.recipeRetries(settings),
+                configuration.recipeTimeLimiter(settings),
+            )
+        val catalog = TestCatalog()
+        val catalogName = InProcessServerBuilder.generateName()
+        val catalogServer = InProcessServerBuilder.forName(catalogName).directExecutor().addService(catalog).build().start()
+        val catalogChannel = InProcessChannelBuilder.forName(catalogName).directExecutor().build()
+        try {
+            val service = RecipeMenuService(CatalogClient(catalogChannel, settings), generator, validator, redis, settings, json, meters)
+            val rpc = RecipeGrpcService(service)
+            val request = GenerateMealPlanRequest.newBuilder()
+                .setPeriod(TargetPeriod.TARGET_PERIOD_DINNER)
+                .setTargetNutrition(TargetNutrition.newBuilder().setCalories(300.0).setProteinsGrams(10.0).build())
+                .setMaxBudgetMinor(25000)
+                .build()
+
+            val response = runBlocking { rpc.generateMealPlan(request) }
+            assertNotNull(response.planId)
+            assertEquals(TargetPeriod.TARGET_PERIOD_DINNER, response.period)
+            assertEquals(1, response.mealsCount)
+            assertEquals("Отварной рис", response.mealsList[0].title)
+            assertEquals(150.0 * 200.0 / 100.0, response.mealsList[0].nutrition.calories)
+            assertTrue(response.cookingInstructions.isNotBlank())
+        } finally {
+            catalogChannel.shutdownNow()
+            catalogServer.shutdownNow()
+        }
+    }
+
     private class TestCatalog : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
         val priceRequests = AtomicInteger()
 
@@ -144,26 +225,25 @@ class RecipeFlowTest {
             SearchProductsResponse
                 .newBuilder()
                 .addProducts(
-                    Product
+                    ProductItem
                         .newBuilder()
-                        .setProductId(PRODUCT_ID)
+                        .setId(PRODUCT_ID)
                         .setName("Рис")
-                        .setNutrition(Nutrition.newBuilder().setCaloriesPer100G(200.0)),
+                        .setNutrition(NutritionFacts.newBuilder().setCaloriesPer100G(200.0)),
                 ).build()
 
         override suspend fun getAveragePrices(request: GetAveragePricesRequest): GetAveragePricesResponse {
             if (priceRequests.incrementAndGet() == 1) throw Status.UNAVAILABLE.asException()
             assertEquals(listOf(PRODUCT_ID), request.productIdsList)
-            assertEquals("RUB", request.currency)
             return GetAveragePricesResponse
                 .newBuilder()
                 .addPrices(
-                    AveragePrice
+                    AveragePriceItem
                         .newBuilder()
                         .setProductId(PRODUCT_ID)
                         .setCurrency("RUB")
-                        .setStoreCount(1)
-                        .setPricePer100GMinor(150),
+                        .setRegionCount(1)
+                        .setAveragePrice(15.0),
                 ).build()
         }
     }

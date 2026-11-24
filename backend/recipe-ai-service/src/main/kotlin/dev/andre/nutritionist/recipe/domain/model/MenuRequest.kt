@@ -1,4 +1,4 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.domain.model
 
 import java.security.MessageDigest
 import java.util.HexFormat
@@ -29,10 +29,29 @@ data class MenuRequest(
         get() = excluded.isEmpty() && preferred.isEmpty()
 }
 
+data class MealPlanRequest(
+    val period: TargetPeriod,
+    val targetNutrition: TargetNutrition,
+    val maxBudgetMinor: Long,
+    val currency: String = "RUB",
+    val regionId: String? = null,
+    val preferredProducts: List<String> = emptyList(),
+    val excludedProducts: List<String> = emptyList(),
+    val userNote: String = "",
+) {
+    init {
+        require(maxBudgetMinor in 1..1_000_000_000) { "max_budget_minor must be 1..1000000000" }
+        require(targetNutrition.calories in 1.0..10_000.0) { "calories must be 1..10000" }
+    }
+}
+
 data class CatalogProduct(
     val id: ProductId,
     val name: String,
     val caloriesPer100g: Double,
+    val proteinsPer100g: Double = 0.0,
+    val fatsPer100g: Double = 0.0,
+    val carbsPer100g: Double = 0.0,
     val pricePer100gMinor: Long,
 )
 
@@ -41,8 +60,9 @@ data class RequestContext(
     val traceparent: String? = null,
 )
 
-internal const val WEEK_DAYS = 7
-internal const val CURRENCY = "RUB"
-internal const val MENU_VERSION = "1"
+const val WEEK_DAYS = 7
+const val CURRENCY = "RUB"
+const val MENU_VERSION = "2"
 
-internal fun digest(value: String): String = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))
+fun digest(value: String): String =
+    HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))

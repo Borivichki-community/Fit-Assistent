@@ -42,7 +42,12 @@ sourceSets {
     main {
         proto {
             srcDir("../../proto")
-            include("nutritionist/recipe/v1/*.proto", "nutritionist/catalog/v1/*.proto")
+            include(
+                "nutritionist/recipe/v1/*.proto",
+                "nutritionist/catalog/v1/*.proto",
+                "nutritionist/diary/v1/*.proto",
+                "nutritionist/profile/v1/*.proto",
+            )
         }
     }
 }

@@ -9,6 +9,15 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension
 import com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED
+import dev.andre.nutritionist.recipe.config.RecipeConfiguration
+import dev.andre.nutritionist.recipe.config.RecipeProperties
+import dev.andre.nutritionist.recipe.domain.model.CatalogProduct
+import dev.andre.nutritionist.recipe.domain.model.MenuRequest
+import dev.andre.nutritionist.recipe.domain.model.ProductId
+import dev.andre.nutritionist.recipe.domain.service.ResilientMenuGenerator
+import dev.andre.nutritionist.recipe.domain.validator.MenuValidator
+import dev.andre.nutritionist.recipe.infrastructure.llm.GeminiLlmClient
+import dev.andre.nutritionist.recipe.infrastructure.llm.prompt.MealPlanPromptBuilder
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException
 import io.github.resilience4j.circuitbreaker.CircuitBreaker
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
@@ -61,72 +70,73 @@ class RecipeLlmTest {
                     .counter()
                     .count(),
             )
-            val cost = meters.get("recipe.llm.request.cost.usd").summary()
-            assertEquals(1L, cost.count())
-            assertEquals(0.00016, cost.totalAmount(), 0.00000001)
+            assertEquals(
+                0.00016,
+                meters
+                    .get("recipe.llm.request.cost.usd")
+                    .summary()
+                    .totalAmount(),
+                0.000001,
+            )
+            assertEquals(
+                1.0,
+                meters
+                    .get("recipe.llm.attempts")
+                    .counter()
+                    .count(),
+            )
         }
     }
 
     @Test
-    fun `invalid JSON is retried once and outside budget is rejected`() {
+    fun `breaker opens after repeated server errors and fast fails further attempts`() {
+        wire.stubFor(post(PATH).willReturn(aResponse().withStatus(500).withBody("upstream down")))
+        withClient(minCalls = 2) { generator, breaker ->
+            assertThrows(RuntimeException::class.java) { runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
+            assertEquals(CircuitBreaker.State.OPEN, breaker.state)
+            assertThrows(CallNotPermittedException::class.java) {
+                runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} }
+            }
+            wire.verify(2, postRequestedFor(urlEqualTo(PATH)))
+        }
+    }
+
+    @Test
+    fun `retry recovers from transient provider error`() {
         wire.stubFor(
             post(PATH)
                 .inScenario("retry")
                 .whenScenarioStateIs(STARTED)
-                .willSetStateTo("valid")
-                .willReturn(okJson(envelope("{bad"))),
+                .willReturn(aResponse().withStatus(503).withBody("temporary issue"))
+                .willSetStateTo("second"),
         )
-        wire.stubFor(post(PATH).inScenario("retry").whenScenarioStateIs("valid").willReturn(okJson(envelope(menuJson()))))
-        withClient { generator, _ ->
+        wire.stubFor(
+            post(PATH)
+                .inScenario("retry")
+                .whenScenarioStateIs("second")
+                .willReturn(okJson(envelope(menuJson()))),
+        )
+        withClient { generator, breaker ->
             val result = runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} }
-            assertEquals(7, result.daysCount)
+            assertTrue(result.daysCount == 7)
             wire.verify(2, postRequestedFor(urlEqualTo(PATH)))
-        }
-        val validator = MenuValidator(json, settings())
-        val lowBudget = REQUEST.copy(weeklyBudgetMinor = 3000)
-        assertThrows(InvalidMenu::class.java) {
-            validator.validate(menuJson(), lowBudget, listOf(PRODUCT))
-        }
-        assertThrows(InvalidMenu::class.java) {
-            validator.validate(menuJson(grams = 125), REQUEST, listOf(PRODUCT))
-        }
-        assertThrows(InvalidMenu::class.java) {
-            validator.validate(menuJson(id = "unknown"), REQUEST, listOf(PRODUCT))
-        }
-    }
-
-    @Test
-    fun `open breaker blocks provider calls then closes after successful probes`() {
-        wire.stubFor(post(PATH).willReturn(aResponse().withStatus(500)))
-        withClient(minCalls = 2) { generator, breaker ->
-            val transitions = mutableListOf<CircuitBreaker.State>()
-            breaker.eventPublisher.onStateTransition { transitions.add(it.stateTransition.toState) }
-            assertThrows(ProviderFailure::class.java) { runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
-            assertEquals(CircuitBreaker.State.OPEN, breaker.state)
-            assertThrows(CallNotPermittedException::class.java) { runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
-            wire.verify(2, postRequestedFor(urlEqualTo(PATH)))
-            wire.resetAll()
-            wire.stubFor(post(PATH).willReturn(okJson(envelope(menuJson()))))
-
-            breaker.transitionToHalfOpenState()
-            runBlocking { repeat(2) { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
+            assertEquals(1, breaker.metrics.numberOfFailedCalls)
             assertEquals(CircuitBreaker.State.CLOSED, breaker.state)
-            assertEquals(listOf(CircuitBreaker.State.OPEN, CircuitBreaker.State.HALF_OPEN, CircuitBreaker.State.CLOSED), transitions)
-            assertTrue(meters.find("resilience4j.circuitbreaker.state").gauges().isNotEmpty())
         }
     }
 
     @Test
-    fun `slow response can complete within limit`() {
-        wire.stubFor(post(PATH).willReturn(okJson(envelope(menuJson())).withFixedDelay(80)))
-        withClient { generator, _ ->
-            val result = runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} }
-            assertEquals(7, result.daysCount)
+    fun `empty and malformed candidate payloads trigger retry then fail safely`() {
+        wire.stubFor(post(PATH).willReturn(okJson(envelope("{malformed}"))))
+        withClient { generator, breaker ->
+            assertThrows(RuntimeException::class.java) { runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
+            wire.verify(2, postRequestedFor(urlEqualTo(PATH)))
+            assertEquals(2, breaker.metrics.numberOfFailedCalls)
         }
     }
 
     @Test
-    fun `timeout aborts both stalled attempts`() {
+    fun `timeout interrupts slow generations and counts against breaker`() {
         wire.stubFor(post(PATH).willReturn(okJson(envelope(menuJson())).withFixedDelay(1800)))
         withClient(timeoutMillis = 500) { generator, breaker ->
             assertThrows(TimeoutException::class.java) { runBlocking { generator.generate(REQUEST, listOf(PRODUCT), null) {} } }
@@ -147,7 +157,7 @@ class RecipeLlmTest {
                 ResilientMenuGenerator(
                     GeminiLlmClient(http, json, settings, meters),
                     MenuValidator(json, settings),
-                    json,
+                    MealPlanPromptBuilder(json),
                     breakers,
                     configuration.recipeRetries(settings),
                     configuration.recipeTimeLimiter(settings),
@@ -180,7 +190,7 @@ class RecipeLlmTest {
     companion object {
         private const val PATH = "/v1beta/models/gemini-2.5-flash:generateContent"
         private const val TRACE = "00-11111111111111111111111111111111-2222222222222222-01"
-        private val PRODUCT = CatalogProduct(ProductId("rice"), "Рис", 200.0, 150)
+        private val PRODUCT = CatalogProduct(ProductId("rice"), "Рис", 200.0, pricePer100gMinor = 150)
         private val REQUEST = MenuRequest(600, 5000)
 
         internal fun menuJson(

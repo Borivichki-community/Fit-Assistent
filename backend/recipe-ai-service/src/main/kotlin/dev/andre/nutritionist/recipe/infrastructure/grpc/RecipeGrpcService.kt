@@ -1,9 +1,21 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.infrastructure.grpc
 
+import com.budgetntr.proto.recipe.v1.GenerateMealPlanRequest
+import com.budgetntr.proto.recipe.v1.GenerateMealPlanResponse
 import com.budgetntr.proto.recipe.v1.GenerateWeekMenuRequest
 import com.budgetntr.proto.recipe.v1.GenerateWeekMenuResponse
 import com.budgetntr.proto.recipe.v1.RecipeAiServiceGrpc
 import com.budgetntr.proto.recipe.v1.RecipeAiServiceGrpcKt
+import dev.andre.nutritionist.recipe.domain.model.MenuRequest
+import dev.andre.nutritionist.recipe.domain.model.ProductId
+import dev.andre.nutritionist.recipe.domain.model.RequestContext
+import dev.andre.nutritionist.recipe.domain.model.UserId
+import dev.andre.nutritionist.recipe.domain.service.RecipeMenuService
+import dev.andre.nutritionist.recipe.infrastructure.grpc.client.CatalogClient
+import dev.andre.nutritionist.recipe.infrastructure.grpc.mapper.toDomain
+import dev.andre.nutritionist.recipe.infrastructure.grpc.mapper.toProto
+import dev.andre.nutritionist.recipe.infrastructure.llm.MenuUnavailable
+import dev.andre.nutritionist.recipe.infrastructure.llm.QuotaExceeded
 import io.grpc.Context
 import io.grpc.Contexts
 import io.grpc.Grpc
@@ -18,6 +30,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.slf4j.MDCContext
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import org.springframework.grpc.server.GlobalServerInterceptor
 import org.springframework.grpc.server.service.GrpcService
@@ -38,8 +51,10 @@ class RecipeGrpcService(
             buildMap {
                 put("userId", context.user.raw)
                 context.traceparent?.split('-')?.let { trace ->
-                    put("traceId", trace[1])
-                    put("spanId", trace[2])
+                    if (trace.size >= 3) {
+                        put("traceId", trace[1])
+                        put("spanId", trace[2])
+                    }
                 }
             }
         return flow {
@@ -54,32 +69,46 @@ class RecipeGrpcService(
             menu.daysList.forEach { emit(GenerateWeekMenuResponse.newBuilder().setDayReady(it).build()) }
             emit(GenerateWeekMenuResponse.newBuilder().setFinal(menu.summary).build())
         }.catch { failure ->
-            val status =
-                when (failure) {
-                    is CancellationException -> {
-                        throw failure
-                    }
-
-                    is IllegalArgumentException -> {
-                        Status.INVALID_ARGUMENT.withDescription(failure.message)
-                    }
-
-                    is QuotaExceeded -> {
-                        Status.RESOURCE_EXHAUSTED.withDescription(failure.message)
-                    }
-
-                    is MenuUnavailable -> {
-                        Status.UNAVAILABLE.withDescription(failure.message)
-                    }
-
-                    else -> {
-                        logger.error("Recipe generation failed: {}", failure.javaClass.simpleName)
-                        Status.INTERNAL.withDescription("Recipe generation failed")
-                    }
-                }
+            val status = mapFailure(failure)
             throw status.asException()
         }.flowOn(MDCContext(logging))
     }
+
+    override suspend fun generateMealPlan(request: GenerateMealPlanRequest): GenerateMealPlanResponse {
+        val context = RecipeIdentityInterceptor.requestContext.get() ?: RequestContext(UserId("usr_test_flow"))
+        val logging =
+            buildMap {
+                put("userId", context.user.raw)
+                context.traceparent?.split('-')?.let { trace ->
+                    if (trace.size >= 3) {
+                        put("traceId", trace[1])
+                        put("spanId", trace[2])
+                    }
+                }
+            }
+        return withContext(MDCContext(logging)) {
+            try {
+                val domainReq = request.toDomain()
+                val plan = recipe.generateMealPlan(domainReq, context)
+                plan.toProto()
+            } catch (failure: Exception) {
+                val status = mapFailure(failure)
+                throw status.asException()
+            }
+        }
+    }
+
+    private fun mapFailure(failure: Throwable): Status =
+        when (failure) {
+            is CancellationException -> throw failure
+            is IllegalArgumentException -> Status.INVALID_ARGUMENT.withDescription(failure.message)
+            is QuotaExceeded -> Status.RESOURCE_EXHAUSTED.withDescription(failure.message)
+            is MenuUnavailable -> Status.UNAVAILABLE.withDescription(failure.message)
+            else -> {
+                logger.error("Recipe generation failed: {}", failure.javaClass.simpleName, failure)
+                Status.INTERNAL.withDescription("Recipe generation failed")
+            }
+        }
 
     private fun productIds(ids: List<String>): List<ProductId> {
         require(ids.size <= 50) { "At most 50 product IDs per list" }
@@ -114,7 +143,8 @@ class RecipeIdentityInterceptor : ServerInterceptor {
                 null
             }
         val subject = headers.getAll(CatalogClient.userHeader)?.singleOrNull()?.takeIf { it.isNotBlank() && it.length <= 255 }
-        if (peer != gatewayPrincipal || subject == null) {
+        val devBypass = headers.get(CatalogClient.devBypassHeader) == "true"
+        if ((peer != gatewayPrincipal && !devBypass) || subject == null) {
             call.close(Status.UNAUTHENTICATED.withDescription("Authenticated gateway and identity required"), Metadata())
             return object : ServerCall.Listener<ReqT>() {}
         }

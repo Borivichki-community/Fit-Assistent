@@ -1,13 +1,21 @@
-package dev.andre.nutritionist.recipe
+package dev.andre.nutritionist.recipe.infrastructure.redis
 
 import com.budgetntr.proto.recipe.v1.WeekMenu
 import com.google.protobuf.InvalidProtocolBufferException
+import dev.andre.nutritionist.recipe.config.RecipeProperties
+import dev.andre.nutritionist.recipe.domain.model.GeneratedMealPlan
+import dev.andre.nutritionist.recipe.domain.model.UserId
+import dev.andre.nutritionist.recipe.domain.model.WEEK_DAYS
+import dev.andre.nutritionist.recipe.domain.model.digest
+import dev.andre.nutritionist.recipe.infrastructure.llm.MenuUnavailable
+import dev.andre.nutritionist.recipe.infrastructure.llm.QuotaExceeded
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.springframework.dao.DataAccessException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.script.DefaultRedisScript
 import org.springframework.stereotype.Component
+import tools.jackson.databind.json.JsonMapper
 import java.time.Clock
 import java.time.Duration
 import java.time.ZoneOffset
@@ -19,6 +27,7 @@ class RedisMenuStore(
     private val settings: RecipeProperties,
     private val clock: Clock,
     private val recipeIoDispatcher: CoroutineDispatcher,
+    private val json: JsonMapper,
 ) {
     suspend fun read(key: String): WeekMenu? =
         optionalRedis {
@@ -38,6 +47,30 @@ class RedisMenuStore(
         ttl: Duration,
     ) {
         optionalRedis { redis.opsForValue().set(key, Base64.getEncoder().encodeToString(menu.toByteArray()), ttl) }
+    }
+
+    suspend fun readMealPlan(key: String): GeneratedMealPlan? =
+        optionalRedis {
+            val value = redis.opsForValue().get(key) ?: return@optionalRedis null
+            try {
+                json.readValue(value, GeneratedMealPlan::class.java)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    suspend fun writeMealPlan(
+        key: String,
+        plan: GeneratedMealPlan,
+        ttl: Duration,
+    ) {
+        optionalRedis {
+            try {
+                redis.opsForValue().set(key, json.writeValueAsString(plan), ttl)
+            } catch (_: Exception) {
+                // ignore cache write failures
+            }
+        }
     }
 
     suspend fun beginWarmup(key: String): Boolean =
