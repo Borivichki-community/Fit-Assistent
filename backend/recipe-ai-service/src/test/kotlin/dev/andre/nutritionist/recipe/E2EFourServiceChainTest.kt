@@ -84,7 +84,8 @@ class E2EFourServiceChainTest {
 
         override suspend fun updateProfile(request: UpdateProfileRequest): ProfileProto {
             val proto =
-                ProfileProto.newBuilder()
+                ProfileProto
+                    .newBuilder()
                     .setId(UUID.randomUUID().toString())
                     .setUserId(request.userId)
                     .setHeightCm(request.heightCm)
@@ -105,11 +106,13 @@ class E2EFourServiceChainTest {
     class InProcessCatalogService : CatalogServiceGrpcKt.CatalogServiceCoroutineImplBase() {
         override suspend fun searchProducts(request: SearchProductsRequest): SearchProductsResponse {
             val chicken =
-                ProductItem.newBuilder()
+                ProductItem
+                    .newBuilder()
                     .setId("20000000-0000-0000-0000-000000000057")
                     .setName("Куриное филе грудки охл")
                     .setNutrition(
-                        NutritionFacts.newBuilder()
+                        NutritionFacts
+                            .newBuilder()
                             .setCaloriesPer100G(113.0)
                             .setProteinsPer100G(23.6)
                             .setFatsPer100G(1.9)
@@ -118,11 +121,13 @@ class E2EFourServiceChainTest {
                     ).build()
 
             val rice =
-                ProductItem.newBuilder()
+                ProductItem
+                    .newBuilder()
                     .setId("20000000-0000-0000-0000-000000000003")
                     .setName("Рис круглозерный шлифованный")
                     .setNutrition(
-                        NutritionFacts.newBuilder()
+                        NutritionFacts
+                            .newBuilder()
                             .setCaloriesPer100G(344.0)
                             .setProteinsPer100G(7.0)
                             .setFatsPer100G(1.0)
@@ -130,22 +135,26 @@ class E2EFourServiceChainTest {
                             .build(),
                     ).build()
 
-            return SearchProductsResponse.newBuilder()
+            return SearchProductsResponse
+                .newBuilder()
                 .addAllProducts(listOf(chicken, rice))
                 .build()
         }
 
         override suspend fun getAveragePrices(request: GetAveragePricesRequest): GetAveragePricesResponse =
-            GetAveragePricesResponse.newBuilder()
+            GetAveragePricesResponse
+                .newBuilder()
                 .addAllPrices(
                     listOf(
-                        AveragePriceItem.newBuilder()
+                        AveragePriceItem
+                            .newBuilder()
                             .setProductId("20000000-0000-0000-0000-000000000057")
                             .setAveragePrice(35.0) // 35 RUB per 100g
                             .setCurrency("RUB")
                             .setRegionCount(1)
                             .build(),
-                        AveragePriceItem.newBuilder()
+                        AveragePriceItem
+                            .newBuilder()
                             .setProductId("20000000-0000-0000-0000-000000000003")
                             .setAveragePrice(15.0) // 15 RUB per 100g
                             .setCurrency("RUB")
@@ -161,7 +170,8 @@ class E2EFourServiceChainTest {
 
         override suspend fun addEntry(request: AddEntryRequest): AddEntryResponse {
             val item =
-                DiaryEntryItem.newBuilder()
+                DiaryEntryItem
+                    .newBuilder()
                     .setId(request.entryId.ifBlank { UUID.randomUUID().toString() })
                     .setSourceType(request.sourceType)
                     .apply { if (request.hasSourceId()) setSourceId(request.sourceId) }
@@ -183,7 +193,8 @@ class E2EFourServiceChainTest {
             val totalCarbs = entries.sumOf { it.nutrition.carbs }
 
             val dailyTotal =
-                NutritionSummary.newBuilder()
+                NutritionSummary
+                    .newBuilder()
                     .setCalories(totalCalories)
                     .setProteins(totalProteins)
                     .setFats(totalFats)
@@ -192,10 +203,12 @@ class E2EFourServiceChainTest {
 
             val mealTotals =
                 entries.groupBy { it.mealType }.map { (type, list) ->
-                    MealNutritionSummary.newBuilder()
+                    MealNutritionSummary
+                        .newBuilder()
                         .setMealType(type)
                         .setNutrition(
-                            NutritionSummary.newBuilder()
+                            NutritionSummary
+                                .newBuilder()
                                 .setCalories(list.sumOf { it.nutrition.calories })
                                 .setProteins(list.sumOf { it.nutrition.proteins })
                                 .setFats(list.sumOf { it.nutrition.fats })
@@ -204,7 +217,8 @@ class E2EFourServiceChainTest {
                         ).build()
                 }
 
-            return GetDailyEntriesResponse.newBuilder()
+            return GetDailyEntriesResponse
+                .newBuilder()
                 .addAllEntries(entries)
                 .setDailyTotal(dailyTotal)
                 .addAllMealTotals(mealTotals)
@@ -217,19 +231,39 @@ class E2EFourServiceChainTest {
         runBlocking {
             // Setup Profile Server
             val profileName = InProcessServerBuilder.generateName()
-            val profileServer = InProcessServerBuilder.forName(profileName).directExecutor().addService(InProcessProfileService()).build().start()
+            val profileServer =
+                InProcessServerBuilder
+                    .forName(
+                        profileName,
+                    ).directExecutor()
+                    .addService(InProcessProfileService())
+                    .build()
+                    .start()
             val profileChannel = InProcessChannelBuilder.forName(profileName).directExecutor().build()
             val profileStub = ProfileServiceGrpcKt.ProfileServiceCoroutineStub(profileChannel)
 
             // Setup Catalog Server
             val catalogName = InProcessServerBuilder.generateName()
-            val catalogServer = InProcessServerBuilder.forName(catalogName).directExecutor().addService(InProcessCatalogService()).build().start()
+            val catalogServer =
+                InProcessServerBuilder
+                    .forName(
+                        catalogName,
+                    ).directExecutor()
+                    .addService(InProcessCatalogService())
+                    .build()
+                    .start()
             val catalogChannel = InProcessChannelBuilder.forName(catalogName).directExecutor().build()
             val catalogStub = CatalogServiceGrpcKt.CatalogServiceCoroutineStub(catalogChannel)
 
             // Setup Diary Server
             val diaryName = InProcessServerBuilder.generateName()
-            val diaryServer = InProcessServerBuilder.forName(diaryName).directExecutor().addService(InProcessDiaryService()).build().start()
+            val diaryServer =
+                InProcessServerBuilder
+                    .forName(diaryName)
+                    .directExecutor()
+                    .addService(InProcessDiaryService())
+                    .build()
+                    .start()
             val diaryChannel = InProcessChannelBuilder.forName(diaryName).directExecutor().build()
             val diaryStub = DiaryServiceGrpcKt.DiaryServiceCoroutineStub(diaryChannel)
 
@@ -284,7 +318,8 @@ class E2EFourServiceChainTest {
                                 Context.current().withValue(
                                     RecipeIdentityInterceptor.requestContext,
                                     dev.andre.nutritionist.recipe.domain.model.RequestContext(
-                                        dev.andre.nutritionist.recipe.domain.model.UserId("usr_test_flow"),
+                                        dev.andre.nutritionist.recipe.domain.model
+                                            .UserId("usr_test_flow"),
                                     ),
                                 )
                             return Contexts.interceptCall(context, call, headers, next)
@@ -292,7 +327,8 @@ class E2EFourServiceChainTest {
                     }
 
                 recipeServer =
-                    InProcessServerBuilder.forName(recipeServerName)
+                    InProcessServerBuilder
+                        .forName(recipeServerName)
                         .directExecutor()
                         .addService(ServerInterceptors.intercept(rpc, interceptor))
                         .build()
@@ -309,7 +345,8 @@ class E2EFourServiceChainTest {
                     // =========================================================================
                     println("=== ШАГ 1: UpsertProfile ===")
                     val profileRequest =
-                        UpdateProfileRequest.newBuilder()
+                        UpdateProfileRequest
+                            .newBuilder()
                             .setUserId(userId)
                             .setHeightCm(180)
                             .setWeightKg(75.0)
@@ -317,7 +354,8 @@ class E2EFourServiceChainTest {
                             .setActivityLevel(ActivityLevelProto.ACTIVITY_LEVEL_MODERATE)
                             .setGoalType(GoalTypeProto.GOAL_TYPE_MAINTAIN)
                             .setNutritionGoal(
-                                NutritionGoalProto.newBuilder()
+                                NutritionGoalProto
+                                    .newBuilder()
                                     .setTargetCalories(2200)
                                     .setTargetProteinsGrams(150.0)
                                     .setTargetFatsGrams(70.0)
@@ -332,14 +370,17 @@ class E2EFourServiceChainTest {
                     assertEquals(userId, profileResponse.userId)
                     assertEquals(2200, profileResponse.nutritionGoal.targetCalories)
                     assertEquals(4500.0, profileResponse.weeklyBudget)
-                    println("Профиль успешно создан: ID=${profileResponse.id}, целевые ккал=${profileResponse.nutritionGoal.targetCalories}, бюджет=${profileResponse.weeklyBudget} RUB")
+                    println(
+                        "Профиль успешно создан: ID=${profileResponse.id}, целевые ккал=${profileResponse.nutritionGoal.targetCalories}, бюджет=${profileResponse.weeklyBudget} RUB",
+                    )
 
                     // =========================================================================
                     // ШАГ 2: SearchProducts
                     // =========================================================================
                     println("\n=== ШАГ 2: SearchProducts ===")
                     val searchRequest =
-                        SearchProductsRequest.newBuilder()
+                        SearchProductsRequest
+                            .newBuilder()
                             .setQuery("курица")
                             .setPageSize(10)
                             .build()
@@ -349,7 +390,9 @@ class E2EFourServiceChainTest {
                     val chickenProduct = catalogResponse.productsList.first { it.name.contains("Куриное") }
                     assertEquals("20000000-0000-0000-0000-000000000057", chickenProduct.id)
                     assertEquals(113.0, chickenProduct.nutrition.caloriesPer100G)
-                    println("Продукт найден: ID=${chickenProduct.id}, Название='${chickenProduct.name}', Ккал/100г=${chickenProduct.nutrition.caloriesPer100G}")
+                    println(
+                        "Продукт найден: ID=${chickenProduct.id}, Название='${chickenProduct.name}', Ккал/100г=${chickenProduct.nutrition.caloriesPer100G}",
+                    )
 
                     // =========================================================================
                     // ШАГ 3: GenerateMealPlan
@@ -378,10 +421,12 @@ class E2EFourServiceChainTest {
                     )
 
                     val mealPlanRequest =
-                        GenerateMealPlanRequest.newBuilder()
+                        GenerateMealPlanRequest
+                            .newBuilder()
                             .setPeriod(TargetPeriod.TARGET_PERIOD_DINNER)
                             .setTargetNutrition(
-                                TargetNutrition.newBuilder()
+                                TargetNutrition
+                                    .newBuilder()
                                     .setCalories(626.0)
                                     .setProteinsGrams(66.0)
                                     .setFatsGrams(5.7)
@@ -394,8 +439,9 @@ class E2EFourServiceChainTest {
 
                     val mealPlanResponse =
                         recipeStub
-                            .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(Metadata().apply { put(CatalogClient.devBypassHeader, "true") }))
-                            .generateMealPlan(mealPlanRequest)
+                            .withInterceptors(
+                                MetadataUtils.newAttachHeadersInterceptor(Metadata().apply { put(CatalogClient.devBypassHeader, "true") }),
+                            ).generateMealPlan(mealPlanRequest)
 
                     assertNotNull(mealPlanResponse.planId)
                     assertEquals(TargetPeriod.TARGET_PERIOD_DINNER, mealPlanResponse.period)
@@ -404,7 +450,9 @@ class E2EFourServiceChainTest {
                     assertEquals("Куриное филе на пару с отварным рисом", generatedDinner.title)
                     assertEquals(2, generatedDinner.ingredientsCount)
                     println("План питания сгенерирован: ID=${mealPlanResponse.planId}")
-                    println("Блюдо: '${generatedDinner.title}', Ккал=${generatedDinner.nutrition.calories}, Стоимость=${generatedDinner.estimatedCostMinor} копеек")
+                    println(
+                        "Блюдо: '${generatedDinner.title}', Ккал=${generatedDinner.nutrition.calories}, Стоимость=${generatedDinner.estimatedCostMinor} копеек",
+                    )
                     println("Инструкция: ${mealPlanResponse.cookingInstructions}")
 
                     // =========================================================================
@@ -412,7 +460,8 @@ class E2EFourServiceChainTest {
                     // =========================================================================
                     println("\n=== ШАГ 4: AddEntry + GetDailyEntries в Diary ===")
                     val addEntryReq =
-                        AddEntryRequest.newBuilder()
+                        AddEntryRequest
+                            .newBuilder()
                             .setEntryId(UUID.randomUUID().toString())
                             .setMealType("dinner")
                             .setSourceType(EntrySourceType.ENTRY_SOURCE_TYPE_RECIPE)
@@ -420,16 +469,19 @@ class E2EFourServiceChainTest {
                             .setNameSnapshot(generatedDinner.title)
                             .setWeightGrams(350.0)
                             .setNutrition(
-                                NutritionSummary.newBuilder()
+                                NutritionSummary
+                                    .newBuilder()
                                     .setCalories(generatedDinner.nutrition.calories.toInt())
                                     .setProteins(generatedDinner.nutrition.proteinsGrams)
                                     .setFats(generatedDinner.nutrition.fatsGrams)
                                     .setCarbs(generatedDinner.nutrition.carbsGrams)
                                     .build(),
                             ).setCost(
-                                CostSnapshot.newBuilder()
+                                CostSnapshot
+                                    .newBuilder()
                                     .setTotal(
-                                        Money.newBuilder()
+                                        Money
+                                            .newBuilder()
                                             .setAmountMinor(generatedDinner.estimatedCostMinor)
                                             .setCurrencyCode("RUB")
                                             .build(),
@@ -441,11 +493,14 @@ class E2EFourServiceChainTest {
                     assertNotNull(addResponse.entry.id)
                     assertEquals(EntrySourceType.ENTRY_SOURCE_TYPE_RECIPE, addResponse.entry.sourceType)
                     assertEquals(mealPlanResponse.planId, addResponse.entry.sourceId)
-                    println("Запись добавлена в дневник: ID=${addResponse.entry.id}, Тип приема='${addResponse.entry.mealType}', Источник=${addResponse.entry.sourceType}")
+                    println(
+                        "Запись добавлена в дневник: ID=${addResponse.entry.id}, Тип приема='${addResponse.entry.mealType}', Источник=${addResponse.entry.sourceType}",
+                    )
 
                     val dailyEntriesResponse =
                         diaryStub.getDailyEntries(
-                            GetDailyEntriesRequest.newBuilder()
+                            GetDailyEntriesRequest
+                                .newBuilder()
                                 .setDate("2026-11-24")
                                 .setTimeZone("UTC")
                                 .build(),
@@ -456,7 +511,9 @@ class E2EFourServiceChainTest {
                     assertEquals(generatedDinner.title, entryInDiary.nameSnapshot)
                     assertEquals(generatedDinner.nutrition.calories.toInt(), dailyEntriesResponse.dailyTotal.calories)
                     assertEquals(generatedDinner.nutrition.proteinsGrams, dailyEntriesResponse.dailyTotal.proteins, 0.1)
-                    println("Дневник прочитан: найдено записей=${dailyEntriesResponse.entriesCount}, итого калорий=${dailyEntriesResponse.dailyTotal.calories}, белки=${dailyEntriesResponse.dailyTotal.proteins}г")
+                    println(
+                        "Дневник прочитан: найдено записей=${dailyEntriesResponse.entriesCount}, итого калорий=${dailyEntriesResponse.dailyTotal.calories}, белки=${dailyEntriesResponse.dailyTotal.proteins}г",
+                    )
                     println("\n ВСЕ 4 ШАГА УСПЕШНО ВЫПОЛНЕНЫ В ЕДИНОЙ ЦЕПОЧКЕ!")
                 } finally {
                     recipeChannel?.shutdownNow()

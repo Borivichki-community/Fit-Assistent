@@ -3,7 +3,180 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-24
+Обновлено: 2026-11-25
+
+### Fix CI — Устранение гонки в `LocalRecipeDaoTest` и дедупликация `observeMyRecipes` (2026-11-25)
+
+- **Активные Skills:** `diagnose-build-failure`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`.
+- **Причина сбоя CI (`:mobile:shared:allTests`):**
+  - В `LocalRecipeDaoTest.observeMyRecipes_filtersSystemAndDeletedAndEmitsReactively` последовательные `upsertRecipeWithIngredients` для `SYSTEM` и `USER` рецептов с асинхронным `InvalidationTracker` Room на `Dispatchers.IO` могли приводить к повторной эмиссии `[user-1]` в `Flow`, из-за чего `awaitItem()` после `markDeleted` получал устаревший непустой список.
+- **Исправление:**
+  - `mobile/shared/src/commonMain/kotlin/dev/andre/nutritionist/data/repository/RecipeCatalogRepositoryImpl.kt`: добавлен `.distinctUntilChanged()` в `observeMyRecipes()` для исключения дублирующих эмиссий Room при инвалидации `local_recipes` / `local_recipe_ingredients`.
+  - `mobile/shared/src/androidHostTest/kotlin/dev/andre/nutritionist/data/local/LocalRecipeDaoTest.kt`: добавлен `.distinctUntilChanged()` в поток теста и убран обходной цикл `while (items.isEmpty())`.
+- **Верификация:**
+  - `:mobile:shared:allTests` (`:mobile:shared:testAndroidHostTest` — 187 passed, 0 skipped, 0 failed) — **BUILD SUCCESSFUL**.
+  - `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
+### KAN-16 — Доступ тренера к дневнику ученика в :backend:diary-service (Fail-Closed + Redis Cache) (2026-11-24)
+
+- **Активные Skills:** `contracts-proto-and-avro`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(diary): implement coach student diary access verification with fail-closed redis cache`.
+- **Protobuf-контракт (`proto/nutritionist/diary/v1/diary.proto`):**
+  - В `GetDailyEntriesRequest` и `GetRangeRequest` добавлено обратно совместимое поле `optional string target_user_id = 10;`.
+  - Мутирующие запросы (`AddEntryRequest`, `DeleteMealRequest`) оставлены строго owner-only.
+- **gRPC-клиент и Resilience4j (`:backend:diary-service`):**
+  - `DiaryClientProperties` & `DiaryClientConfiguration`: конфигурация `diary.clients.recipe.*` (`localhost:9194`, K8s `recipe-ai-service.budget-nutritionist.svc.cluster.local:9194`, deadline `2s`), канал `recipeServiceChannel` и CircuitBreaker `diary-recipe-access`.
+  - `RecipeAccessClient`: вызов `CheckCoachAccess` с прокидыванием `x-user-id`, `x-user-roles`, `x-dev-bypass` и W3C `traceparent`; строгая политика Fail-Closed (`Status.UNAVAILABLE` при сбое сети / таймауте / открытом CircuitBreaker).
+- **Кэширование прав доступа и безопасность (`CoachAccessCacheService`, `DiaryAuthContext`, `DiaryGrpcService`):**
+  - `CoachAccessCacheService`: Redis-ключ `diary:coach_access:{coachId}:{studentId}` (`"1"` / `"0"`, TTL `60s`), прозрачная деградация на gRPC-клиент при недоступности Redis и проброс `Status.UNAVAILABLE` без записи в кэш при сбое `recipe-ai-service`.
+  - `DiaryRequestContextInterceptor` & `DiaryAuthContext`: разбор `x-user-roles`, сохранение `DiaryAuthContext` в gRPC `Context`, обход проверки только для `ROLE_ADMIN` / `ROLE_SERVICE`.
+  - `DiaryGrpcService`: проверка прав тренера выполняется в gRPC-слое (`withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(...))`) строго ДО входа в `@Transactional(readOnly = true)` методы `DiaryService`.
+- **Интеграционное тестирование и верификация:**
+  - `CoachStudentDiaryAccessIntegrationTest` & `CoachAccessOutageIntegrationTest` (Testcontainers PostgreSQL 17 + Redis 7, локальный Fake `RecipeAiService` без MockK): чтение своего дневника без вызова gRPC, отказ `PERMISSION_DENIED` без связи и при `can_view_diary = false`, успешное чтение тренером с кэшированием в Redis (`TTL <= 60s`), Fail-Closed `Status.UNAVAILABLE` при отказе `recipe-ai-service` и переходе CircuitBreaker в `OPEN`, прозрачный fallback на gRPC при падении Redis, owner-only изоляция мутаций.
+  - `:backend:diary-service:test` (73 теста) и `:backend:diary-service:ktlintCheck` — **BUILD SUCCESSFUL**.
+  - `:backend:recipe-ai-service:compileKotlin` и `:mobile:androidApp:compileDebugKotlin` — **BUILD SUCCESSFUL**.
+
+### KAN-16 / T-078 — Мобильный Data-слой: Room KMP v3, gRPC клиенты и offline-first репозитории в :mobile:shared (2026-11-24)
+
+- **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(shared): T-078 implement Room v3 schema, gRPC remote clients and offline-first recipe repositories`.
+- **Room KMP v3 и явная миграция (`commonMain` & `androidMain`):**
+  - `AppDatabase.kt`: версия увеличена до `3`, зарегистрированы сущности `LocalRecipeEntity`, `LocalRecipeIngredientEntity`, `LocalMealPlanEntity`, `LocalMealPlanItemEntity` и DAO `localRecipeDao()`, `localMealPlanDao()`.
+  - `DatabaseMigrations.kt`: реализована явная миграция `MIGRATION_2_3` (создание таблиц `local_recipes`, `local_recipe_ingredients`, `local_meal_plans`, `local_meal_plan_items` с внешними ключами `ON DELETE CASCADE` и индексами), подключена в `AndroidDatabaseBuilder.kt` без `fallbackToDestructiveMigration()`.
+  - Экспортирована схема Room `mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/3.json`.
+- **gRPC клиенты, бинарные маршаллеры и мапперы:**
+  - `RecipeProto.kt` (`commonMain`), `RecipeCatalogMarshallers.kt` (`androidMain`), `AndroidRecipeGrpcServiceClient.kt` и `RecipeGrpcRemoteDataSource.kt`: поддержаны все 18 RPC-методов каталога рецептов, меню и тренерского доступа с прокидыванием `idempotency-key`.
+  - `UnifiedGrpcClientInterceptor.kt`: расширен список мутирующих методов (`Fork*`, `Publish*`, `Invite*`, `Respond*`, `Grant*`, `Revoke*`) для автоматической подстановки `idempotency-key`.
+  - `RecipeCatalogDtoMapper.kt`, `RecipeEntityMapper.kt`, `MealPlanEntityMapper.kt`: двусторонний маппинг DTO ↔ Domain ↔ Room Entity.
+- **Offline-first репозитории и Koin DI:**
+  - `RecipeCatalogRepositoryImpl`: реактивное чтение `observeMyRecipes()`, offline-first `saveRecipe` (`PENDING` → `SYNCED`, переиспользование `idempotencyKey`, замена временного локального ID на серверный, `createRecipe` vs `updateRecipe`), защита локальных `PENDING`-правок от перезаписи при поиске и чтении по ID, `forkRecipe`, `publishRecipe`, `deleteRecipe`.
+  - `MealPlanRepositoryImpl`: удалённая работа с планами питания, кэширование в `LocalMealPlanDao` и offline fallback в `getMealPlanById`.
+  - `CoachingRepositoryImpl`: управление связями тренер-ученик и выдача/отзыв прав доступа.
+  - `Koin.kt` и `AndroidDataModule.kt`: зарегистрированы новые DAO, gRPC-клиенты/DataSource (с `GrpcErrorMapper.map`) и репозитории; `mobile/androidApp` UI не изменялся.
+- **Тестирование и верификация:**
+  - `commonTest` (без MockK): `FakeLocalRecipeDao`, `FakeRecipeRemoteDataSource`, `RecipeCatalogRepositoryImplTest`.
+  - `androidHostTest`: `LocalRecipeDaoTest`, `RecipeDatabaseMigrationTest` (валидация `MIGRATION_2_3`), `AndroidRecipeGrpcSerializationTest` (wire-level round-trip маршаллеров), изоляция `testUserId` в `RemoteDataSourcesIntegrationTest`.
+  - `:mobile:shared:allTests` — **BUILD SUCCESSFUL** (187 тестов пройдено, 0 ошибок, 0 пропущено).
+  - `:mobile:shared:assemble` — **BUILD SUCCESSFUL**.
+  - `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
+### KAN-16 / T-077 — KMP Domain-слой в :mobile:shared (commonMain, без UI): каталог рецептов, планы питания и тренерский доступ (2026-11-24)
+
+- **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(shared): T-077 implement recipe catalog, meal plans and coaching domain models and use cases`.
+- **Доменные модели и Value Classes (`dev.andre.nutritionist.domain.model`):**
+  - `ids.kt`: добавлены `@JvmInline value class` `RecipeIngredientId`, `MealPlanTemplateId`, `MealPlanItemId`, `CoachLinkId`, `AccessGrantId`, а также генератор `MealRecordId.generate()`.
+  - `Recipe.kt`: добавлены `RecipeAuthorType`, `ContentVisibility`, расширены `RecipeIngredient` (`id`, `nutritionPer100g`) и `Recipe` (`authorType`, `authorId`, `originRecipeId`, `description`, `instructions`, `visibility`, `servingsCount`, `totalWeightGrams`, `version`, `createdAt`, `updatedAt`) с обратной совместимостью.
+  - `MealPlanTemplate.kt`: добавлены `AccessMode`, `PlanItemType`, `MealPlanItem`, `MealPlanDay`, `MealPlanTemplate`.
+  - `CoachingModels.kt`: добавлены `CoachLinkStatus`, `CoachStudentLink`, `GrantSource`, `GrantTargetType`, `AccessGrant`.
+  - `SearchAndPagination.kt`: добавлены `RecipeSearchCriteria`, `MealPlanSearchCriteria`, `PagedResult<T>`.
+- **Интерфейсы репозиториев (`dev.andre.nutritionist.domain.repository`):**
+  - `RecipeCatalogRepository` (`observeMyRecipes`, `searchPublicRecipes`, `getRecipeById`, `saveRecipe`, `deleteRecipe`, `forkRecipe`, `publishRecipe`).
+  - `MealPlanRepository` (`searchMealPlans`, `getMealPlanById`, `saveMealPlan`, `deleteMealPlan`).
+  - `CoachingRepository` (`getCoachLinks`, `inviteStudent`, `respondCoachInvite`, `grantAccess`, `revokeAccess`).
+- **Калькулятор и UseCases (`commonMain` + Koin DI):**
+  - `RecipeNutritionCalculator`: чистый клиентский расчёт `RecipeNutritionSummary` (общий вес, итоговое КБЖУ, КБЖУ на 100 г с защитой от деления на ноль), расчёт порции и пропорциональной стоимости (возврат `null` при неизвестной стоимости).
+  - `LogRecipeToDiaryUseCase`: расчёт КБЖУ и стоимости порции рецепта и сохранение `MealRecord` в `DiaryRepository` (`sourceType = EntrySourceType.RECIPE`, `sourceId = recipe.id.raw`, `syncStatus = SyncStatus.PENDING`).
+  - `ApplyMealPlanDayToDiaryUseCase`: пакетное добавление всех блюд `MealPlanDay` (или выбранного дня `MealPlanTemplate`) в `DiaryRepository` с исчерпывающим маппингом `PlanItemType`.
+  - `Koin.kt`: регистрация `LogRecipeToDiaryUseCase` и `ApplyMealPlanDayToDiaryUseCase` в `domainModule`.
+- **Тестирование и верификация (`commonTest`, без MockK):**
+  - Созданы `FakeDiaryRepository`, `RecipeNutritionCalculatorTest`, `LogRecipeToDiaryUseCaseTest`, `ApplyMealPlanDayToDiaryUseCaseTest`.
+  - `:mobile:shared:allTests` — **BUILD SUCCESSFUL** (171 тест пройден, 0 пропущено, 0 ошибок).
+  - `:mobile:androidApp:compileDebugKotlin` — **BUILD SUCCESSFUL**.
+
+### KAN-16 / T-076 — Бизнес-логика каталога рецептов, форков, меню тренера, Entitlements и gRPC-эндпоинтов в :backend:recipe-ai-service (2026-11-24)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(recipe): T-076 implement recipe catalog, fork, meal plan and entitlements access services`.
+- **Реализованные сервисы и репозитории:**
+  - `KeysetPagination`, `RecipeSearchRepository`, `MealPlanSearchRepository`:
+    - Высокопроизводительная Keyset-пагинация без `OFFSET` по составному ключу `(title, id)` с декодированием/кодированием Base64 курсора.
+    - Фильтрация с учетом видимости и прав доступа: публичные сущности + авторские сущности текущего пользователя + выданные доступы через `AccessGrant`.
+  - `RecipeCatalogService`:
+    - Keyset-поиск, получение, создание, обновление, удаление рецептов.
+    - Серверный расчет пищевой ценности на 100 г при создании и обновлении с каскадным пересчетом ингредиентов (`BigDecimal.HALF_UP`, нулевая безопасность).
+    - `forkRecipe`: глубокое копирование ингредиентов, привязка `origin_recipe_id`, выставление `author_type = USER / COACH`, `author_id = currentUserId`, `visibility = PRIVATE`.
+    - Проверка прав на запись (только автор или `ROLE_ADMIN`).
+    - Публикация рецепта (`publishRecipe`) с обновлением видимости.
+  - `MealPlanService`:
+    - Keyset-поиск и сохранение планов питания с расчетом суточных средних КБЖУ.
+    - Проверка прав (Entitlements): список блюд (`items`) отдается, если план `FREE && PUBLIC`, пользователь является автором плана, либо имеет активный (не истекший) `AccessGrant`. Иначе отдается превью без блюд (`canViewItems = false`).
+    - Расчет региональной стоимости блюд через `CatalogClient.getAveragePrices` строго вне `@Transactional`.
+  - `CoachingAccessService`:
+    - Приглашение учеников (`inviteStudent`), подтверждение инвайтов (`respondCoachInvite`), получение списков связей тренера и подопечного (`listCoachLinks`).
+    - Выдача и отзыв доступов (`grantAccess`, `revokeAccess`), проверка прав тренера на просмотр дневника (`checkCoachAccess`).
+  - `AuthContext` & `RecipeIdentityInterceptor`:
+    - Извлечение `userId` и ролей из gRPC Metadata `x-user-id` и `x-roles`, проброс контекста в корутины.
+  - `RedisMenuStore`:
+    - Кэширование публичных рецептов (`readCachedRecipe`, `writeCachedRecipe`, `evictCachedRecipe`) через Base64-сериализацию Protobuf без проблем совместимости.
+  - `RecipeGrpcService`:
+    - Реализация всех 18 RPC-методов `RecipeAiServiceCoroutineImplBase` с выполнением в `withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(logging))`.
+    - Инвалидация кэша в Redis при обновлении, удалении и публикации рецептов.
+    - Маппинг исключений в стандартные gRPC Status (`PERMISSION_DENIED`, `NOT_FOUND`, `INVALID_ARGUMENT`, `INTERNAL`).
+- **Интеграционное тестирование и верификация:**
+  - `RecipeCatalogGrpcIntegrationTest` (PostgreSQL 17 + Redis 7 Testcontainers):
+    - Поиск рецептов с keyset-пагинацией.
+    - Создание рецепта и автоматический расчет пищевой ценности на 100 г.
+    - Форк системного рецепта с изоляцией от оригинала и возможностью независимой модификации.
+    - Публикация рецепта владельцем и проверка доступности для других пользователей.
+  - `CoachingAccessIntegrationTest` (PostgreSQL 17 + Redis 7 Testcontainers):
+    - Полный цикл связи тренер-ученик (инвайт, принятие, проверка прав на просмотр дневника).
+    - Защита платного плана питания: отказ в доступе к блюдам до выдачи гранта, открытие полного доступа после выдачи `AccessGrant`.
+  - Результаты:
+    - `:backend:recipe-ai-service:check` — **BUILD SUCCESSFUL** (все 22 теста пройдены, 0 сбоев).
+    - `ktlintCheck` — **BUILD SUCCESSFUL** (0 ошибок стиля кода).
+
+### KAN-16 / T-075 — Расширение Protobuf-контракта recipe.proto каталогом рецептов, меню и правами тренера (2026-11-24)
+
+- **Активные Skills:** `contracts-proto-and-avro`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `0ccc923` (`feat(proto): T-075 expand recipe.proto with recipe catalog, meal plans and coaching access RPCs`).
+- **Контракт proto/nutritionist/recipe/v1/recipe.proto:**
+  - 100% обратная совместимость: номера и типы всех существующих полей в `GenerateWeekMenu*` и `GenerateMealPlan*` сохранены без изменений.
+  - Добавлены перечисления (Enums):
+    - `AuthorType` (`AUTHOR_TYPE_UNSPECIFIED = 0`, `AUTHOR_TYPE_SYSTEM = 1`, `AUTHOR_TYPE_USER = 2`, `AUTHOR_TYPE_COACH = 3`, `AUTHOR_TYPE_AI = 4`)
+    - `ContentVisibility` (`CONTENT_VISIBILITY_UNSPECIFIED = 0`, `CONTENT_VISIBILITY_PRIVATE = 1`, `CONTENT_VISIBILITY_LINK_ONLY = 2`, `CONTENT_VISIBILITY_PUBLIC = 3`)
+    - `AccessMode` (`ACCESS_MODE_UNSPECIFIED = 0`, `ACCESS_MODE_FREE = 1`, `ACCESS_MODE_COACH_ASSIGNED = 2`, `ACCESS_MODE_PAID = 3`)
+    - `GrantSource` (`GRANT_SOURCE_UNSPECIFIED = 0`, `GRANT_SOURCE_COACH_GRANT = 1`, `GRANT_SOURCE_PURCHASE = 2`, `GRANT_SOURCE_SUBSCRIPTION = 3`)
+    - `CoachLinkStatus` (`COACH_LINK_STATUS_UNSPECIFIED = 0`, `COACH_LINK_STATUS_PENDING = 1`, `COACH_LINK_STATUS_ACTIVE = 2`, `COACH_LINK_STATUS_REVOKED = 3`)
+    - `PlanItemType` (`PLAN_ITEM_TYPE_UNSPECIFIED = 0`, `PLAN_ITEM_TYPE_RECIPE = 1`, `PLAN_ITEM_TYPE_PRODUCT = 2`)
+  - Добавлены сущности и DTO-сообщения (Messages):
+    - `RecipeIngredientProto`, `RecipeProto`, `MealPlanItemProto`, `MealPlanTemplateProto`, `CoachStudentLinkProto`, `AccessGrantProto`.
+  - Добавлены RPC-методы в `service RecipeAiService`:
+    - Управление рецептами: `SearchRecipes`, `GetRecipe`, `CreateRecipe`, `UpdateRecipe`, `DeleteRecipe`, `ForkRecipe`, `PublishRecipe`.
+    - Управление планами питания: `SearchMealPlans`, `GetMealPlan`, `CreateMealPlan`, `UpdateMealPlan`, `DeleteMealPlan`.
+    - Тренерский доступ и Entitlements: `InviteStudent`, `RespondCoachInvite`, `ListCoachLinks`, `GrantAccess`, `RevokeAccess`, `CheckCoachAccess`.
+  - Для каждого RPC добавлены строго типизированные `*Request` и `*Response` сообщения с комментариями по конвенциям Protobuf Style Guide.
+- **Верификация и кодогенерация:**
+  - `:backend:recipe-ai-service:generateProto` — успешно сгенерированы Java/Kotlin stubs.
+  - `:backend:recipe-ai-service:compileKotlin` — успешно (старый сервис `RecipeGrpcService` совместим с расширенным `RecipeAiServiceCoroutineImplBase` благодаря default-имплементациям в gRPC).
+  - `:mobile:shared:assemble` — успешно.
+  - `:backend:recipe-ai-service:test` — 16 тестов (100% GREEN, включая `E2EFourServiceChainTest`, `RecipeFlowTest`, `RecipePersistenceIntegrationTest`).
+
+
+### KAN-16 / T-074 — Подключение PostgreSQL recipe_db, Liquibase миграции и JPA персистентность в :backend:recipe-ai-service (2026-11-24)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `70f5490` (`feat(recipe): T-074 add PostgreSQL recipe_db, Liquibase migrations, system recipes seed and JPA persistence`).
+- **Инфраструктура и конфигурация базы данных:**
+  - `infrastructure/init-db.sql`: добавлено создание базы `CREATE DATABASE recipe_db;`.
+  - `infrastructure/k8s/infra/01-postgres.yaml`: добавлено создание `recipe_db` и выдача прав в `01-init.sql`.
+  - `infrastructure/k8s/apps/recipe-ai-service/configmap.yaml`: добавлены переменные `RECIPE_DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
+  - `backend/recipe-ai-service/build.gradle.kts`: подключены плагины `kotlinJpa`, `allOpen` для сущностей и зависимости `libs.spring.starter.jpa`, `libs.postgresql.jdbc`, `libs.spring.starter.liquibase`, `libs.testcontainers.postgresql`.
+  - `backend/recipe-ai-service/src/main/resources/application.yml`: настроен `datasource` (Hikari `RecipeAiServiceHikariPool`, max-pool-size: 10), `jpa` (`open-in-view: false`, `ddl-auto: "none"`), `liquibase` (`db.changelog-master.xml`), `management.endpoint.health.group.readiness.include` обновлен (`readinessState,redis,db`).
+- **Liquibase миграции:**
+  - `001-init-recipe-schema.xml`: расширение `pg_trgm`, таблицы `recipes`, `recipe_ingredients`, `meal_plans`, `meal_plan_items`, `coach_student_links`, `access_grants`, триграммный GIN-индекс на `recipes(title)`, внешние ключи с каскадным удалением и составные индексы.
+  - `002-seed-system-recipes.xml`: сидирование 15 системных рецептов (`author_type='SYSTEM'`, `visibility='PUBLIC'`) с реальными ID продуктов из `initial_products.csv`.
+- **JPA сущности и Spring Data JPA репозитории:**
+  - Сущности: `RecipeEntity` (LAZY, `@Version`, каскадное управление ингредиентами), `RecipeIngredientEntity`, `MealPlanEntity` (LAZY, `@Version`), `MealPlanItemEntity`, `CoachStudentLinkEntity`, `AccessGrantEntity`. Все связи строго `FetchType.LAZY`, equals/hashCode по `id`.
+  - Репозитории: `RecipeRepository` (`findWithIngredientsById`, `findByAuthorId`, `findByVisibility`, `findByAuthorType`), `RecipeIngredientRepository`, `MealPlanRepository` (`findWithItemsById`, `findByAuthorId`), `MealPlanItemRepository`, `CoachStudentLinkRepository`, `AccessGrantRepository`.
+- **Верификация и тестирование:**
+  - Создан базовый класс `AbstractPostgresIntegrationTest` с запуском PostgreSQL 17 alpine и Redis 7 Testcontainers.
+  - Написан полный интеграционный тест `RecipePersistenceIntegrationTest` (проверка сидирования 15 рецептов, каскадного удаления ингредиентов, инкремента `@Version` при оптимистической блокировке, связей coach-student и прав доступа access_grants).
+  - Успешно пройдены проверки:
+    - `:backend:recipe-ai-service:test` — 16 тестов (100% GREEN, 0 skipped, 0 failed).
+    - `:backend:recipe-ai-service:ktlintCheck` — успешно без замечаний.
+
 
 ### KAN-84 — Реализация KMP Domain и Data слоёв в :mobile:shared [T-066 — T-069] + Live E2E (2026-11-24)
 

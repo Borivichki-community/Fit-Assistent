@@ -1,0 +1,948 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="002-seed-system-recipes" author="implementer">
+        <!-- Recipe 1: Гречневая каша с куриным филе -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000001"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Гречневая каша с куриным филе"/>
+            <column name="description" value="Сбалансированное белково-углеводное блюдо для полноценного обеда"/>
+            <column name="instructions" value="1. Промыть гречневую крупу и отварить до готовности. 2. Нарезать куриное филе и обжарить на сливочном масле. 3. Смешать и подавать."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="365.00"/>
+            <column name="calories_per_100g" valueNumeric="221.29"/>
+            <column name="proteins_per_100g" valueNumeric="18.13"/>
+            <column name="fats_per_100g" valueNumeric="5.79"/>
+            <column name="carbs_per_100g" valueNumeric="25.77"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0001-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000001"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000001"/>
+            <column name="product_name_snapshot" value="Гречневая крупа ядрица"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="313.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.60"/>
+            <column name="fats_per_100g" valueNumeric="3.30"/>
+            <column name="carbs_per_100g" valueNumeric="62.10"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0001-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000001"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000057"/>
+            <column name="product_name_snapshot" value="Куриное филе грудки охл"/>
+            <column name="weight_grams" valueNumeric="200.00"/>
+            <column name="calories_per_100g" valueNumeric="113.00"/>
+            <column name="proteins_per_100g" valueNumeric="23.60"/>
+            <column name="fats_per_100g" valueNumeric="1.90"/>
+            <column name="carbs_per_100g" valueNumeric="0.40"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0001-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000001"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000043"/>
+            <column name="product_name_snapshot" value="Масло сливочное Традиционное 82.5%"/>
+            <column name="weight_grams" valueNumeric="15.00"/>
+            <column name="calories_per_100g" valueNumeric="748.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.60"/>
+            <column name="fats_per_100g" valueNumeric="82.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.80"/>
+        </insert>
+
+        <!-- Recipe 2: Овсяная каша с яблоком на молоке -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000002"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Овсяная каша с яблоком на молоке"/>
+            <column name="description" value="Идеальный завтрак с медленными углеводами и клетчаткой"/>
+            <column name="instructions" value="1. Довести молоко до кипения. 2. Засыпать овсяные хлопья, варить 10 минут. 3. Нарезать свежее яблоко и добавить в кашу."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="380.00"/>
+            <column name="calories_per_100g" valueNumeric="113.84"/>
+            <column name="proteins_per_100g" valueNumeric="4.17"/>
+            <column name="fats_per_100g" valueNumeric="2.73"/>
+            <column name="carbs_per_100g" valueNumeric="18.06"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0002-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000002"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000002"/>
+            <column name="product_name_snapshot" value="Овсяные хлопья Геркулес"/>
+            <column name="weight_grams" valueNumeric="80.00"/>
+            <column name="calories_per_100g" valueNumeric="352.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.30"/>
+            <column name="fats_per_100g" valueNumeric="6.20"/>
+            <column name="carbs_per_100g" valueNumeric="61.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0002-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000002"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000026"/>
+            <column name="product_name_snapshot" value="Молоко пастеризованное 2.5%"/>
+            <column name="weight_grams" valueNumeric="200.00"/>
+            <column name="calories_per_100g" valueNumeric="52.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.80"/>
+            <column name="fats_per_100g" valueNumeric="2.50"/>
+            <column name="carbs_per_100g" valueNumeric="4.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0002-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000002"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000093"/>
+            <column name="product_name_snapshot" value="Яблоки сезонные Россия"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="47.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.40"/>
+            <column name="fats_per_100g" valueNumeric="0.40"/>
+            <column name="carbs_per_100g" valueNumeric="9.80"/>
+        </insert>
+
+        <!-- Recipe 3: Сырники из творога со сметаной -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Сырники из творога со сметаной"/>
+            <column name="description" value="Нежные сырники с высоким содержанием белка"/>
+            <column name="instructions" value="1. Размять творог с яйцом и мукой. 2. Сформировать сырники и обжарить на сухой сковороде. 3. Подавать со сметаной."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="380.00"/>
+            <column name="calories_per_100g" valueNumeric="147.39"/>
+            <column name="proteins_per_100g" valueNumeric="13.62"/>
+            <column name="fats_per_100g" valueNumeric="6.77"/>
+            <column name="carbs_per_100g" valueNumeric="7.84"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0003-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000031"/>
+            <column name="product_name_snapshot" value="Творог рассыпчатый 5%"/>
+            <column name="weight_grams" valueNumeric="250.00"/>
+            <column name="calories_per_100g" valueNumeric="121.00"/>
+            <column name="proteins_per_100g" valueNumeric="16.00"/>
+            <column name="fats_per_100g" valueNumeric="5.00"/>
+            <column name="carbs_per_100g" valueNumeric="3.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0003-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0003-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000024"/>
+            <column name="product_name_snapshot" value="Мука пшеничная высший сорт"/>
+            <column name="weight_grams" valueNumeric="30.00"/>
+            <column name="calories_per_100g" valueNumeric="334.00"/>
+            <column name="proteins_per_100g" valueNumeric="10.30"/>
+            <column name="fats_per_100g" valueNumeric="1.10"/>
+            <column name="carbs_per_100g" valueNumeric="68.90"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0003-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000034"/>
+            <column name="product_name_snapshot" value="Сметана 15%"/>
+            <column name="weight_grams" valueNumeric="40.00"/>
+            <column name="calories_per_100g" valueNumeric="158.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.60"/>
+            <column name="fats_per_100g" valueNumeric="15.00"/>
+            <column name="carbs_per_100g" valueNumeric="3.00"/>
+        </insert>
+
+        <!-- Recipe 4: Омлет классический с томатами и сыром -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Омлет классический с томатами и сыром"/>
+            <column name="description" value="Сытный белковый завтрак с сочными томатами и сырной корочкой"/>
+            <column name="instructions" value="1. Взбить яйца с молоком. 2. Нарезать томаты и выложить на сковороду. 3. Залить яичной смесью, посыпать тертым сыром."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="290.00"/>
+            <column name="calories_per_100g" valueNumeric="118.90"/>
+            <column name="proteins_per_100g" valueNumeric="8.52"/>
+            <column name="fats_per_100g" valueNumeric="8.43"/>
+            <column name="carbs_per_100g" valueNumeric="2.28"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0004-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0004-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000026"/>
+            <column name="product_name_snapshot" value="Молоко пастеризованное 2.5%"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="52.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.80"/>
+            <column name="fats_per_100g" valueNumeric="2.50"/>
+            <column name="carbs_per_100g" valueNumeric="4.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0004-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000086"/>
+            <column name="product_name_snapshot" value="Томаты круглые красные"/>
+            <column name="weight_grams" valueNumeric="80.00"/>
+            <column name="calories_per_100g" valueNumeric="20.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.10"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="3.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0004-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000036"/>
+            <column name="product_name_snapshot" value="Сыр Российский 50%"/>
+            <column name="weight_grams" valueNumeric="30.00"/>
+            <column name="calories_per_100g" valueNumeric="364.00"/>
+            <column name="proteins_per_100g" valueNumeric="23.00"/>
+            <column name="fats_per_100g" valueNumeric="30.00"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+
+        <!-- Recipe 5: Рис с куриным филе и овощами по-домашнему -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Рис с куриным филе и овощами по-домашнему"/>
+            <column name="description" value="Сытный обед с длиннозерным рисом, сочной курицей и пассерованными овощами"/>
+            <column name="instructions" value="1. Отварить рис. 2. Обжарить нарезанные лук и морковь, добавить кусочки филе. 3. Соединить с рисом и прогреть 5 минут."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="420.00"/>
+            <column name="calories_per_100g" valueNumeric="179.71"/>
+            <column name="proteins_per_100g" valueNumeric="12.61"/>
+            <column name="fats_per_100g" valueNumeric="3.40"/>
+            <column name="carbs_per_100g" valueNumeric="24.22"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0005-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000004"/>
+            <column name="product_name_snapshot" value="Рис длиннозерный пропаренный"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="350.00"/>
+            <column name="proteins_per_100g" valueNumeric="7.50"/>
+            <column name="fats_per_100g" valueNumeric="0.60"/>
+            <column name="carbs_per_100g" valueNumeric="77.30"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0005-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000057"/>
+            <column name="product_name_snapshot" value="Куриное филе грудки охл"/>
+            <column name="weight_grams" valueNumeric="180.00"/>
+            <column name="calories_per_100g" valueNumeric="113.00"/>
+            <column name="proteins_per_100g" valueNumeric="23.60"/>
+            <column name="fats_per_100g" valueNumeric="1.90"/>
+            <column name="carbs_per_100g" valueNumeric="0.40"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0005-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000079"/>
+            <column name="product_name_snapshot" value="Морковь столовая мытая"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="35.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.30"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="6.90"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0005-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000080"/>
+            <column name="product_name_snapshot" value="Лук репчатый желтый"/>
+            <column name="weight_grams" valueNumeric="50.00"/>
+            <column name="calories_per_100g" valueNumeric="41.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.40"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="8.20"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0005-0000-0000-000000000005"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000103"/>
+            <column name="product_name_snapshot" value="Масло подсолнечное рафинированное 1л"/>
+            <column name="weight_grams" valueNumeric="10.00"/>
+            <column name="calories_per_100g" valueNumeric="899.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.00"/>
+            <column name="fats_per_100g" valueNumeric="99.90"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+
+        <!-- Recipe 6: Минтай на пару с брокколи и картофелем -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Минтай на пару с брокколи и картофелем"/>
+            <column name="description" value="Диетическое низкокалорийное блюдо с чистым белком и минералами"/>
+            <column name="instructions" value="1. Отварить молодой картофель. 2. Минтай и брокколи приготовить на пару в течение 12 минут. 3. Сбрызнуть оливковым маслом."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="560.00"/>
+            <column name="calories_per_100g" valueNumeric="78.18"/>
+            <column name="proteins_per_100g" valueNumeric="7.68"/>
+            <column name="fats_per_100g" valueNumeric="2.37"/>
+            <column name="carbs_per_100g" valueNumeric="7.01"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0006-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000067"/>
+            <column name="product_name_snapshot" value="Минтай филе без кожи с/м"/>
+            <column name="weight_grams" valueNumeric="220.00"/>
+            <column name="calories_per_100g" valueNumeric="72.00"/>
+            <column name="proteins_per_100g" valueNumeric="16.00"/>
+            <column name="fats_per_100g" valueNumeric="0.90"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0006-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000082"/>
+            <column name="product_name_snapshot" value="Капуста брокколи свежая"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="34.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.80"/>
+            <column name="fats_per_100g" valueNumeric="0.40"/>
+            <column name="carbs_per_100g" valueNumeric="6.60"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0006-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000078"/>
+            <column name="product_name_snapshot" value="Картофель свежий ранний"/>
+            <column name="weight_grams" valueNumeric="180.00"/>
+            <column name="calories_per_100g" valueNumeric="77.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.00"/>
+            <column name="fats_per_100g" valueNumeric="0.40"/>
+            <column name="carbs_per_100g" valueNumeric="16.30"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0006-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000104"/>
+            <column name="product_name_snapshot" value="Масло оливковое Extra Virgin"/>
+            <column name="weight_grams" valueNumeric="10.00"/>
+            <column name="calories_per_100g" valueNumeric="898.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.00"/>
+            <column name="fats_per_100g" valueNumeric="99.80"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+
+        <!-- Recipe 7: Макароны с говядиной и томатным соусом -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000007"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Макароны с говядиной и томатным соусом"/>
+            <column name="description" value="Классическая паста с нежирной говядиной и свежими томатами"/>
+            <column name="instructions" value="1. Отварить макароны al dente. 2. Мелко нарезать говядину, обжарить с луком и томатами. 3. Смешать с пастой."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="420.00"/>
+            <column name="calories_per_100g" valueNumeric="179.90"/>
+            <column name="proteins_per_100g" valueNumeric="11.52"/>
+            <column name="fats_per_100g" valueNumeric="4.99"/>
+            <column name="carbs_per_100g" valueNumeric="22.09"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0007-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000007"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000008"/>
+            <column name="product_name_snapshot" value="Макароны перья из твердых сортов пшеницы"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="350.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.00"/>
+            <column name="fats_per_100g" valueNumeric="1.50"/>
+            <column name="carbs_per_100g" valueNumeric="71.50"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0007-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000007"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000047"/>
+            <column name="product_name_snapshot" value="Говядина оковалок мякоть"/>
+            <column name="weight_grams" valueNumeric="160.00"/>
+            <column name="calories_per_100g" valueNumeric="187.00"/>
+            <column name="proteins_per_100g" valueNumeric="20.20"/>
+            <column name="fats_per_100g" valueNumeric="11.80"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0007-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000007"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000086"/>
+            <column name="product_name_snapshot" value="Томаты круглые красные"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="20.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.10"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="3.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0007-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000007"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000080"/>
+            <column name="product_name_snapshot" value="Лук репчатый желтый"/>
+            <column name="weight_grams" valueNumeric="40.00"/>
+            <column name="calories_per_100g" valueNumeric="41.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.40"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="8.20"/>
+        </insert>
+
+        <!-- Recipe 8: Салат овощной с яйцом и сметаной -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000008"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Салат овощной с яйцом и сметаной"/>
+            <column name="description" value="Легкий освежающий салат с клетчаткой и качественным белком"/>
+            <column name="instructions" value="1. Отварить яйцо вкрутую и нарезать. 2. Нарезать огурцы и томаты. 3. Заправить сметаной, перемешать."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="390.00"/>
+            <column name="calories_per_100g" valueNumeric="49.77"/>
+            <column name="proteins_per_100g" valueNumeric="2.88"/>
+            <column name="fats_per_100g" valueNumeric="3.04"/>
+            <column name="carbs_per_100g" valueNumeric="2.84"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0008-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000008"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000085"/>
+            <column name="product_name_snapshot" value="Огурцы короткоплодные пупырчатые"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="15.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.80"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="2.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0008-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000008"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000086"/>
+            <column name="product_name_snapshot" value="Томаты круглые красные"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="20.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.10"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="3.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0008-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000008"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0008-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000008"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000034"/>
+            <column name="product_name_snapshot" value="Сметана 15%"/>
+            <column name="weight_grams" valueNumeric="30.00"/>
+            <column name="calories_per_100g" valueNumeric="158.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.60"/>
+            <column name="fats_per_100g" valueNumeric="15.00"/>
+            <column name="carbs_per_100g" valueNumeric="3.00"/>
+        </insert>
+
+        <!-- Recipe 9: Творожная запеканка с бананом -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000009"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Творожная запеканка с бананом"/>
+            <column name="description" value="Воздушная творожная запеканка с естественной сладостью спелого банана"/>
+            <column name="instructions" value="1. Блендером взбить творог, банан, яйцо и манку. 2. Выложить в форму. 3. Выпекать 35 минут при 180C."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="500.00"/>
+            <column name="calories_per_100g" valueNumeric="127.36"/>
+            <column name="proteins_per_100g" valueNumeric="11.90"/>
+            <column name="fats_per_100g" valueNumeric="4.47"/>
+            <column name="carbs_per_100g" valueNumeric="9.94"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0009-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000009"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000031"/>
+            <column name="product_name_snapshot" value="Творог рассыпчатый 5%"/>
+            <column name="weight_grams" valueNumeric="300.00"/>
+            <column name="calories_per_100g" valueNumeric="121.00"/>
+            <column name="proteins_per_100g" valueNumeric="16.00"/>
+            <column name="fats_per_100g" valueNumeric="5.00"/>
+            <column name="carbs_per_100g" valueNumeric="3.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0009-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000009"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000094"/>
+            <column name="product_name_snapshot" value="Бананы Эквадор"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="95.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.50"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="21.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0009-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000009"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0009-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000009"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000007"/>
+            <column name="product_name_snapshot" value="Манная крупа"/>
+            <column name="weight_grams" valueNumeric="20.00"/>
+            <column name="calories_per_100g" valueNumeric="328.00"/>
+            <column name="proteins_per_100g" valueNumeric="10.30"/>
+            <column name="fats_per_100g" valueNumeric="1.00"/>
+            <column name="carbs_per_100g" valueNumeric="70.60"/>
+        </insert>
+
+        <!-- Recipe 10: Тушеная индейка с кабачками и морковью -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000010"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Тушеная индейка с кабачками и морковью"/>
+            <column name="description" value="Легкий низкоуглеводный ужин с нежной индейкой и овощами"/>
+            <column name="instructions" value="1. Нарезать индейку кусочками и подрумянить на оливковом масле. 2. Добавить нарезанные кабачки и морковь. 3. Тушить под крышкой 20 минут."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="480.00"/>
+            <column name="calories_per_100g" valueNumeric="77.15"/>
+            <column name="proteins_per_100g" valueNumeric="9.81"/>
+            <column name="fats_per_100g" valueNumeric="2.72"/>
+            <column name="carbs_per_100g" valueNumeric="3.13"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0010-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000010"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000062"/>
+            <column name="product_name_snapshot" value="Филе грудки индейки"/>
+            <column name="weight_grams" valueNumeric="200.00"/>
+            <column name="calories_per_100g" valueNumeric="104.00"/>
+            <column name="proteins_per_100g" valueNumeric="22.50"/>
+            <column name="fats_per_100g" valueNumeric="1.20"/>
+            <column name="carbs_per_100g" valueNumeric="0.50"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0010-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000010"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000088"/>
+            <column name="product_name_snapshot" value="Кабачки молодые свежие"/>
+            <column name="weight_grams" valueNumeric="200.00"/>
+            <column name="calories_per_100g" valueNumeric="24.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.60"/>
+            <column name="fats_per_100g" valueNumeric="0.30"/>
+            <column name="carbs_per_100g" valueNumeric="4.60"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0010-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000010"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000079"/>
+            <column name="product_name_snapshot" value="Морковь столовая мытая"/>
+            <column name="weight_grams" valueNumeric="70.00"/>
+            <column name="calories_per_100g" valueNumeric="35.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.30"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="6.90"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0010-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000010"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000104"/>
+            <column name="product_name_snapshot" value="Масло оливковое Extra Virgin"/>
+            <column name="weight_grams" valueNumeric="10.00"/>
+            <column name="calories_per_100g" valueNumeric="898.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.00"/>
+            <column name="fats_per_100g" valueNumeric="99.80"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+
+        <!-- Recipe 11: Борщ с говядиной и фасолью -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Борщ с говядиной и фасолью"/>
+            <column name="description" value="Традиционный наваристый борщ с говядиной, свеклой и красной фасолью"/>
+            <column name="instructions" value="1. Сварить бульон из говядины. 2. Добавить картофель и фасоль. 3. Спассеровать свеклу и капусту, добавить в суп и варить до готовности."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="520.00"/>
+            <column name="calories_per_100g" valueNumeric="111.33"/>
+            <column name="proteins_per_100g" valueNumeric="9.06"/>
+            <column name="fats_per_100g" valueNumeric="3.69"/>
+            <column name="carbs_per_100g" valueNumeric="10.43"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0011-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000047"/>
+            <column name="product_name_snapshot" value="Говядина оковалок мякоть"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="187.00"/>
+            <column name="proteins_per_100g" valueNumeric="20.20"/>
+            <column name="fats_per_100g" valueNumeric="11.80"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0011-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000084"/>
+            <column name="product_name_snapshot" value="Свекла столовая мытая"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="43.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.50"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="8.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0011-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000081"/>
+            <column name="product_name_snapshot" value="Капуста белокочанная свежая"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="27.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.80"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="4.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0011-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000078"/>
+            <column name="product_name_snapshot" value="Картофель свежий ранний"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="77.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.00"/>
+            <column name="fats_per_100g" valueNumeric="0.40"/>
+            <column name="carbs_per_100g" valueNumeric="16.30"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0011-0000-0000-000000000005"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000011"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000018"/>
+            <column name="product_name_snapshot" value="Фасоль красная"/>
+            <column name="weight_grams" valueNumeric="50.00"/>
+            <column name="calories_per_100g" valueNumeric="292.00"/>
+            <column name="proteins_per_100g" valueNumeric="22.30"/>
+            <column name="fats_per_100g" valueNumeric="1.70"/>
+            <column name="carbs_per_100g" valueNumeric="47.00"/>
+        </insert>
+
+        <!-- Recipe 12: Куриный суп с вермишелью и яйцом -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000012"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Куриный суп с вермишелью и яйцом"/>
+            <column name="description" value="Легкий домашний куриный суп с макаронами и вареным яйцом"/>
+            <column name="instructions" value="1. Сварить куриный бульон из филе. 2. Добавить морковь и вермишель. 3. Подавать с половинками отварного яйца."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="310.00"/>
+            <column name="calories_per_100g" valueNumeric="147.16"/>
+            <column name="proteins_per_100g" valueNumeric="16.10"/>
+            <column name="fats_per_100g" valueNumeric="3.37"/>
+            <column name="carbs_per_100g" valueNumeric="12.89"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0012-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000012"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000057"/>
+            <column name="product_name_snapshot" value="Куриное филе грудки охл"/>
+            <column name="weight_grams" valueNumeric="150.00"/>
+            <column name="calories_per_100g" valueNumeric="113.00"/>
+            <column name="proteins_per_100g" valueNumeric="23.60"/>
+            <column name="fats_per_100g" valueNumeric="1.90"/>
+            <column name="carbs_per_100g" valueNumeric="0.40"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0012-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000012"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000009"/>
+            <column name="product_name_snapshot" value="Спагетти из твердых сортов пшеницы"/>
+            <column name="weight_grams" valueNumeric="50.00"/>
+            <column name="calories_per_100g" valueNumeric="350.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.50"/>
+            <column name="fats_per_100g" valueNumeric="1.30"/>
+            <column name="carbs_per_100g" valueNumeric="71.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0012-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000012"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000079"/>
+            <column name="product_name_snapshot" value="Морковь столовая мытая"/>
+            <column name="weight_grams" valueNumeric="50.00"/>
+            <column name="calories_per_100g" valueNumeric="35.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.30"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="6.90"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0012-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000012"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+
+        <!-- Recipe 13: Тост с авокадо и яйцом пашот -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000013"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Тост с авокадо и яйцом пашот"/>
+            <column name="description" value="Модный питательный завтрак со здоровыми жирами и цельными злаками"/>
+            <column name="instructions" value="1. Подсушить цельнозерновой хлеб в тостере. 2. Размять авокадо вилкой и намазать на тост. 3. Выложить сверху яйцо пашот."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="190.00"/>
+            <column name="calories_per_100g" valueNumeric="180.53"/>
+            <column name="proteins_per_100g" valueNumeric="7.59"/>
+            <column name="fats_per_100g" valueNumeric="10.15"/>
+            <column name="carbs_per_100g" valueNumeric="14.15"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0013-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000013"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000022"/>
+            <column name="product_name_snapshot" value="Хлеб цельнозерновой зерновой"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="228.00"/>
+            <column name="proteins_per_100g" valueNumeric="9.00"/>
+            <column name="fats_per_100g" valueNumeric="3.50"/>
+            <column name="carbs_per_100g" valueNumeric="42.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0013-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000013"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000102"/>
+            <column name="product_name_snapshot" value="Авокадо Хасс спелое"/>
+            <column name="weight_grams" valueNumeric="70.00"/>
+            <column name="calories_per_100g" valueNumeric="160.00"/>
+            <column name="proteins_per_100g" valueNumeric="2.00"/>
+            <column name="fats_per_100g" valueNumeric="14.70"/>
+            <column name="carbs_per_100g" valueNumeric="1.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0013-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000013"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000065"/>
+            <column name="product_name_snapshot" value="Яйцо куриное столовое С0"/>
+            <column name="weight_grams" valueNumeric="60.00"/>
+            <column name="calories_per_100g" valueNumeric="157.00"/>
+            <column name="proteins_per_100g" valueNumeric="12.70"/>
+            <column name="fats_per_100g" valueNumeric="11.50"/>
+            <column name="carbs_per_100g" valueNumeric="0.70"/>
+        </insert>
+
+        <!-- Recipe 14: Красная чечевица с тушеными овощами -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000014"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Красная чечевица с тушеными овощами"/>
+            <column name="description" value="Богатый растительным белком постный гарнир или самостоятельное блюдо"/>
+            <column name="instructions" value="1. Промыть красную чечевицу. 2. Нарезать перец и томаты, припустить на оливковом масле. 3. Добавить чечевицу, воду и тушить 15 минут."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="310.00"/>
+            <column name="calories_per_100g" valueNumeric="165.48"/>
+            <column name="proteins_per_100g" valueNumeric="9.98"/>
+            <column name="fats_per_100g" valueNumeric="3.89"/>
+            <column name="carbs_per_100g" valueNumeric="20.48"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0014-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000014"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000014"/>
+            <column name="product_name_snapshot" value="Чечевица красная колотая"/>
+            <column name="weight_grams" valueNumeric="120.00"/>
+            <column name="calories_per_100g" valueNumeric="318.00"/>
+            <column name="proteins_per_100g" valueNumeric="24.00"/>
+            <column name="fats_per_100g" valueNumeric="1.50"/>
+            <column name="carbs_per_100g" valueNumeric="46.30"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0014-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000014"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000086"/>
+            <column name="product_name_snapshot" value="Томаты круглые красные"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="20.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.10"/>
+            <column name="fats_per_100g" valueNumeric="0.20"/>
+            <column name="carbs_per_100g" valueNumeric="3.70"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0014-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000014"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000087"/>
+            <column name="product_name_snapshot" value="Перец сладкий болгарский красный"/>
+            <column name="weight_grams" valueNumeric="80.00"/>
+            <column name="calories_per_100g" valueNumeric="27.00"/>
+            <column name="proteins_per_100g" valueNumeric="1.30"/>
+            <column name="fats_per_100g" valueNumeric="0.10"/>
+            <column name="carbs_per_100g" valueNumeric="5.30"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0014-0000-0000-000000000004"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000014"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000104"/>
+            <column name="product_name_snapshot" value="Масло оливковое Extra Virgin"/>
+            <column name="weight_grams" valueNumeric="10.00"/>
+            <column name="calories_per_100g" valueNumeric="898.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.00"/>
+            <column name="fats_per_100g" valueNumeric="99.80"/>
+            <column name="carbs_per_100g" valueNumeric="0.00"/>
+        </insert>
+
+        <!-- Recipe 15: Творожный десерт с яблоком и грецкими орехами -->
+        <insert tableName="recipes">
+            <column name="id" value="10000000-0000-0000-0000-000000000015"/>
+            <column name="author_type" value="SYSTEM"/>
+            <column name="author_id" value="system"/>
+            <column name="title" value="Творожный десерт с яблоком и грецкими орехами"/>
+            <column name="description" value="Вкусный и полезный перекус без добавленного сахара"/>
+            <column name="instructions" value="1. Выложить творог в креманку. 2. Мелко нарезать яблоко и посыпать дроблеными грецкими орехами."/>
+            <column name="visibility" value="PUBLIC"/>
+            <column name="servings_count" valueNumeric="1"/>
+            <column name="total_weight_g" valueNumeric="305.00"/>
+            <column name="calories_per_100g" valueNumeric="140.43"/>
+            <column name="proteins_per_100g" valueNumeric="10.82"/>
+            <column name="fats_per_100g" valueNumeric="8.43"/>
+            <column name="carbs_per_100g" valueNumeric="5.56"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueComputed="NOW()"/>
+            <column name="updated_at" valueComputed="NOW()"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0015-0000-0000-000000000001"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000015"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000031"/>
+            <column name="product_name_snapshot" value="Творог рассыпчатый 5%"/>
+            <column name="weight_grams" valueNumeric="180.00"/>
+            <column name="calories_per_100g" valueNumeric="121.00"/>
+            <column name="proteins_per_100g" valueNumeric="16.00"/>
+            <column name="fats_per_100g" valueNumeric="5.00"/>
+            <column name="carbs_per_100g" valueNumeric="3.00"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0015-0000-0000-000000000002"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000015"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000093"/>
+            <column name="product_name_snapshot" value="Яблоки сезонные Россия"/>
+            <column name="weight_grams" valueNumeric="100.00"/>
+            <column name="calories_per_100g" valueNumeric="47.00"/>
+            <column name="proteins_per_100g" valueNumeric="0.40"/>
+            <column name="fats_per_100g" valueNumeric="0.40"/>
+            <column name="carbs_per_100g" valueNumeric="9.80"/>
+        </insert>
+        <insert tableName="recipe_ingredients">
+            <column name="id" value="10000000-0015-0000-0000-000000000003"/>
+            <column name="recipe_id" value="10000000-0000-0000-0000-000000000015"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000106"/>
+            <column name="product_name_snapshot" value="Орехи грецкие очищенные"/>
+            <column name="weight_grams" valueNumeric="25.00"/>
+            <column name="calories_per_100g" valueNumeric="654.00"/>
+            <column name="proteins_per_100g" valueNumeric="15.20"/>
+            <column name="fats_per_100g" valueNumeric="65.20"/>
+            <column name="carbs_per_100g" valueNumeric="7.00"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

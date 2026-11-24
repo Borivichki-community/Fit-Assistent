@@ -166,7 +166,8 @@ class RecipeFlowTest {
         val redis = mock(RedisMenuStore::class.java)
         val meters = SimpleMeterRegistry()
         val breakers = configuration.recipeCircuitBreakers(settings, meters)
-        val mealPlanJson = """
+        val mealPlanJson =
+            """
             {
               "cooking_instructions": "Сварите рис в подсоленной воде 15 минут.",
               "meals": [
@@ -180,7 +181,7 @@ class RecipeFlowTest {
                 }
               ]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val promptBuilder = MealPlanPromptBuilder(json)
         val generator =
@@ -194,16 +195,29 @@ class RecipeFlowTest {
             )
         val catalog = TestCatalog()
         val catalogName = InProcessServerBuilder.generateName()
-        val catalogServer = InProcessServerBuilder.forName(catalogName).directExecutor().addService(catalog).build().start()
+        val catalogServer =
+            InProcessServerBuilder
+                .forName(catalogName)
+                .directExecutor()
+                .addService(catalog)
+                .build()
+                .start()
         val catalogChannel = InProcessChannelBuilder.forName(catalogName).directExecutor().build()
         try {
             val service = RecipeMenuService(CatalogClient(catalogChannel, settings), generator, validator, redis, settings, json, meters)
             val rpc = RecipeGrpcService(service)
-            val request = GenerateMealPlanRequest.newBuilder()
-                .setPeriod(TargetPeriod.TARGET_PERIOD_DINNER)
-                .setTargetNutrition(TargetNutrition.newBuilder().setCalories(300.0).setProteinsGrams(10.0).build())
-                .setMaxBudgetMinor(25000)
-                .build()
+            val request =
+                GenerateMealPlanRequest
+                    .newBuilder()
+                    .setPeriod(TargetPeriod.TARGET_PERIOD_DINNER)
+                    .setTargetNutrition(
+                        TargetNutrition
+                            .newBuilder()
+                            .setCalories(300.0)
+                            .setProteinsGrams(10.0)
+                            .build(),
+                    ).setMaxBudgetMinor(25000)
+                    .build()
 
             val response = runBlocking { rpc.generateMealPlan(request) }
             assertNotNull(response.planId)

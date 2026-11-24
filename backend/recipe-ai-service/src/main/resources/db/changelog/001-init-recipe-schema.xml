@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 000. PostgreSQL Extensions: pg_trgm for fuzzy search on title -->
+    <changeSet id="000-pg-trgm" author="implementer">
+        <preConditions onFail="MARK_RAN">
+            <or>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN current_setting('is_superuser') = 'on' THEN 1 ELSE 0 END
+                </sqlCheck>
+                <sqlCheck expectedResult="1">
+                    SELECT count(1) FROM pg_extension WHERE extname = 'pg_trgm'
+                </sqlCheck>
+            </or>
+        </preConditions>
+        <sql>
+            CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        </sql>
+    </changeSet>
+
+    <!-- 001. Table recipes -->
+    <changeSet id="001-create-recipes" author="implementer">
+        <createTable tableName="recipes">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="author_type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="author_id" type="VARCHAR(64)"/>
+            <column name="origin_recipe_id" type="UUID"/>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="instructions" type="TEXT"/>
+            <column name="visibility" type="VARCHAR(32)" defaultValue="PRIVATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="servings_count" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_weight_g" type="NUMERIC(8,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calories_per_100g" type="NUMERIC(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="proteins_per_100g" type="NUMERIC(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fats_per_100g" type="NUMERIC(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="carbs_per_100g" type="NUMERIC(6,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="recipes"
+                baseColumnNames="origin_recipe_id"
+                constraintName="fk_recipes_origin"
+                referencedTableName="recipes"
+                referencedColumnNames="id"
+                onDelete="SET NULL"/>
+
+        <createIndex tableName="recipes" indexName="idx_recipes_visibility_created">
+            <column name="visibility"/>
+            <column name="created_at" descending="true"/>
+        </createIndex>
+
+        <createIndex tableName="recipes" indexName="idx_recipes_author_id">
+            <column name="author_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 001-b. GIN index on recipe title (with btree lower(title) fallback) -->
+    <changeSet id="001-recipes-title-index" author="implementer">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(1) FROM pg_extension WHERE extname = 'pg_trgm'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_recipes_title_trgm ON recipes USING gin (title gin_trgm_ops);
+        </sql>
+    </changeSet>
+
+    <changeSet id="001-recipes-title-fallback-index" author="implementer">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(1) FROM pg_extension WHERE extname = 'pg_trgm'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_recipes_title_lower ON recipes (LOWER(title));
+        </sql>
+    </changeSet>
+
+    <!-- 002. Table recipe_ingredients -->
+    <changeSet id="002-create-recipe-ingredients" author="implementer">
+        <createTable tableName="recipe_ingredients">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="recipe_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_recipe_ingredients_recipe"
+                             references="recipes(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="product_id" type="UUID"/>
+            <column name="product_name_snapshot" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weight_grams" type="NUMERIC(7,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calories_per_100g" type="NUMERIC(6,2)"/>
+            <column name="proteins_per_100g" type="NUMERIC(6,2)"/>
+            <column name="fats_per_100g" type="NUMERIC(6,2)"/>
+            <column name="carbs_per_100g" type="NUMERIC(6,2)"/>
+        </createTable>
+
+        <createIndex tableName="recipe_ingredients" indexName="idx_recipe_ingredients_recipe_id">
+            <column name="recipe_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 003. Table meal_plans -->
+    <changeSet id="003-create-meal-plans" author="implementer">
+        <createTable tableName="meal_plans">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="author_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="author_type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="duration_days" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="visibility" type="VARCHAR(32)" defaultValue="PRIVATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="access_mode" type="VARCHAR(32)" defaultValue="FREE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price_amount_minor" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency" type="VARCHAR(8)" defaultValue="RUB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="avg_daily_calories" type="NUMERIC(6,2)"/>
+            <column name="avg_daily_proteins" type="NUMERIC(6,2)"/>
+            <column name="avg_daily_fats" type="NUMERIC(6,2)"/>
+            <column name="avg_daily_carbs" type="NUMERIC(6,2)"/>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="meal_plans" indexName="idx_meal_plans_author_id">
+            <column name="author_id"/>
+        </createIndex>
+
+        <createIndex tableName="meal_plans" indexName="idx_meal_plans_visibility_created">
+            <column name="visibility"/>
+            <column name="created_at" descending="true"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 004. Table meal_plan_items -->
+    <changeSet id="004-create-meal-plan-items" author="implementer">
+        <createTable tableName="meal_plan_items">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="plan_id" type="UUID">
+                <constraints nullable="false"
+                             foreignKeyName="fk_meal_plan_items_plan"
+                             references="meal_plans(id)"
+                             deleteCascade="true"/>
+            </column>
+            <column name="day_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="meal_slot" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="item_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="item_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name_snapshot" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weight_grams" type="NUMERIC(7,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="calories" type="NUMERIC(6,2)"/>
+            <column name="proteins" type="NUMERIC(6,2)"/>
+            <column name="fats" type="NUMERIC(6,2)"/>
+            <column name="carbs" type="NUMERIC(6,2)"/>
+        </createTable>
+
+        <createIndex tableName="meal_plan_items" indexName="idx_meal_plan_items_plan_id">
+            <column name="plan_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 005. Table coach_student_links -->
+    <changeSet id="005-create-coach-student-links" author="implementer">
+        <createTable tableName="coach_student_links">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="coach_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="student_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="can_view_diary" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+                tableName="coach_student_links"
+                columnNames="coach_id, student_id"
+                constraintName="uk_coach_student"/>
+    </changeSet>
+
+    <!-- 006. Table access_grants -->
+    <changeSet id="006-create-access-grants" author="implementer">
+        <createTable tableName="access_grants">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="target_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="grant_source" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="granted_by" type="VARCHAR(64)"/>
+            <column name="expires_at" type="TIMESTAMPTZ"/>
+            <column name="created_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+                tableName="access_grants"
+                columnNames="user_id, target_type, target_id"
+                constraintName="uk_access_grant"/>
+    </changeSet>
+
+</databaseChangeLog>

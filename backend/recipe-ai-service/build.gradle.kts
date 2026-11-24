@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.kotlinSpring)
+    alias(libs.plugins.kotlinJpa)
     alias(libs.plugins.springBoot)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.ktlint)
@@ -8,6 +9,12 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+}
+
+allOpen {
+    annotation("jakarta.persistence.Entity")
+    annotation("jakarta.persistence.MappedSuperclass")
+    annotation("jakarta.persistence.Embeddable")
 }
 
 protobuf {
@@ -63,6 +70,9 @@ dependencies {
     implementation(libs.spring.starter.grpc)
     implementation(libs.kotlinx.coroutines.core)
 
+    implementation(libs.spring.starter.jpa)
+    implementation(libs.postgresql.jdbc)
+    implementation(libs.spring.starter.liquibase)
     implementation(libs.spring.starter.redis)
     implementation(libs.spring.starter.web)
     implementation(libs.spring.starter.jackson)
@@ -84,6 +94,7 @@ dependencies {
     testImplementation(libs.grpc.inprocess)
     testImplementation(libs.testcontainers.core)
     testImplementation(libs.testcontainers.junit)
+    testImplementation(libs.testcontainers.postgresql)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }

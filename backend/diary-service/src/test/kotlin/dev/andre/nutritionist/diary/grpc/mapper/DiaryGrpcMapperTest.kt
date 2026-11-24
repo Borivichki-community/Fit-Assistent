@@ -1,8 +1,6 @@
 package dev.andre.nutritionist.diary.grpc.mapper
 
 import com.budgetntr.proto.diary.v1.AddEntryRequest
-import com.budgetntr.proto.diary.v1.EntrySourceType as EntrySourceTypeProto
-import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
 import com.google.protobuf.Timestamp
 import dev.andre.nutritionist.diary.domain.model.DiaryEntry
 import dev.andre.nutritionist.diary.domain.model.DiaryEntryId
@@ -20,6 +18,8 @@ import org.junit.jupiter.api.Test
 import java.time.DateTimeException
 import java.util.UUID
 import kotlin.time.Instant
+import com.budgetntr.proto.diary.v1.EntrySourceType as EntrySourceTypeProto
+import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
 
 class DiaryGrpcMapperTest {
     private val mapper = DiaryGrpcMapper()

@@ -68,10 +68,16 @@ dependencies {
     implementation(libs.protobuf.kotlin)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.slf4j)
 
     implementation(libs.spring.starter.jpa)
     implementation(libs.spring.starter.liquibase)
+    implementation(libs.spring.starter.redis)
     runtimeOnly(libs.postgresql.jdbc)
+
+    implementation(libs.resilience4j.circuitbreaker)
+    implementation(libs.resilience4j.kotlin)
+    implementation(libs.resilience4j.micrometer)
 
     implementation(project(":shared:contracts"))
     implementation(project(":backend:outbox"))

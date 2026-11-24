@@ -73,6 +73,28 @@ class RedisMenuStore(
         }
     }
 
+    suspend fun readCachedRecipe(key: String): ByteArray? =
+        optionalRedis {
+            val value = redis.opsForValue().get(key) ?: return@optionalRedis null
+            try {
+                Base64.getDecoder().decode(value)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    suspend fun writeCachedRecipe(
+        key: String,
+        recipeBytes: ByteArray,
+        ttl: Duration = Duration.ofHours(1),
+    ) {
+        optionalRedis { redis.opsForValue().set(key, Base64.getEncoder().encodeToString(recipeBytes), ttl) }
+    }
+
+    suspend fun evictCachedRecipe(key: String) {
+        optionalRedis { redis.delete(key) }
+    }
+
     suspend fun beginWarmup(key: String): Boolean =
         optionalRedis { redis.opsForValue().setIfAbsent("recipe:warmup:$key", "1", Duration.ofMinutes(10)) } == true
 

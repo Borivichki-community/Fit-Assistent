@@ -66,7 +66,7 @@ class MealPlanPromptBuilder(
             Используй ТОЛЬКО продукты из предоставленного каталога, рассчитывая вес пропорционально данным на 100г.
             Верни JSON: {"cooking_instructions":"...","meals":[{"type":"...","title":"...","cooking_time_minutes":15,"products":[{"id":"...","grams":100}]}]}
             Каталог продуктов: ${json.writeValueAsString(candidates)}
-        """.trimIndent()
+            """.trimIndent()
     }
 
     fun buildWeekMenuPrompt(
@@ -90,6 +90,6 @@ class MealPlanPromptBuilder(
             Цель на каждый день: ${request.dailyCalories} ккал. Стоимость за 7 дней не выше ${request.weeklyBudgetMinor} копеек.
             Считай пропорционально граммам по данным на 100 г. Верни JSON по заданной схеме.
             Каталог продуктов: ${json.writeValueAsString(candidates)}
-        """.trimIndent()
+            """.trimIndent()
     }
 }

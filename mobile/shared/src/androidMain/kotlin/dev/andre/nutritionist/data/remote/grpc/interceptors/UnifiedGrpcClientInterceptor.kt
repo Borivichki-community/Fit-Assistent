@@ -82,7 +82,13 @@ class UnifiedGrpcClientInterceptor(
             methodName.startsWith("Create") ||
             methodName.startsWith("Update") ||
             methodName.startsWith("Delete") ||
-            methodName.startsWith("Upsert")
+            methodName.startsWith("Upsert") ||
+            methodName.startsWith("Fork") ||
+            methodName.startsWith("Publish") ||
+            methodName.startsWith("Invite") ||
+            methodName.startsWith("Respond") ||
+            methodName.startsWith("Grant") ||
+            methodName.startsWith("Revoke")
     }
 
     @OptIn(ExperimentalUuidApi::class)

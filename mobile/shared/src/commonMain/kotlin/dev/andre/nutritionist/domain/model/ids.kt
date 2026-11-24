@@ -18,7 +18,12 @@ value class RecipeId(val raw: String)
 value class DiaryEntryId(val raw: String)
 
 @JvmInline
-value class MealRecordId(val raw: String)
+value class MealRecordId(val raw: String) {
+    companion object {
+        @OptIn(ExperimentalUuidApi::class)
+        fun generate(): MealRecordId = MealRecordId(Uuid.random().toString())
+    }
+}
 
 @JvmInline
 value class ProductId(val raw: String)
@@ -34,6 +39,21 @@ value class FoodItemId(val raw: String)
 
 @JvmInline
 value class ProfileId(val raw: String)
+
+@JvmInline
+value class RecipeIngredientId(val raw: String)
+
+@JvmInline
+value class MealPlanTemplateId(val raw: String)
+
+@JvmInline
+value class MealPlanItemId(val raw: String)
+
+@JvmInline
+value class CoachLinkId(val raw: String)
+
+@JvmInline
+value class AccessGrantId(val raw: String)
 
 @JvmInline
 value class IdempotencyKey(val raw: String) {

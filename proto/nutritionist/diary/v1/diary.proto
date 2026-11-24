@@ -64,6 +64,9 @@ message AddEntryResponse {
 message GetDailyEntriesRequest {
   string date = 1;
   string time_zone = 2;
+  // Optional user ID whose diary is requested (e.g. a student viewed by an active coach).
+  // When omitted or blank, defaults to the authenticated caller's user ID.
+  optional string target_user_id = 10;
 }
 
 message GetDailyEntriesResponse {
@@ -119,6 +122,9 @@ message GetRangeRequest {
   string start_date = 1;
   string end_date = 2;
   string time_zone = 3;
+  // Optional user ID whose diary is requested (e.g. a student viewed by an active coach).
+  // When omitted or blank, defaults to the authenticated caller's user ID.
+  optional string target_user_id = 10;
 }
 
 message GetRangeResponse {

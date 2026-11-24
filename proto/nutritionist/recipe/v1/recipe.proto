@@ -2,17 +2,80 @@ syntax = "proto3";
 
 package com.budgetntr.recipe.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option java_multiple_files = true;
 option java_package = "com.budgetntr.proto.recipe.v1";
 option java_outer_classname = "RecipeOuterClass";
 
-// RecipeAiService provides AI-assisted meal and recipe generation with budget and nutrition limits.
+// RecipeAiService provides AI-assisted meal and recipe generation with budget and nutrition limits,
+// recipe catalog management, meal planning, and coach-student access delegation.
 service RecipeAiService {
   // GenerateWeekMenu streams weekly menu generated day-by-day.
   rpc GenerateWeekMenu(GenerateWeekMenuRequest) returns (stream GenerateWeekMenuResponse);
 
   // GenerateMealPlan generates a tailored meal plan for a day or a specific meal.
   rpc GenerateMealPlan(GenerateMealPlanRequest) returns (GenerateMealPlanResponse);
+
+  // --- Управление рецептами ---
+
+  // SearchRecipes searches recipes by title and filters with keyset pagination.
+  rpc SearchRecipes(SearchRecipesRequest) returns (SearchRecipesResponse);
+
+  // GetRecipe returns detailed recipe information including ingredients.
+  rpc GetRecipe(GetRecipeRequest) returns (GetRecipeResponse);
+
+  // CreateRecipe creates a new user or coach recipe.
+  rpc CreateRecipe(CreateRecipeRequest) returns (CreateRecipeResponse);
+
+  // UpdateRecipe updates an existing recipe owned by the caller.
+  rpc UpdateRecipe(UpdateRecipeRequest) returns (UpdateRecipeResponse);
+
+  // DeleteRecipe deletes a recipe owned by the caller.
+  rpc DeleteRecipe(DeleteRecipeRequest) returns (DeleteRecipeResponse);
+
+  // ForkRecipe creates a personal copy of a public or coach recipe for customization.
+  rpc ForkRecipe(ForkRecipeRequest) returns (ForkRecipeResponse);
+
+  // PublishRecipe changes recipe visibility (e.g. to PUBLIC or LINK_ONLY).
+  rpc PublishRecipe(PublishRecipeRequest) returns (PublishRecipeResponse);
+
+  // --- Управление планами питания (меню) ---
+
+  // SearchMealPlans searches meal plans by filters with keyset pagination.
+  rpc SearchMealPlans(SearchMealPlansRequest) returns (SearchMealPlansResponse);
+
+  // GetMealPlan returns a meal plan by ID with all scheduled items.
+  rpc GetMealPlan(GetMealPlanRequest) returns (GetMealPlanResponse);
+
+  // CreateMealPlan creates a new structured meal plan.
+  rpc CreateMealPlan(CreateMealPlanRequest) returns (CreateMealPlanResponse);
+
+  // UpdateMealPlan updates meal plan metadata and scheduled items.
+  rpc UpdateMealPlan(UpdateMealPlanRequest) returns (UpdateMealPlanResponse);
+
+  // DeleteMealPlan deletes a meal plan owned by the caller.
+  rpc DeleteMealPlan(DeleteMealPlanRequest) returns (DeleteMealPlanResponse);
+
+  // --- Тренерский доступ и Entitlements ---
+
+  // InviteStudent sends an invitation from a coach to a student or creates a link request.
+  rpc InviteStudent(InviteStudentRequest) returns (InviteStudentResponse);
+
+  // RespondCoachInvite allows a student to accept or decline a coach link invitation.
+  rpc RespondCoachInvite(RespondCoachInviteRequest) returns (RespondCoachInviteResponse);
+
+  // ListCoachLinks lists all students of a coach or coaches of a student.
+  rpc ListCoachLinks(ListCoachLinksRequest) returns (ListCoachLinksResponse);
+
+  // GrantAccess grants access to a specific recipe or meal plan to a user.
+  rpc GrantAccess(GrantAccessRequest) returns (GrantAccessResponse);
+
+  // RevokeAccess revokes previously granted access to a resource.
+  rpc RevokeAccess(RevokeAccessRequest) returns (RevokeAccessResponse);
+
+  // CheckCoachAccess verifies whether a caller has access to view/edit target user's nutrition data.
+  rpc CheckCoachAccess(CheckCoachAccessRequest) returns (CheckCoachAccessResponse);
 }
 
 // TargetPeriod specifies the timeframe or specific meal to plan.
@@ -136,4 +199,396 @@ enum MenuSource {
 message WeekMenu {
   repeated WeekMenuDay days = 1;
   WeekMenuSummary summary = 2;
+}
+
+// =============================================================================
+// Новые перечисления (Enums)
+// =============================================================================
+
+// AuthorType specifies who created the recipe or meal plan.
+enum AuthorType {
+  AUTHOR_TYPE_UNSPECIFIED = 0;
+  AUTHOR_TYPE_SYSTEM = 1;
+  AUTHOR_TYPE_USER = 2;
+  AUTHOR_TYPE_COACH = 3;
+  AUTHOR_TYPE_AI = 4;
+}
+
+// ContentVisibility defines access level for recipes and meal plans.
+enum ContentVisibility {
+  CONTENT_VISIBILITY_UNSPECIFIED = 0;
+  CONTENT_VISIBILITY_PRIVATE = 1;
+  CONTENT_VISIBILITY_LINK_ONLY = 2;
+  CONTENT_VISIBILITY_PUBLIC = 3;
+}
+
+// AccessMode defines monetization or delegation mode for meal plans.
+enum AccessMode {
+  ACCESS_MODE_UNSPECIFIED = 0;
+  ACCESS_MODE_FREE = 1;
+  ACCESS_MODE_COACH_ASSIGNED = 2;
+  ACCESS_MODE_PAID = 3;
+}
+
+// GrantSource specifies the reason access was granted.
+enum GrantSource {
+  GRANT_SOURCE_UNSPECIFIED = 0;
+  GRANT_SOURCE_COACH_GRANT = 1;
+  GRANT_SOURCE_PURCHASE = 2;
+  GRANT_SOURCE_SUBSCRIPTION = 3;
+}
+
+// CoachLinkStatus specifies current status of coach-student partnership.
+enum CoachLinkStatus {
+  COACH_LINK_STATUS_UNSPECIFIED = 0;
+  COACH_LINK_STATUS_PENDING = 1;
+  COACH_LINK_STATUS_ACTIVE = 2;
+  COACH_LINK_STATUS_REVOKED = 3;
+}
+
+// PlanItemType classifies whether a meal plan item is a cooked recipe or a standalone raw product.
+enum PlanItemType {
+  PLAN_ITEM_TYPE_UNSPECIFIED = 0;
+  PLAN_ITEM_TYPE_RECIPE = 1;
+  PLAN_ITEM_TYPE_PRODUCT = 2;
+}
+
+// =============================================================================
+// Новые сущности (Entities / Protos)
+// =============================================================================
+
+// RecipeIngredientProto represents a single ingredient in a recipe.
+message RecipeIngredientProto {
+  string id = 1;
+  string recipe_id = 2;
+  string product_id = 3;
+  string product_name_snapshot = 4;
+  double weight_grams = 5;
+  double calories_per_100g = 6;
+  double proteins_per_100g = 7;
+  double fats_per_100g = 8;
+  double carbs_per_100g = 9;
+}
+
+// RecipeProto represents a full recipe with nutrition and ingredients.
+message RecipeProto {
+  string id = 1;
+  AuthorType author_type = 2;
+  string author_id = 3;
+  string origin_recipe_id = 4;
+  string title = 5;
+  string description = 6;
+  string instructions = 7;
+  ContentVisibility visibility = 8;
+  int32 servings_count = 9;
+  double total_weight_g = 10;
+  double calories_per_100g = 11;
+  double proteins_per_100g = 12;
+  double fats_per_100g = 13;
+  double carbs_per_100g = 14;
+  int64 version = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  repeated RecipeIngredientProto ingredients = 18;
+}
+
+// MealPlanItemProto represents a scheduled item in a meal plan.
+message MealPlanItemProto {
+  string id = 1;
+  string plan_id = 2;
+  int32 day_number = 3;
+  MealType meal_slot = 4;
+  PlanItemType item_type = 5;
+  string item_id = 6;
+  string name_snapshot = 7;
+  double weight_grams = 8;
+  double calories = 9;
+  double proteins = 10;
+  double fats = 11;
+  double carbs = 12;
+}
+
+// MealPlanTemplateProto represents a meal plan template.
+message MealPlanTemplateProto {
+  string id = 1;
+  string author_id = 2;
+  AuthorType author_type = 3;
+  string title = 4;
+  string description = 5;
+  int32 duration_days = 6;
+  ContentVisibility visibility = 7;
+  AccessMode access_mode = 8;
+  int64 price_amount_minor = 9;
+  string currency = 10;
+  double avg_daily_calories = 11;
+  double avg_daily_proteins = 12;
+  double avg_daily_fats = 13;
+  double avg_daily_carbs = 14;
+  int64 version = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  repeated MealPlanItemProto items = 18;
+}
+
+// CoachStudentLinkProto represents relationship between coach and student.
+message CoachStudentLinkProto {
+  string id = 1;
+  string coach_id = 2;
+  string student_id = 3;
+  CoachLinkStatus status = 4;
+  bool can_view_diary = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// AccessGrantProto represents granted access to a protected recipe or meal plan.
+message AccessGrantProto {
+  string id = 1;
+  string user_id = 2;
+  string target_type = 3;
+  string target_id = 4;
+  GrantSource grant_source = 5;
+  string granted_by = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// =============================================================================
+// Request & Response Messages: Управление рецептами
+// =============================================================================
+
+// SearchRecipesRequest parameters for recipe catalog search.
+message SearchRecipesRequest {
+  string query = 1;
+  AuthorType author_type = 2;
+  ContentVisibility visibility = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+// SearchRecipesResponse contains matching recipes and next page token.
+message SearchRecipesResponse {
+  repeated RecipeProto recipes = 1;
+  string next_page_token = 2;
+  int64 total_count = 3;
+}
+
+// GetRecipeRequest by ID.
+message GetRecipeRequest {
+  string recipe_id = 1;
+}
+
+// GetRecipeResponse returns the requested recipe.
+message GetRecipeResponse {
+  RecipeProto recipe = 1;
+}
+
+// CreateRecipeRequest contains initial recipe data.
+message CreateRecipeRequest {
+  string title = 1;
+  string description = 2;
+  string instructions = 3;
+  ContentVisibility visibility = 4;
+  int32 servings_count = 5;
+  repeated RecipeIngredientProto ingredients = 6;
+}
+
+// CreateRecipeResponse returns the newly created recipe.
+message CreateRecipeResponse {
+  RecipeProto recipe = 1;
+}
+
+// UpdateRecipeRequest contains updated recipe fields.
+message UpdateRecipeRequest {
+  string recipe_id = 1;
+  string title = 2;
+  string description = 3;
+  string instructions = 4;
+  ContentVisibility visibility = 5;
+  int32 servings_count = 6;
+  repeated RecipeIngredientProto ingredients = 7;
+}
+
+// UpdateRecipeResponse returns the updated recipe.
+message UpdateRecipeResponse {
+  RecipeProto recipe = 1;
+}
+
+// DeleteRecipeRequest by ID.
+message DeleteRecipeRequest {
+  string recipe_id = 1;
+}
+
+// DeleteRecipeResponse acknowledges deletion.
+message DeleteRecipeResponse {
+  bool success = 1;
+}
+
+// ForkRecipeRequest forks an existing recipe into user's own collection.
+message ForkRecipeRequest {
+  string source_recipe_id = 1;
+  string new_title = 2;
+}
+
+// ForkRecipeResponse returns the newly created forked recipe.
+message ForkRecipeResponse {
+  RecipeProto recipe = 1;
+}
+
+// PublishRecipeRequest changes visibility of a recipe.
+message PublishRecipeRequest {
+  string recipe_id = 1;
+  ContentVisibility visibility = 2;
+}
+
+// PublishRecipeResponse returns the published recipe.
+message PublishRecipeResponse {
+  RecipeProto recipe = 1;
+}
+
+// =============================================================================
+// Request & Response Messages: Управление планами питания (меню)
+// =============================================================================
+
+// SearchMealPlansRequest parameters for meal plan search.
+message SearchMealPlansRequest {
+  string query = 1;
+  AuthorType author_type = 2;
+  ContentVisibility visibility = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+// SearchMealPlansResponse contains matching meal plans and pagination.
+message SearchMealPlansResponse {
+  repeated MealPlanTemplateProto meal_plans = 1;
+  string next_page_token = 2;
+  int64 total_count = 3;
+}
+
+// GetMealPlanRequest by ID.
+message GetMealPlanRequest {
+  string plan_id = 1;
+}
+
+// GetMealPlanResponse returns the requested meal plan template.
+message GetMealPlanResponse {
+  MealPlanTemplateProto meal_plan = 1;
+}
+
+// CreateMealPlanRequest contains initial meal plan template data.
+message CreateMealPlanRequest {
+  string title = 1;
+  string description = 2;
+  int32 duration_days = 3;
+  ContentVisibility visibility = 4;
+  AccessMode access_mode = 5;
+  int64 price_amount_minor = 6;
+  string currency = 7;
+  repeated MealPlanItemProto items = 8;
+}
+
+// CreateMealPlanResponse returns the newly created meal plan template.
+message CreateMealPlanResponse {
+  MealPlanTemplateProto meal_plan = 1;
+}
+
+// UpdateMealPlanRequest contains updated meal plan template fields.
+message UpdateMealPlanRequest {
+  string plan_id = 1;
+  string title = 2;
+  string description = 3;
+  int32 duration_days = 4;
+  ContentVisibility visibility = 5;
+  AccessMode access_mode = 6;
+  int64 price_amount_minor = 7;
+  string currency = 8;
+  repeated MealPlanItemProto items = 9;
+}
+
+// UpdateMealPlanResponse returns the updated meal plan template.
+message UpdateMealPlanResponse {
+  MealPlanTemplateProto meal_plan = 1;
+}
+
+// DeleteMealPlanRequest by ID.
+message DeleteMealPlanRequest {
+  string plan_id = 1;
+}
+
+// DeleteMealPlanResponse acknowledges deletion.
+message DeleteMealPlanResponse {
+  bool success = 1;
+}
+
+// =============================================================================
+// Request & Response Messages: Тренерский доступ и Entitlements
+// =============================================================================
+
+// InviteStudentRequest sends invitation from coach to student.
+message InviteStudentRequest {
+  string student_id = 1;
+  bool can_view_diary = 2;
+}
+
+// InviteStudentResponse returns the created link status.
+message InviteStudentResponse {
+  CoachStudentLinkProto link = 1;
+}
+
+// RespondCoachInviteRequest responds to a pending coach invitation.
+message RespondCoachInviteRequest {
+  string link_id = 1;
+  bool accept = 2;
+}
+
+// RespondCoachInviteResponse returns the updated link status.
+message RespondCoachInviteResponse {
+  CoachStudentLinkProto link = 1;
+}
+
+// ListCoachLinksRequest lists partnerships for coach or student.
+message ListCoachLinksRequest {
+  CoachLinkStatus status_filter = 1;
+}
+
+// ListCoachLinksResponse returns all matching coach-student links.
+message ListCoachLinksResponse {
+  repeated CoachStudentLinkProto links = 1;
+}
+
+// GrantAccessRequest grants access to a recipe or plan to a target user.
+message GrantAccessRequest {
+  string user_id = 1;
+  string target_type = 2;
+  string target_id = 3;
+  GrantSource grant_source = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+// GrantAccessResponse returns the granted access record.
+message GrantAccessResponse {
+  AccessGrantProto grant = 1;
+}
+
+// RevokeAccessRequest revokes a previously granted access.
+message RevokeAccessRequest {
+  string grant_id = 1;
+}
+
+// RevokeAccessResponse acknowledges revocation.
+message RevokeAccessResponse {
+  bool success = 1;
+}
+
+// CheckCoachAccessRequest checks if coach can access student's diary or resource.
+message CheckCoachAccessRequest {
+  string coach_id = 1;
+  string student_id = 2;
+}
+
+// CheckCoachAccessResponse returns access decision.
+message CheckCoachAccessResponse {
+  bool has_access = 1;
+  bool can_view_diary = 2;
 }
