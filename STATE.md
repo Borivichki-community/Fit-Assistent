@@ -5,6 +5,48 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 / T-076 — Бизнес-логика каталога рецептов, форков, меню тренера, Entitlements и gRPC-эндпоинтов в :backend:recipe-ai-service (2026-11-24)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(recipe): T-076 implement recipe catalog, fork, meal plan and entitlements access services`.
+- **Реализованные сервисы и репозитории:**
+  - `KeysetPagination`, `RecipeSearchRepository`, `MealPlanSearchRepository`:
+    - Высокопроизводительная Keyset-пагинация без `OFFSET` по составному ключу `(title, id)` с декодированием/кодированием Base64 курсора.
+    - Фильтрация с учетом видимости и прав доступа: публичные сущности + авторские сущности текущего пользователя + выданные доступы через `AccessGrant`.
+  - `RecipeCatalogService`:
+    - Keyset-поиск, получение, создание, обновление, удаление рецептов.
+    - Серверный расчет пищевой ценности на 100 г при создании и обновлении с каскадным пересчетом ингредиентов (`BigDecimal.HALF_UP`, нулевая безопасность).
+    - `forkRecipe`: глубокое копирование ингредиентов, привязка `origin_recipe_id`, выставление `author_type = USER / COACH`, `author_id = currentUserId`, `visibility = PRIVATE`.
+    - Проверка прав на запись (только автор или `ROLE_ADMIN`).
+    - Публикация рецепта (`publishRecipe`) с обновлением видимости.
+  - `MealPlanService`:
+    - Keyset-поиск и сохранение планов питания с расчетом суточных средних КБЖУ.
+    - Проверка прав (Entitlements): список блюд (`items`) отдается, если план `FREE && PUBLIC`, пользователь является автором плана, либо имеет активный (не истекший) `AccessGrant`. Иначе отдается превью без блюд (`canViewItems = false`).
+    - Расчет региональной стоимости блюд через `CatalogClient.getAveragePrices` строго вне `@Transactional`.
+  - `CoachingAccessService`:
+    - Приглашение учеников (`inviteStudent`), подтверждение инвайтов (`respondCoachInvite`), получение списков связей тренера и подопечного (`listCoachLinks`).
+    - Выдача и отзыв доступов (`grantAccess`, `revokeAccess`), проверка прав тренера на просмотр дневника (`checkCoachAccess`).
+  - `AuthContext` & `RecipeIdentityInterceptor`:
+    - Извлечение `userId` и ролей из gRPC Metadata `x-user-id` и `x-roles`, проброс контекста в корутины.
+  - `RedisMenuStore`:
+    - Кэширование публичных рецептов (`readCachedRecipe`, `writeCachedRecipe`, `evictCachedRecipe`) через Base64-сериализацию Protobuf без проблем совместимости.
+  - `RecipeGrpcService`:
+    - Реализация всех 18 RPC-методов `RecipeAiServiceCoroutineImplBase` с выполнением в `withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(logging))`.
+    - Инвалидация кэша в Redis при обновлении, удалении и публикации рецептов.
+    - Маппинг исключений в стандартные gRPC Status (`PERMISSION_DENIED`, `NOT_FOUND`, `INVALID_ARGUMENT`, `INTERNAL`).
+- **Интеграционное тестирование и верификация:**
+  - `RecipeCatalogGrpcIntegrationTest` (PostgreSQL 17 + Redis 7 Testcontainers):
+    - Поиск рецептов с keyset-пагинацией.
+    - Создание рецепта и автоматический расчет пищевой ценности на 100 г.
+    - Форк системного рецепта с изоляцией от оригинала и возможностью независимой модификации.
+    - Публикация рецепта владельцем и проверка доступности для других пользователей.
+  - `CoachingAccessIntegrationTest` (PostgreSQL 17 + Redis 7 Testcontainers):
+    - Полный цикл связи тренер-ученик (инвайт, принятие, проверка прав на просмотр дневника).
+    - Защита платного плана питания: отказ в доступе к блюдам до выдачи гранта, открытие полного доступа после выдачи `AccessGrant`.
+  - Результаты:
+    - `:backend:recipe-ai-service:check` — **BUILD SUCCESSFUL** (все 22 теста пройдены, 0 сбоев).
+    - `ktlintCheck` — **BUILD SUCCESSFUL** (0 ошибок стиля кода).
+
 ### KAN-16 / T-075 — Расширение Protobuf-контракта recipe.proto каталогом рецептов, меню и правами тренера (2026-11-24)
 
 - **Активные Skills:** `contracts-proto-and-avro`, `testing-and-verification`. Роль: `implementer`.
