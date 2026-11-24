@@ -24,6 +24,9 @@ import kotlin.uuid.Uuid
 class UnifiedGrpcClientInterceptor(
     private val tokenProvider: AuthTokenProvider? = null,
     private val traceContextHolder: TraceContextHolder? = null,
+    private val userIdProvider: (() -> String?)? = null,
+    private val idempotencyKeyProvider: (() -> String?)? = null,
+    private val devBypass: Boolean = false,
 ) : ClientInterceptor {
 
     override fun <ReqT, RespT> interceptCall(
@@ -46,12 +49,26 @@ class UnifiedGrpcClientInterceptor(
                 headers.put(TRACEPARENT_METADATA_KEY, traceparent)
 
                 // 3. Idempotency-Key
+                val optionKey = callOptions.getOption(IDEMPOTENCY_KEY_CALL_OPTION)
                 val contextKey = IDEMPOTENCY_KEY_CTX.get()
-                if (!contextKey.isNullOrBlank()) {
-                    headers.put(IDEMPOTENCY_METADATA_KEY, contextKey)
+                val providedKey = idempotencyKeyProvider?.invoke()
+                val idempotencyKey = optionKey ?: contextKey ?: providedKey
+                if (!idempotencyKey.isNullOrBlank()) {
+                    headers.put(IDEMPOTENCY_METADATA_KEY, idempotencyKey)
                 } else if (isMutatingMethod(method.fullMethodName)) {
                     val generated = generateUuid()
                     headers.put(IDEMPOTENCY_METADATA_KEY, generated)
+                }
+
+                // 4. User ID (in development or when provided)
+                val userId = userIdProvider?.invoke()
+                if (!userId.isNullOrBlank()) {
+                    headers.put(USER_ID_METADATA_KEY, userId)
+                }
+
+                // 5. Dev bypass (for direct service-to-service testing)
+                if (devBypass) {
+                    headers.put(DEV_BYPASS_METADATA_KEY, "true")
                 }
 
                 super.start(responseListener, headers)
@@ -97,6 +114,15 @@ class UnifiedGrpcClientInterceptor(
         val IDEMPOTENCY_METADATA_KEY: Metadata.Key<String> =
             Metadata.Key.of("idempotency-key", Metadata.ASCII_STRING_MARSHALLER)
 
+        val USER_ID_METADATA_KEY: Metadata.Key<String> =
+            Metadata.Key.of("x-user-id", Metadata.ASCII_STRING_MARSHALLER)
+
+        val DEV_BYPASS_METADATA_KEY: Metadata.Key<String> =
+            Metadata.Key.of("x-dev-bypass", Metadata.ASCII_STRING_MARSHALLER)
+
         val IDEMPOTENCY_KEY_CTX: Context.Key<String> = Context.key("idempotency-key")
+
+        val IDEMPOTENCY_KEY_CALL_OPTION: CallOptions.Key<String> =
+            CallOptions.Key.create<String>("idempotency-key")
     }
 }

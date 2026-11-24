@@ -25,8 +25,16 @@ class AndroidDiaryGrpcServiceClient(
     private val channel: Channel,
 ) : DiaryGrpcServiceClient {
 
-    override suspend fun addEntry(request: AddEntryRequest): AddEntryResponse {
-        return channel.unaryCall(addEntryMethod, request)
+    override suspend fun addEntry(request: AddEntryRequest, idempotencyKey: String?): AddEntryResponse {
+        val options = if (!idempotencyKey.isNullOrBlank()) {
+            io.grpc.CallOptions.DEFAULT.withOption(
+                dev.andre.nutritionist.data.remote.grpc.interceptors.UnifiedGrpcClientInterceptor.IDEMPOTENCY_KEY_CALL_OPTION,
+                idempotencyKey,
+            )
+        } else {
+            io.grpc.CallOptions.DEFAULT
+        }
+        return channel.unaryCall(addEntryMethod, request, options)
     }
 
     override suspend fun getDailyEntries(request: GetDailyEntriesRequest): GetDailyEntriesResponse {

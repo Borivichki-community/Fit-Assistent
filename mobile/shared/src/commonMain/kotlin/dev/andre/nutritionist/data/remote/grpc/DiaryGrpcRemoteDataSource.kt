@@ -14,7 +14,7 @@ import dev.andre.nutritionist.domain.model.MealRecord
 import kotlinx.coroutines.withContext
 
 interface DiaryGrpcServiceClient {
-    suspend fun addEntry(request: AddEntryRequest): AddEntryResponse
+    suspend fun addEntry(request: AddEntryRequest, idempotencyKey: String? = null): AddEntryResponse
     suspend fun getDailyEntries(request: GetDailyEntriesRequest): GetDailyEntriesResponse
     suspend fun deleteMeal(request: DeleteMealRequest): DeleteMealResponse
 }
@@ -28,7 +28,7 @@ class DiaryGrpcRemoteDataSource(
         withContext(dispatchers.io) {
             runCatching {
                 val request = record.toAddEntryRequest()
-                val response = client.addEntry(request)
+                val response = client.addEntry(request, record.idempotencyKey.raw)
                 response.entry.toDomain()
             }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
         }

@@ -26,11 +26,16 @@ import org.junit.Before
 import org.junit.Test
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.UUID
 
 class RemoteDataSourcesIntegrationTest {
 
     private val dispatchers = DefaultCoroutineDispatchers()
-    private val interceptor = UnifiedGrpcClientInterceptor()
+    private val testUserId = "11111111-1111-1111-1111-111111111111"
+    private val interceptor = UnifiedGrpcClientInterceptor(
+        userIdProvider = { testUserId },
+        devBypass = true,
+    )
 
     private var catalogChannel: ManagedChannel? = null
     private var diaryChannel: ManagedChannel? = null
@@ -123,7 +128,7 @@ class RemoteDataSourcesIntegrationTest {
         }
 
         val record = MealRecord(
-            id = MealRecordId("entry-test-${System.currentTimeMillis()}"),
+            id = MealRecordId(UUID.randomUUID().toString()),
             mealType = MealType.DINNER,
             recordedAt = Instant.fromEpochMilliseconds(System.currentTimeMillis()),
             sourceType = EntrySourceType.PRODUCT,
