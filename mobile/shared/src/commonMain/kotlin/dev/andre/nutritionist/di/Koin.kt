@@ -23,12 +23,32 @@ val domainModule: Module = module {
 val localDataModule: Module = module {
     single<AppDatabase> { get<DatabaseBuilder<AppDatabase>>().build() }
     single<ProfileDao> { get<AppDatabase>().profileDao() }
+    single<dev.andre.nutritionist.data.local.dao.MealRecordDao> { get<AppDatabase>().mealRecordDao() }
 }
 
 val dataModule: Module = module {
     single<ProfileRepository> {
         ProfileRepositoryImpl(
             dao = get(),
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<dev.andre.nutritionist.domain.repository.DiaryRepository> {
+        dev.andre.nutritionist.data.repository.DiaryRepositoryImpl(
+            dao = get(),
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<dev.andre.nutritionist.domain.repository.CatalogRepository> {
+        dev.andre.nutritionist.data.repository.CatalogRepositoryImpl(
+            remoteDataSource = get(),
+            dispatchers = get(),
+        )
+    }
+    single<dev.andre.nutritionist.domain.repository.RecipeRepository> {
+        dev.andre.nutritionist.data.repository.RecipeRepositoryImpl(
             remoteDataSource = get(),
             dispatchers = get(),
         )
