@@ -5,6 +5,25 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 — Доступ тренера к дневнику ученика в :backend:diary-service (Fail-Closed + Redis Cache) (2026-11-24)
+
+- **Активные Skills:** `contracts-proto-and-avro`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `feat(diary): implement coach student diary access verification with fail-closed redis cache`.
+- **Protobuf-контракт (`proto/nutritionist/diary/v1/diary.proto`):**
+  - В `GetDailyEntriesRequest` и `GetRangeRequest` добавлено обратно совместимое поле `optional string target_user_id = 10;`.
+  - Мутирующие запросы (`AddEntryRequest`, `DeleteMealRequest`) оставлены строго owner-only.
+- **gRPC-клиент и Resilience4j (`:backend:diary-service`):**
+  - `DiaryClientProperties` & `DiaryClientConfiguration`: конфигурация `diary.clients.recipe.*` (`localhost:9194`, K8s `recipe-ai-service.budget-nutritionist.svc.cluster.local:9194`, deadline `2s`), канал `recipeServiceChannel` и CircuitBreaker `diary-recipe-access`.
+  - `RecipeAccessClient`: вызов `CheckCoachAccess` с прокидыванием `x-user-id`, `x-user-roles`, `x-dev-bypass` и W3C `traceparent`; строгая политика Fail-Closed (`Status.UNAVAILABLE` при сбое сети / таймауте / открытом CircuitBreaker).
+- **Кэширование прав доступа и безопасность (`CoachAccessCacheService`, `DiaryAuthContext`, `DiaryGrpcService`):**
+  - `CoachAccessCacheService`: Redis-ключ `diary:coach_access:{coachId}:{studentId}` (`"1"` / `"0"`, TTL `60s`), прозрачная деградация на gRPC-клиент при недоступности Redis и проброс `Status.UNAVAILABLE` без записи в кэш при сбое `recipe-ai-service`.
+  - `DiaryRequestContextInterceptor` & `DiaryAuthContext`: разбор `x-user-roles`, сохранение `DiaryAuthContext` в gRPC `Context`, обход проверки только для `ROLE_ADMIN` / `ROLE_SERVICE`.
+  - `DiaryGrpcService`: проверка прав тренера выполняется в gRPC-слое (`withContext(dispatchers.io + GrpcContextElement.current() + MDCContext(...))`) строго ДО входа в `@Transactional(readOnly = true)` методы `DiaryService`.
+- **Интеграционное тестирование и верификация:**
+  - `CoachStudentDiaryAccessIntegrationTest` & `CoachAccessOutageIntegrationTest` (Testcontainers PostgreSQL 17 + Redis 7, локальный Fake `RecipeAiService` без MockK): чтение своего дневника без вызова gRPC, отказ `PERMISSION_DENIED` без связи и при `can_view_diary = false`, успешное чтение тренером с кэшированием в Redis (`TTL <= 60s`), Fail-Closed `Status.UNAVAILABLE` при отказе `recipe-ai-service` и переходе CircuitBreaker в `OPEN`, прозрачный fallback на gRPC при падении Redis, owner-only изоляция мутаций.
+  - `:backend:diary-service:test` (73 теста) и `:backend:diary-service:ktlintCheck` — **BUILD SUCCESSFUL**.
+  - `:backend:recipe-ai-service:compileKotlin` и `:mobile:androidApp:compileDebugKotlin` — **BUILD SUCCESSFUL**.
+
 ### KAN-16 / T-078 — Мобильный Data-слой: Room KMP v3, gRPC клиенты и offline-first репозитории в :mobile:shared (2026-11-24)
 
 - **Активные Skills:** `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

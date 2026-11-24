@@ -20,3 +20,5 @@ data:
   SCHEMA_REGISTRY_URL: "http://schema-registry.budget-nutritionist.svc.cluster.local:8081"
   SPRING_DATA_REDIS_HOST: "redis-state.budget-nutritionist.svc.cluster.local"
   SPRING_DATA_REDIS_PORT: "6379"
+  DIARY_RECIPE_ADDRESS: "recipe-ai-service.budget-nutritionist.svc.cluster.local:9194"
+  DIARY_RECIPE_PLAINTEXT: "true"

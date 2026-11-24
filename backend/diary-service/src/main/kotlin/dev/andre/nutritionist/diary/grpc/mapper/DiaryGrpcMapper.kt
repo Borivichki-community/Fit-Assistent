@@ -3,7 +3,6 @@ package dev.andre.nutritionist.diary.grpc.mapper
 import com.budgetntr.proto.diary.v1.AddEntryRequest
 import com.budgetntr.proto.diary.v1.DiaryEntryItem
 import com.budgetntr.proto.diary.v1.DiaryEntryProto
-import com.budgetntr.proto.diary.v1.EntrySourceType as EntrySourceTypeProto
 import com.google.protobuf.Timestamp
 import dev.andre.nutritionist.diary.domain.model.AddEntryCommand
 import dev.andre.nutritionist.diary.domain.model.CostSnapshot
@@ -23,6 +22,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Instant
 import com.budgetntr.proto.diary.v1.CostSnapshot as CostSnapshotProto
+import com.budgetntr.proto.diary.v1.EntrySourceType as EntrySourceTypeProto
 import com.budgetntr.proto.diary.v1.MealNutritionSummary as MealNutritionSummaryProto
 import com.budgetntr.proto.diary.v1.Money as MoneyProto
 import com.budgetntr.proto.diary.v1.NutritionSummary as NutritionSummaryProto
