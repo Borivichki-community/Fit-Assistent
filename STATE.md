@@ -5,6 +5,30 @@
 
 Обновлено: 2026-11-24
 
+### KAN-16 / T-074 — Подключение PostgreSQL recipe_db, Liquibase миграции и JPA персистентность в :backend:recipe-ai-service (2026-11-24)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роль: `implementer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`, коммит: `70f5490` (`feat(recipe): T-074 add PostgreSQL recipe_db, Liquibase migrations, system recipes seed and JPA persistence`).
+- **Инфраструктура и конфигурация базы данных:**
+  - `infrastructure/init-db.sql`: добавлено создание базы `CREATE DATABASE recipe_db;`.
+  - `infrastructure/k8s/infra/01-postgres.yaml`: добавлено создание `recipe_db` и выдача прав в `01-init.sql`.
+  - `infrastructure/k8s/apps/recipe-ai-service/configmap.yaml`: добавлены переменные `RECIPE_DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
+  - `backend/recipe-ai-service/build.gradle.kts`: подключены плагины `kotlinJpa`, `allOpen` для сущностей и зависимости `libs.spring.starter.jpa`, `libs.postgresql.jdbc`, `libs.spring.starter.liquibase`, `libs.testcontainers.postgresql`.
+  - `backend/recipe-ai-service/src/main/resources/application.yml`: настроен `datasource` (Hikari `RecipeAiServiceHikariPool`, max-pool-size: 10), `jpa` (`open-in-view: false`, `ddl-auto: "none"`), `liquibase` (`db.changelog-master.xml`), `management.endpoint.health.group.readiness.include` обновлен (`readinessState,redis,db`).
+- **Liquibase миграции:**
+  - `001-init-recipe-schema.xml`: расширение `pg_trgm`, таблицы `recipes`, `recipe_ingredients`, `meal_plans`, `meal_plan_items`, `coach_student_links`, `access_grants`, триграммный GIN-индекс на `recipes(title)`, внешние ключи с каскадным удалением и составные индексы.
+  - `002-seed-system-recipes.xml`: сидирование 15 системных рецептов (`author_type='SYSTEM'`, `visibility='PUBLIC'`) с реальными ID продуктов из `initial_products.csv`.
+- **JPA сущности и Spring Data JPA репозитории:**
+  - Сущности: `RecipeEntity` (LAZY, `@Version`, каскадное управление ингредиентами), `RecipeIngredientEntity`, `MealPlanEntity` (LAZY, `@Version`), `MealPlanItemEntity`, `CoachStudentLinkEntity`, `AccessGrantEntity`. Все связи строго `FetchType.LAZY`, equals/hashCode по `id`.
+  - Репозитории: `RecipeRepository` (`findWithIngredientsById`, `findByAuthorId`, `findByVisibility`, `findByAuthorType`), `RecipeIngredientRepository`, `MealPlanRepository` (`findWithItemsById`, `findByAuthorId`), `MealPlanItemRepository`, `CoachStudentLinkRepository`, `AccessGrantRepository`.
+- **Верификация и тестирование:**
+  - Создан базовый класс `AbstractPostgresIntegrationTest` с запуском PostgreSQL 17 alpine и Redis 7 Testcontainers.
+  - Написан полный интеграционный тест `RecipePersistenceIntegrationTest` (проверка сидирования 15 рецептов, каскадного удаления ингредиентов, инкремента `@Version` при оптимистической блокировке, связей coach-student и прав доступа access_grants).
+  - Успешно пройдены проверки:
+    - `:backend:recipe-ai-service:test` — 16 тестов (100% GREEN, 0 skipped, 0 failed).
+    - `:backend:recipe-ai-service:ktlintCheck` — успешно без замечаний.
+
+
 ### KAN-84 — Реализация KMP Domain и Data слоёв в :mobile:shared [T-066 — T-069] + Live E2E (2026-11-24)
 
 - **Активные Skills:** `kmp-shared-feature`, `spring-grpc-service`, `contracts-proto-and-avro`, `testing-and-verification`. Роль: `implementer`.
