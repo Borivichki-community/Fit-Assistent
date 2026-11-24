@@ -109,7 +109,7 @@ internal class ServiceCheckClient(
     suspend fun searchProducts(port: Int): String {
         currentUser()
         return withChannel(port, authenticated = true) { channel ->
-            val request = SearchProductsRequest.newBuilder().setPageSize(10).setCurrency("RUB").build()
+            val request = SearchProductsRequest.newBuilder().setPageSize(10).build()
             val response = CatalogServiceCoroutineStub(channel)
                 .withDeadlineAfter(RPC_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .searchProducts(request)

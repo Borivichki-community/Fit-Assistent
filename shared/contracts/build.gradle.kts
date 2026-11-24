@@ -164,3 +164,11 @@ tasks.register<TestSchemaCompatibilityTask>("testSchemaCompatibility") {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
+
+tasks.named("compileTestKotlin") {
+    dependsOn("generateTestAvroJava")
+}
+
+tasks.matching { it.name.startsWith("runKtlintCheckOverTest") }.configureEach {
+    dependsOn("generateTestAvroJava")
+}

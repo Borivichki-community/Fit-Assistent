@@ -2,6 +2,8 @@ rootProject.name = "FitAssistent"
 
 pluginManagement {
     repositories {
+        gradlePluginPortal()
+        mavenCentral()
         google {
             mavenContent {
                 includeGroupAndSubgroups("androidx")
@@ -9,8 +11,6 @@ pluginManagement {
                 includeGroupAndSubgroups("com.google")
             }
         }
-        mavenCentral()
-        gradlePluginPortal()
     }
 }
 
