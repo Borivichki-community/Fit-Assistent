@@ -38,9 +38,11 @@ fun SettingsActionRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     iconTint: Color = MaterialTheme.colorScheme.onSurface,
+    iconContainerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     textColor: Color = MaterialTheme.colorScheme.onSurface,
     enabled: Boolean = true,
     showChevron: Boolean = true,
+    trailingBadge: (@Composable () -> Unit)? = null,
 ) {
     val extendedColors = FitThemeTokens.colors
     val iconShape = RoundedCornerShape(12.dp)
@@ -57,7 +59,7 @@ fun SettingsActionRow(
             modifier = Modifier
                 .size(38.dp)
                 .clip(iconShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .background(iconContainerColor)
                 .border(1.dp, extendedColors.glassBorderLevel1, iconShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -89,6 +91,10 @@ fun SettingsActionRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+
+        if (trailingBadge != null) {
+            trailingBadge()
         }
 
         if (showChevron) {

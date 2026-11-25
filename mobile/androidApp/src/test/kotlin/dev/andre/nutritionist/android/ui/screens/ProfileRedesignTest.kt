@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -53,7 +54,10 @@ class ProfileRedesignTest {
         }
 
         composeTestRule.onNodeWithText(context.getString(R.string.profile_eyebrow)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.profile_title)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(context.getString(R.string.profile_title)).onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.nav_diary)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.nav_recipes)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.nav_statistics)).assertIsDisplayed()
         composeTestRule.onNodeWithText("FitApp").assertDoesNotExist()
 
         composeTestRule.onAllNodesWithContentDescription(context.getString(R.string.profile_menu_notifications))
@@ -127,11 +131,19 @@ class ProfileRedesignTest {
             }
         }
 
-        composeTestRule.onNodeWithText(context.getString(R.string.profile_health_params)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.profile_health_params))
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("65 ${context.getString(R.string.profile_unit_kg)}")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Умеренная").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("3–5 тренировок / нед").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Похудение").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.profile_per_day_format, "500 ₽"))
             .performScrollTo()
             .assertIsDisplayed()
-        composeTestRule.onNodeWithText("3 500 ₽").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("~3 500 ₽ в неделю").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.profile_target_weight_format, "62 кг"))
             .performScrollTo()
             .assertIsDisplayed()
@@ -143,6 +155,14 @@ class ProfileRedesignTest {
         composeTestRule.onNodeWithText("140 г").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("70 г").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("250 г").performScrollTo().assertIsDisplayed()
+
+        composeTestRule.onNodeWithText(context.getString(R.string.profile_menu_meal_plan))
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Похудение • 2 200 ккал").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.profile_notifications_on))
+            .performScrollTo()
+            .assertIsDisplayed()
 
         // Запрещённые фейковые заглушки из референса / KAN-75 не должны присутствовать
         listOf(
@@ -185,9 +205,13 @@ class ProfileRedesignTest {
         userRole = userRole,
         heightLabel = "172 см",
         weightLabel = "65.0 кг",
+        weightValueLabel = "65",
         genderLabel = "Женский",
         activityLabel = "Умеренная активность",
+        activityShortLabel = "Умеренная",
+        activitySubtitle = "3–5 тренировок / нед",
         goalLabel = "Снижение веса",
+        goalShortLabel = "Похудение",
         caloriesGoalLabel = "2200 ккал",
         proteinsGoalLabel = "140 г",
         fatsGoalLabel = "70 г",
@@ -195,11 +219,14 @@ class ProfileRedesignTest {
         weightGoalLabel = "62 кг",
         weeklyBudgetLabel = "3500 ₽ / нед.",
         dailyBudgetLabel = "500 ₽",
+        dailyBudgetValueLabel = "500",
         weeklyBudgetFormattedLabel = "3 500 ₽",
+        weeklyBudgetApproxLabel = "~3 500 ₽ в неделю",
         caloriesGoalFormatted = "2 200 ккал",
         proteinsGoalFormatted = "140 г",
         fatsGoalFormatted = "70 г",
         carbsGoalFormatted = "250 г",
+        planSummaryLabel = "Похудение • 2 200 ккал",
         rawWeightKg = 65.0,
         rawActivityLevel = ActivityLevel.MODERATE,
         rawGoalType = GoalType.LOSE_WEIGHT,

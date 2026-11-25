@@ -897,4 +897,115 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка веса / стрелка вниз с уровнем */
+    val WeightScale: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitWeightScale",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(12f, 3f)
+                lineTo(12f, 21f)
+                moveTo(12f, 21f)
+                lineTo(9f, 18f)
+                moveTo(12f, 21f)
+                lineTo(15f, 18f)
+                moveTo(3f, 12f)
+                lineTo(21f, 12f)
+            }
+        }.build()
+    }
+
+    /** Иконка молнии (активность) */
+    val Lightning: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitLightning",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(13f, 2f)
+                lineTo(3f, 14f)
+                lineTo(12f, 14f)
+                lineTo(11f, 22f)
+                lineTo(21f, 10f)
+                lineTo(12f, 10f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка мишени (цель) */
+    val Target: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitTarget",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(22f, 12f)
+                arcTo(10f, 10f, 0f, isMoreThanHalf = true, isPositiveArc = true, 2f, 12f)
+                arcTo(10f, 10f, 0f, isMoreThanHalf = true, isPositiveArc = true, 22f, 12f)
+                close()
+                moveTo(16f, 12f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = true, isPositiveArc = true, 8f, 12f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = true, isPositiveArc = true, 16f, 12f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка кошелька (бюджет) */
+    val Wallet: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitWallet",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(20f, 7f)
+                lineTo(4f, 7f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 2f, 9f)
+                lineTo(2f, 19f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 4f, 21f)
+                lineTo(20f, 21f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 22f, 19f)
+                lineTo(22f, 9f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20f, 7f)
+                close()
+                moveTo(16f, 14f)
+                lineTo(18f, 14f)
+            }
+        }.build()
+    }
 }

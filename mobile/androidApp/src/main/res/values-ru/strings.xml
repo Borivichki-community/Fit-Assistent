@@ -12,8 +12,8 @@
     <string name="nav_dashboard">Главная</string>
     <string name="nav_profile">Профиль</string>
     <string name="nav_diary">Дневник</string>
-    <string name="nav_recipes">Блюда</string>
-    <string name="nav_statistics">Статистика</string>
+    <string name="nav_recipes">Рационы</string>
+    <string name="nav_statistics">Аналитика</string>
     <string name="action_menu">Меню</string>
 
     <!-- Главный экран / Дашборд -->
@@ -213,7 +213,11 @@
     <string name="profile_macro_fats">Жиры</string>
     <string name="profile_macro_carbs">Углеводы</string>
     <string name="profile_menu_settings_desc">Аккаунт, интеграции, безопасность</string>
+    <string name="profile_menu_meal_plan">План питания и цели</string>
     <string name="profile_fill_survey_desc">Обновить анкету и параметры тела</string>
-    <string name="profile_menu_notifications_desc">Напоминания о приёмах пищи</string>
-    <string name="profile_menu_help_desc">Частые вопросы и справка</string>
+    <string name="profile_menu_notifications_desc">Напоминания о приёмах пищи и воде</string>
+    <string name="profile_notifications_on">Вкл</string>
+    <string name="profile_menu_help_desc">Частые вопросы, поддержка куратора</string>
+    <string name="profile_unit_kg">кг</string>
+    <string name="profile_per_day_unit">₽ / день</string>
 </resources>

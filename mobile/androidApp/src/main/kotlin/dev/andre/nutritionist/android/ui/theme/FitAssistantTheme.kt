@@ -93,18 +93,33 @@ val LightColorScheme = lightColorScheme(
 data class FitExtendedColors(
     val glassBorderLevel1: Color,
     val glassBorderLevel2: Color,
+    val emeraldAccent: Color,
+    val infoAccent: Color,
+    val activityAccent: Color,
+    val budgetAccent: Color,
+    val planAccent: Color,
     val isDark: Boolean,
 )
 
 private val DarkExtendedColors = FitExtendedColors(
     glassBorderLevel1 = GlassBorderLevel1,
     glassBorderLevel2 = GlassBorderLevel2,
+    emeraldAccent = PrimaryContainerDark,
+    infoAccent = InfoAccentDark,
+    activityAccent = ActivityAccentDark,
+    budgetAccent = BudgetAccentDark,
+    planAccent = PlanAccentDark,
     isDark = true,
 )
 
 private val LightExtendedColors = FitExtendedColors(
     glassBorderLevel1 = GlassBorderLevel1Light,
     glassBorderLevel2 = GlassBorderLevel2Light,
+    emeraldAccent = PrimaryLight,
+    infoAccent = InfoAccentLight,
+    activityAccent = ActivityAccentLight,
+    budgetAccent = BudgetAccentLight,
+    planAccent = PlanAccentLight,
     isDark = false,
 )
 

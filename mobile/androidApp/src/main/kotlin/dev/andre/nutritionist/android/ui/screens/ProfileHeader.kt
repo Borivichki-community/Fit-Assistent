@@ -54,7 +54,7 @@ fun ProfileHeader(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(extendedColors.emeraldAccent),
                 )
                 Text(
                     text = stringResource(R.string.profile_eyebrow),
@@ -62,7 +62,7 @@ fun ProfileHeader(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp,
                     ),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = extendedColors.emeraldAccent,
                 )
             }
             Text(
@@ -87,6 +87,14 @@ fun ProfileHeader(
                     contentDescription = stringResource(R.string.profile_menu_notifications),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 9.dp, end = 9.dp)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(extendedColors.emeraldAccent),
                 )
             }
         }

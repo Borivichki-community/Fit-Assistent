@@ -386,4 +386,39 @@ class AuthRepositoryImplTest {
 
         assertEquals("alex@example.com", repository.getUserEmail())
     }
+
+    @Test
+    fun `getUserRole extracts ROLE_COACH from access token realm_access claims when not explicitly persisted`() = runTest {
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+
+        val payloadJson = """{"sub":"coach-42","realm_access":{"roles":["ROLE_USER","ROLE_COACH"]}}"""
+        val encodedPayload = android.util.Base64.encodeToString(
+            payloadJson.toByteArray(Charsets.UTF_8),
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING,
+        )
+        val mockAccessToken = "eyJhbGciOiJub25lIn0.$encodedPayload."
+
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken(mockAccessToken)
+            .setTokenType("Bearer")
+            .build()
+
+        repository.processAuthResponse(validIntent)
+
+        assertEquals(UserRole.COACH, repository.getUserRole())
+    }
 }

@@ -32,7 +32,7 @@ fun FitBottomNavigationBar(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.medium, vertical = Spacing.small),
+            .padding(horizontal = Spacing.medium, vertical = Spacing.extraSmall),
         shape = RoundedCornerShape(Spacing.buttonRadius),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, extendedColors.glassBorderLevel2),
@@ -41,7 +41,7 @@ fun FitBottomNavigationBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = Spacing.small, horizontal = Spacing.small),
+                .padding(vertical = Spacing.extraSmall, horizontal = Spacing.small),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically,
         ) {

@@ -88,7 +88,12 @@ class AuthRepositoryImpl(
         return extractClaimFromJwt(token, "email")
     }
 
-    override fun getUserRole(): UserRole? = currentUserRole
+    override fun getUserRole(): UserRole? {
+        currentUserRole?.let { return it }
+        if (!currentAuthState.isAuthorized) return null
+        val roles = extractRealmRoles()
+        return if (roles.contains(ROLE_COACH)) UserRole.COACH else null
+    }
 
     override suspend fun setUserRole(role: UserRole): Unit = withContext(dispatchers.io) {
         currentUserRole = role
@@ -158,6 +163,26 @@ class AuthRepositoryImpl(
         }
     }
 
+    private fun extractRealmRoles(): Set<String> {
+        val token = currentAuthState.accessToken ?: currentAuthState.idToken ?: return emptySet()
+        return runCatching {
+            val parts = token.split(".")
+            if (parts.size < 2) return emptySet()
+            val payloadBytes = android.util.Base64.decode(
+                parts[1],
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP,
+            )
+            val json = org.json.JSONObject(String(payloadBytes, Charsets.UTF_8))
+            val rolesArray = json.optJSONObject("realm_access")?.optJSONArray("roles") ?: return emptySet()
+            buildSet {
+                for (i in 0 until rolesArray.length()) {
+                    val role = rolesArray.optString(i)
+                    if (role.isNotBlank()) add(role)
+                }
+            }
+        }.getOrDefault(emptySet())
+    }
+
     private fun extractClaimFromJwt(token: String, claimName: String): String? = runCatching {
         val parts = token.split(".")
         if (parts.size >= 2) {
@@ -172,4 +197,8 @@ class AuthRepositoryImpl(
             null
         }
     }.getOrNull()
+
+    private companion object {
+        const val ROLE_COACH = "ROLE_COACH"
+    }
 }

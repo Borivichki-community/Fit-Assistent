@@ -50,7 +50,8 @@ fun ProfileIdentityCard(
     val extendedColors = FitThemeTokens.colors
     val cardShape = RoundedCornerShape(26.dp)
     val shadowElevation = if (extendedColors.isDark) 0.dp else 4.dp
-    val glowColor = MaterialTheme.colorScheme.primaryContainer.copy(
+    val emeraldAccent = extendedColors.emeraldAccent
+    val glowColor = emeraldAccent.copy(
         alpha = if (extendedColors.isDark) 0.14f else 0.10f,
     )
 
@@ -94,7 +95,7 @@ fun ProfileIdentityCard(
                                 .background(
                                     brush = Brush.linearGradient(
                                         colors = listOf(
-                                            MaterialTheme.colorScheme.primaryContainer,
+                                            emeraldAccent,
                                             MaterialTheme.colorScheme.primary,
                                             MaterialTheme.colorScheme.surfaceContainerHighest,
                                         ),
@@ -123,7 +124,7 @@ fun ProfileIdentityCard(
                                 .size(24.dp)
                                 .align(Alignment.BottomEnd)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+                                .background(emeraldAccent)
                                 .border(2.dp, MaterialTheme.colorScheme.surfaceContainer, CircleShape)
                                 .clickable(onClick = onEditDataClick),
                             contentAlignment = Alignment.Center,
@@ -176,13 +177,13 @@ fun ProfileIdentityCard(
                             Text(
                                 text = stringResource(R.string.profile_edit_data),
                                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = emeraldAccent,
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 imageVector = FitIcons.ChevronRight,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = emeraldAccent,
                                 modifier = Modifier.size(14.dp),
                             )
                         }
@@ -219,7 +220,7 @@ fun ProfileIdentityCard(
                             Icon(
                                 imageVector = FitIcons.Info,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = emeraldAccent,
                                 modifier = Modifier.size(15.dp),
                             )
                         }
@@ -245,8 +246,8 @@ private fun RoleBadge(
     val badgeConfig = when (role) {
         UserRole.CLIENT -> Triple(
             stringResource(R.string.role_badge_client),
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            FitThemeTokens.colors.emeraldAccent,
+            FitThemeTokens.colors.emeraldAccent.copy(alpha = 0.14f),
         )
         UserRole.COACH -> Triple(
             stringResource(R.string.role_badge_coach),

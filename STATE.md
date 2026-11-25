@@ -5,6 +5,27 @@
 
 Обновлено: 2026-11-25
 
+### Полировка экрана Профиля под `fitapp_8`, роль `ROLE_COACH` в Keycloak и пересчёт КБЖУ при редактировании (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Роль `ROLE_COACH` в Keycloak и мобильном Auth-слое:**
+  - В `infrastructure/keycloak/fitassistant-realm.json` и `infrastructure/k8s/infra/03-keycloak.yaml` добавлена realm-роль `ROLE_COACH` (согласована с `DiaryAuthContext.ROLE_COACH` в `diary-service` и `AuthContext.ROLE_COACH` в `recipe-ai-service`).
+  - В `AuthRepositoryImpl` добавлено резервное извлечение `ROLE_COACH` из JWT `realm_access.roles` (без перезаписи явно выбранной роли в `AuthStorage`), добавлен тест в `AuthRepositoryImplTest`.
+- **Блок 2 — Пересчёт цели по КБЖУ при изменении параметров профиля:**
+  - Исправлен баг в `ProfileUpdate.kt`: при `ChangeWeight`, `ChangeActivity` и `ChangeGoal` сбрасывается `nutritionGoal = NutritionGoal.EMPTY`, чтобы `profile-service` (`ProfileService.resolveNutritionGoal` + `NutritionGoalCalculator`) заново рассчитывал суточные калории, БЖУ и целевой вес (при `ChangeBudget` текущая цель КБЖУ сохраняется).
+  - В `ProfileRepositoryImpl.updateProfile` добавлена защита локального кэша Room: при ожидании серверного пересчёта (`targetCalories <= 0`) оптимистичный кэш и offline-fallback сохраняют предыдущую валидную цель КБЖУ, не затирая UI нулями.
+  - Расширены `ProfileUpdateTest` и `ProfileRepositoryImplTest`.
+- **Блок 3 — Визуальное соответствие Профиля референсу `fitapp_8` (Dark & Light темы, без фейковых заглушек):**
+  - В `Color.kt` и `FitAssistantTheme.kt` (`FitExtendedColors`) добавлены адаптивные токены `emeraldAccent`, `infoAccent`, `activityAccent`, `budgetAccent`, `planAccent` для обеих тем.
+  - В `FitIcons.kt` добавлены иконки `WeightScale`, `Lightning`, `Target`, `Wallet`.
+  - В `ProfileUiStateMapper.kt` добавлены чистые поля: `weightValueLabel`, `activityShortLabel`, `activitySubtitle`, `goalShortLabel`, `dailyBudgetValueLabel`, `weeklyBudgetApproxLabel`, `planSummaryLabel`.
+  - Обновлены `ProfileHeader.kt` (изумрудный индикатор на уведомлениях), `ProfileIdentityCard.kt`, `ProfileDailyKbjuCard.kt`, `MetricCard.kt`, `SettingsActionRow.kt` (цветные контейнеры иконок + бейдж `Вкл`), `ProfileSuccessContent.kt` (сетка 2×2 как на макете `fitapp_8`, пункт «План питания и цели» с реальным планом), `ProfileScreen.kt`, `BottomNavItem.kt` и `FitBottomNavigationBar.kt` (подписи вкладок и активная оптическая точка), а также `values/strings.xml` и `values-ru/strings.xml`.
+  - Обновлены и расширены `ProfileUiStateMapperTest` и `ProfileRedesignTest`.
+- **Верификация и ограничения окружения:**
+  - `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug`, `ktlintCheck` (`:backend:*`, `:shared:contracts`) — **BUILD SUCCESSFUL**.
+  - ⚠️ Развёртывание Docker/kind-кластера и сквозная проверка UI-онбординга на эмуляторе `Pixel_4a` заблокированы: служба `Docker Desktop Service (com.docker.service)` остановлена и не может быть запущена из непривилегированной сессии агента (`dockerDesktopLinuxEngine` недоступен, `adb devices` пуст).
+
 ### Темы Aether Zero-G / Precision Mint, экран выбора роли и редизайн Профиля (`fitapp_8`) (2026-11-25)
 
 - **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

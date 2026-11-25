@@ -48,9 +48,13 @@ val OnErrorDark = Color(0xFF690005)
 val ErrorContainerDark = Color(0xFF93000A)
 val OnErrorContainerDark = Color(0xFFFFDAD6)
 
-// Стеклянные контуры для тёмной темы
+// Стеклянные контуры и семантические акценты для тёмной темы
 val GlassBorderLevel1 = Color(0x0FFFFFFF)
 val GlassBorderLevel2 = Color(0x1AFFFFFF)
+val InfoAccentDark = Color(0xFF60A5FA)
+val ActivityAccentDark = Color(0xFFFF9F1C)
+val BudgetAccentDark = Color(0xFF22D3EE)
+val PlanAccentDark = Color(0xFFB072FF)
 
 // ==============================================================================
 // Light Theme: Precision Mint & Slate Wellness (screenshots/DESIGN-light.md)
@@ -98,6 +102,10 @@ val OnErrorLight = Color(0xFFFFFFFF)
 val ErrorContainerLight = Color(0xFFFFDAD6)
 val OnErrorContainerLight = Color(0xFF93000A)
 
-// Стеклянные контуры для светлой темы
+// Стеклянные контуры и семантические акценты для светлой темы
 val GlassBorderLevel1Light = Color(0x0F000000)
 val GlassBorderLevel2Light = Color(0x1A000000)
+val InfoAccentLight = Color(0xFF2563EB)
+val ActivityAccentLight = Color(0xFFD97706)
+val BudgetAccentLight = Color(0xFF0891B2)
+val PlanAccentLight = Color(0xFF7C3AED)

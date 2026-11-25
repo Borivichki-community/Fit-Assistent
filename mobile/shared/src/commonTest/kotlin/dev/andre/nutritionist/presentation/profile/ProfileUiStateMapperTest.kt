@@ -145,11 +145,18 @@ class ProfileUiStateMapperTest {
 
         assertEquals("anna@example.com", uiModel.email)
         assertEquals(UserRole.COACH, uiModel.userRole)
+        assertEquals("75", uiModel.weightValueLabel)
+        assertEquals("Умеренная", uiModel.activityShortLabel)
+        assertEquals("3–5 тренировок / нед", uiModel.activitySubtitle)
+        assertEquals("Похудение", uiModel.goalShortLabel)
         assertEquals("714 ₽", uiModel.dailyBudgetLabel)
+        assertEquals("714", uiModel.dailyBudgetValueLabel)
         assertEquals("5 000 ₽", uiModel.weeklyBudgetFormattedLabel)
+        assertEquals("~5 000 ₽ в неделю", uiModel.weeklyBudgetApproxLabel)
         assertEquals("2 000 ккал", uiModel.caloriesGoalFormatted)
         assertEquals("150 г", uiModel.proteinsGoalFormatted)
         assertEquals("60 г", uiModel.fatsGoalFormatted)
         assertEquals("200 г", uiModel.carbsGoalFormatted)
+        assertEquals("Похудение • 2 000 ккал", uiModel.planSummaryLabel)
     }
 }

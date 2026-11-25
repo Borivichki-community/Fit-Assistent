@@ -26,8 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +76,7 @@ fun ProfileSuccessContent(
     onLogoutClick: () -> Unit = {},
     isLoggingOut: Boolean = false,
     onFillSurveyClick: () -> Unit = {},
+    onMealPlanClick: () -> Unit = onFillSurveyClick,
     onEvent: (ProfileEvent.Ui) -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
@@ -80,16 +86,58 @@ fun ProfileSuccessContent(
     var activeDialog by remember { mutableStateOf<ProfileEditField?>(null) }
 
     val cardShadow = if (extendedColors.isDark) 0.dp else 2.dp
+    val weightUnit = stringResource(R.string.profile_unit_kg)
+    val budgetPerDayUnit = stringResource(R.string.profile_per_day_unit)
+    val weightAnnotated = if (profile.weightValueLabel.isNotBlank()) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)) {
+                append(profile.weightValueLabel)
+            }
+            withStyle(
+                SpanStyle(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                append(" ")
+                append(weightUnit)
+            }
+        }
+    } else {
+        null
+    }
     val budgetValue = if (profile.dailyBudgetLabel.isNotBlank()) {
         stringResource(R.string.profile_per_day_format, profile.dailyBudgetLabel)
     } else {
         profile.weeklyBudgetLabel.ifBlank { stringResource(R.string.profile_default_budget) }
     }
-    val budgetSubtitle = if (profile.dailyBudgetLabel.isNotBlank()) {
-        profile.weeklyBudgetFormattedLabel.ifBlank { profile.weeklyBudgetLabel }
+    val budgetAnnotated = if (profile.dailyBudgetValueLabel.isNotBlank()) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)) {
+                append(profile.dailyBudgetValueLabel)
+            }
+            withStyle(
+                SpanStyle(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                append(" ")
+                append(budgetPerDayUnit)
+            }
+        }
     } else {
         null
     }
+    val budgetSubtitle = profile.weeklyBudgetApproxLabel.ifBlank {
+        if (profile.dailyBudgetLabel.isNotBlank()) {
+            profile.weeklyBudgetFormattedLabel
+        } else {
+            ""
+        }
+    }.ifBlank { null }
     val goalSubtitle = profile.weightGoalLabel.takeIf { it.isNotBlank() }?.let { targetWeight ->
         stringResource(R.string.profile_target_weight_format, targetWeight)
     }
@@ -133,16 +181,20 @@ fun ProfileSuccessContent(
                 MetricCard(
                     label = stringResource(R.string.profile_label_weight),
                     value = profile.weightLabel.ifBlank { stringResource(R.string.profile_default_weight) },
-                    icon = FitIcons.Edit,
-                    accentColor = MaterialTheme.colorScheme.primary,
+                    annotatedValue = weightAnnotated,
+                    icon = FitIcons.WeightScale,
+                    accentColor = extendedColors.infoAccent,
                     modifier = Modifier.weight(1f),
                     onClick = { activeDialog = ProfileEditField.WEIGHT },
                 )
                 MetricCard(
                     label = stringResource(R.string.profile_label_activity),
-                    value = profile.activityLabel.ifBlank { stringResource(R.string.profile_default_activity) },
-                    icon = FitIcons.Exercise,
-                    accentColor = MaterialTheme.colorScheme.tertiary,
+                    value = profile.activityShortLabel.ifBlank {
+                        profile.activityLabel.ifBlank { stringResource(R.string.profile_default_activity) }
+                    },
+                    subtitle = profile.activitySubtitle.ifBlank { null },
+                    icon = FitIcons.Lightning,
+                    accentColor = extendedColors.activityAccent,
                     modifier = Modifier.weight(1f),
                     onClick = { activeDialog = ProfileEditField.ACTIVITY },
                 )
@@ -154,19 +206,23 @@ fun ProfileSuccessContent(
             ) {
                 MetricCard(
                     label = stringResource(R.string.profile_label_goal),
-                    value = profile.goalLabel.ifBlank { stringResource(R.string.profile_default_goal) },
+                    value = profile.goalShortLabel.ifBlank {
+                        profile.goalLabel.ifBlank { stringResource(R.string.profile_default_goal) }
+                    },
                     subtitle = goalSubtitle,
-                    icon = FitIcons.Statistics,
-                    accentColor = MaterialTheme.colorScheme.secondary,
+                    subtitleColor = extendedColors.emeraldAccent,
+                    icon = FitIcons.Target,
+                    accentColor = extendedColors.emeraldAccent,
                     modifier = Modifier.weight(1f),
                     onClick = { activeDialog = ProfileEditField.GOAL },
                 )
                 MetricCard(
                     label = stringResource(R.string.profile_label_budget),
                     value = budgetValue,
+                    annotatedValue = budgetAnnotated,
                     subtitle = budgetSubtitle,
-                    icon = FitIcons.Document,
-                    accentColor = MaterialTheme.colorScheme.primary,
+                    icon = FitIcons.Wallet,
+                    accentColor = extendedColors.budgetAccent,
                     modifier = Modifier.weight(1f),
                     onClick = { activeDialog = ProfileEditField.BUDGET },
                 )
@@ -194,6 +250,8 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Settings,
                     title = stringResource(R.string.profile_menu_settings),
                     subtitle = stringResource(R.string.profile_menu_settings_desc),
+                    iconTint = extendedColors.infoAccent,
+                    iconContainerColor = extendedColors.infoAccent.copy(alpha = 0.14f),
                     onClick = onEditClick,
                 )
                 HorizontalDivider(
@@ -201,10 +259,14 @@ fun ProfileSuccessContent(
                     modifier = Modifier.padding(horizontal = Spacing.medium),
                 )
                 SettingsActionRow(
-                    icon = FitIcons.Document,
-                    title = stringResource(R.string.profile_fill_survey_again),
-                    subtitle = stringResource(R.string.profile_fill_survey_desc),
-                    onClick = onFillSurveyClick,
+                    icon = FitIcons.Meals,
+                    title = stringResource(R.string.profile_menu_meal_plan),
+                    subtitle = profile.planSummaryLabel.ifBlank {
+                        stringResource(R.string.profile_fill_survey_desc)
+                    },
+                    iconTint = extendedColors.planAccent,
+                    iconContainerColor = extendedColors.planAccent.copy(alpha = 0.14f),
+                    onClick = onMealPlanClick,
                 )
                 HorizontalDivider(
                     color = extendedColors.glassBorderLevel1,
@@ -214,6 +276,23 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Notifications,
                     title = stringResource(R.string.profile_menu_notifications),
                     subtitle = stringResource(R.string.profile_menu_notifications_desc),
+                    iconTint = extendedColors.budgetAccent,
+                    iconContainerColor = extendedColors.budgetAccent.copy(alpha = 0.14f),
+                    trailingBadge = {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = extendedColors.emeraldAccent.copy(alpha = 0.14f),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.profile_notifications_on),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = extendedColors.emeraldAccent,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    },
                     onClick = onNotificationsClick,
                 )
                 HorizontalDivider(
@@ -224,6 +303,8 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Help,
                     title = stringResource(R.string.profile_menu_help),
                     subtitle = stringResource(R.string.profile_menu_help_desc),
+                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     onClick = onHelpClick,
                 )
             }

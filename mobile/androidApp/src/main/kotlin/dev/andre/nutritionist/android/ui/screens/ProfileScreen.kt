@@ -90,6 +90,7 @@ fun ProfileScreen(
                             onLogoutClick = onLogoutClick,
                             isLoggingOut = isLoggingOut,
                             onFillSurveyClick = onCreateProfileClick,
+                            onMealPlanClick = { onDestinationSelected(AppDestination.Recipes) },
                             onEvent = onEvent,
                             onNotificationsClick = onNotificationsClick,
                             onHelpClick = onHelpClick,

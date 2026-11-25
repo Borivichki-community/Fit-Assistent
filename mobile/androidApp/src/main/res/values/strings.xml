@@ -13,7 +13,7 @@
     <string name="nav_profile">Profile</string>
     <string name="nav_diary">Diary</string>
     <string name="nav_recipes">Meals</string>
-    <string name="nav_statistics">Statistics</string>
+    <string name="nav_statistics">Analytics</string>
     <string name="action_menu">Menu</string>
 
     <!-- Dashboard / Main Screen -->
@@ -213,7 +213,11 @@
     <string name="profile_macro_fats">Fats</string>
     <string name="profile_macro_carbs">Carbs</string>
     <string name="profile_menu_settings_desc">Account, sync, security</string>
+    <string name="profile_menu_meal_plan">Meal plan &amp; goals</string>
     <string name="profile_fill_survey_desc">Update body parameters &amp; goals</string>
     <string name="profile_menu_notifications_desc">Meal &amp; hydration reminders</string>
-    <string name="profile_menu_help_desc">FAQ &amp; nutrition support</string>
+    <string name="profile_notifications_on">On</string>
+    <string name="profile_menu_help_desc">FAQ &amp; curator support</string>
+    <string name="profile_unit_kg">kg</string>
+    <string name="profile_per_day_unit">₽ / day</string>
 </resources>

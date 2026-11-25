@@ -74,7 +74,7 @@ fun ProfileDailyKbjuCard(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
+                            .background(extendedColors.emeraldAccent),
                     )
                     Text(
                         text = stringResource(R.string.profile_daily_kbju_title),
@@ -88,8 +88,8 @@ fun ProfileDailyKbjuCard(
 
                 Text(
                     text = caloriesText,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = extendedColors.emeraldAccent,
                 )
             }
 

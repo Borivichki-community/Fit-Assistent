@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,7 +41,9 @@ fun MetricCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    annotatedValue: AnnotatedString? = null,
     subtitle: String? = null,
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     icon: ImageVector? = null,
     accentColor: Color = MaterialTheme.colorScheme.primary,
     onClick: (() -> Unit)? = null,
@@ -54,7 +57,7 @@ fun MetricCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 116.dp)
+                .heightIn(min = 118.dp)
                 .padding(Spacing.medium),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -101,19 +104,28 @@ fun MetricCard(
 
             Spacer(modifier = Modifier.height(Spacing.small))
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (annotatedValue != null) {
+                    Text(
+                        text = annotatedValue,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 if (!subtitle.isNullOrBlank()) {
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = subtitleColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

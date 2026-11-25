@@ -159,6 +159,25 @@ class ProfileRepositoryImplTest {
         assertEquals(testProfile, repository.getProfile(testUserId))
     }
 
+    @Test
+    fun `updateProfile sends empty nutritionGoal to remote for recalculation and preserves previous goal in DAO if offline`() =
+        runTest(testDispatcher) {
+            fakeDao.insertOrReplace(testProfile.toEntity())
+            val pendingRecalcProfile = testProfile.copy(
+                weightKg = 68.0,
+                nutritionGoal = NutritionGoal.EMPTY,
+            )
+            fakeRemoteDataSource.errorToThrow = RuntimeException("Network unavailable")
+
+            val result = repository.updateProfile(pendingRecalcProfile)
+
+            assertTrue(result.isSuccess)
+            assertEquals(NutritionGoal.EMPTY, fakeRemoteDataSource.lastUpdatedProfile?.nutritionGoal)
+            assertEquals(testProfile.nutritionGoal, result.getOrNull()?.nutritionGoal)
+            assertEquals(68.0, repository.getProfile(testUserId)?.weightKg)
+            assertEquals(testProfile.nutritionGoal, repository.getProfile(testUserId)?.nutritionGoal)
+        }
+
     private class FakeProfileDao : ProfileDao {
         val entities = MutableStateFlow<Map<String, ProfileEntity>>(emptyMap())
 

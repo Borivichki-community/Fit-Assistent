@@ -2,6 +2,7 @@ package dev.andre.nutritionist.presentation.profile
 
 import dev.andre.nutritionist.core.kotea.DslUpdate
 import dev.andre.nutritionist.domain.mapper.toProfile
+import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 
 class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, ProfileNews>() {
@@ -70,7 +71,10 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
             is ProfileEvent.Ui.ChangeWeight -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(weightKg = event.weightKg)
+                    val updatedProfile = currentContent.profile.copy(
+                        weightKg = event.weightKg,
+                        nutritionGoal = NutritionGoal.EMPTY,
+                    )
                     state { copy(isSaving = true) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
@@ -78,7 +82,10 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
             is ProfileEvent.Ui.ChangeActivity -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(activityLevel = event.activityLevel)
+                    val updatedProfile = currentContent.profile.copy(
+                        activityLevel = event.activityLevel,
+                        nutritionGoal = NutritionGoal.EMPTY,
+                    )
                     state { copy(isSaving = true) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
@@ -86,7 +93,10 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
             is ProfileEvent.Ui.ChangeGoal -> {
                 val currentContent = state.content
                 if (currentContent is ProfileState.Content.Success) {
-                    val updatedProfile = currentContent.profile.copy(goalType = event.goalType)
+                    val updatedProfile = currentContent.profile.copy(
+                        goalType = event.goalType,
+                        nutritionGoal = NutritionGoal.EMPTY,
+                    )
                     state { copy(isSaving = true) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
