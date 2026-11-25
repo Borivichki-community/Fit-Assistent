@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import dev.andre.nutritionist.android.ui.theme.FitThemeTokens
 
 @Composable
 fun BottomNavItem(
@@ -23,10 +24,20 @@ fun BottomNavItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val activeAccent = if (FitThemeTokens.colors.isDark) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
     val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.surfaceVariant
+        activeAccent.copy(alpha = 0.16f)
     } else {
         Color.Transparent
+    }
+    val iconTint = if (isSelected) {
+        activeAccent
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Box(
@@ -40,7 +51,7 @@ fun BottomNavItem(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = iconTint,
             modifier = Modifier.size(24.dp),
         )
     }

@@ -4,14 +4,21 @@ import dev.andre.nutritionist.core.kotea.UiStateMapper
 import dev.andre.nutritionist.domain.model.ActivityLevel
 import dev.andre.nutritionist.domain.model.Gender
 import dev.andre.nutritionist.domain.model.GoalType
+import dev.andre.nutritionist.domain.model.Money
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
+import dev.andre.nutritionist.presentation.formatters.MoneyFormatter
+import dev.andre.nutritionist.presentation.formatters.NutritionFormatter
+import kotlin.math.roundToLong
 
 data class ProfileUiModel(
     val id: ProfileId,
     val userId: UserId,
     val displayName: String = "",
+    val email: String = "",
+    val userRole: UserRole? = null,
     val heightLabel: String,
     val weightLabel: String,
     val genderLabel: String,
@@ -23,6 +30,12 @@ data class ProfileUiModel(
     val carbsGoalLabel: String,
     val weightGoalLabel: String,
     val weeklyBudgetLabel: String,
+    val dailyBudgetLabel: String = "",
+    val weeklyBudgetFormattedLabel: String = "",
+    val caloriesGoalFormatted: String = "",
+    val proteinsGoalFormatted: String = "",
+    val fatsGoalFormatted: String = "",
+    val carbsGoalFormatted: String = "",
     val isComplete: Boolean = true,
     val rawWeightKg: Double = 0.0,
     val rawActivityLevel: ActivityLevel = ActivityLevel.MODERATE,
@@ -70,7 +83,14 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
             is ProfileState.Content.Success -> {
                 val resolvedName = (content.displayName ?: state.displayName)?.takeIf { it.isNotBlank() }
                     ?: content.profile.userId.raw
-                ProfileUiState.Content.Success(content.profile.toUiModel(resolvedName))
+                val resolvedEmail = state.email?.trim().orEmpty()
+                ProfileUiState.Content.Success(
+                    content.profile.toUiModel(
+                        displayName = resolvedName,
+                        email = resolvedEmail,
+                        userRole = state.userRole,
+                    ),
+                )
             }
             is ProfileState.Content.Error -> ProfileUiState.Content.Error(content.message)
             is ProfileState.Content.ValidationError -> ProfileUiState.Content.ValidationError(
@@ -87,7 +107,11 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
         return ProfileUiState(content = uiContent)
     }
 
-    private fun Profile.toUiModel(displayName: String): ProfileUiModel {
+    private fun Profile.toUiModel(
+        displayName: String,
+        email: String,
+        userRole: UserRole?,
+    ): ProfileUiModel {
         val genderText = when (gender) {
             Gender.MALE -> "Мужской"
             Gender.FEMALE -> "Женский"
@@ -110,11 +134,20 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
         }
 
         val isComplete = heightCm > 0 && weightKg > 0.0
+        val sanitizedWeeklyBudget = if (weeklyBudget.isNaN() || weeklyBudget.isInfinite() || weeklyBudget < 0.0) {
+            0.0
+        } else {
+            weeklyBudget
+        }
+        val dailyRubles = (sanitizedWeeklyBudget / 7.0).roundToLong()
+        val weeklyRubles = sanitizedWeeklyBudget.roundToLong()
 
         return ProfileUiModel(
             id = id,
             userId = userId,
             displayName = displayName,
+            email = email,
+            userRole = userRole,
             heightLabel = "$heightCm см",
             weightLabel = "$weightKg кг",
             genderLabel = genderText,
@@ -126,6 +159,12 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
             carbsGoalLabel = "${nutritionGoal.targetCarbsGrams.toInt()} г",
             weightGoalLabel = "${nutritionGoal.targetWeightKg.toInt()} кг",
             weeklyBudgetLabel = "${weeklyBudget.toInt()} ₽ / нед.",
+            dailyBudgetLabel = MoneyFormatter.format(Money.fromMinor(dailyRubles * 100L)),
+            weeklyBudgetFormattedLabel = MoneyFormatter.format(Money.fromMinor(weeklyRubles * 100L)),
+            caloriesGoalFormatted = NutritionFormatter.formatCalories(nutritionGoal.targetCalories.toDouble()),
+            proteinsGoalFormatted = NutritionFormatter.formatGram(nutritionGoal.targetProteinsGrams),
+            fatsGoalFormatted = NutritionFormatter.formatGram(nutritionGoal.targetFatsGrams),
+            carbsGoalFormatted = NutritionFormatter.formatGram(nutritionGoal.targetCarbsGrams),
             isComplete = isComplete,
             rawWeightKg = weightKg,
             rawActivityLevel = activityLevel,

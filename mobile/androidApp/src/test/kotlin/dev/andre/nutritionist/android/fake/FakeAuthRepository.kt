@@ -35,8 +35,11 @@ class FakeAuthRepository : AuthRepository {
     override fun getUserId(): UserId? = currentUserId
 
     var userDisplayNameToReturn: String? = null
+    var userEmailToReturn: String? = null
 
     override fun getUserDisplayName(): String? = userDisplayNameToReturn
+
+    override fun getUserEmail(): String? = userEmailToReturn
 
     override fun getUserRole(): UserRole? = currentUserRole
 

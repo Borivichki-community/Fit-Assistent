@@ -40,9 +40,18 @@ fun ProfileRoute(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val displayName = remember(authRepository) { authRepository.getUserDisplayName() }
+    val email = remember(authRepository) { authRepository.getUserEmail() }
+    val userRole = remember(authRepository) { authRepository.getUserRole() }
 
-    LaunchedEffect(userId, displayName) {
-        viewModel.dispatch(ProfileEvent.Ui.LoadProfile(userId = userId, displayName = displayName))
+    LaunchedEffect(userId, displayName, email, userRole) {
+        viewModel.dispatch(
+            ProfileEvent.Ui.LoadProfile(
+                userId = userId,
+                displayName = displayName,
+                email = email,
+                userRole = userRole,
+            ),
+        )
     }
 
     LaunchedEffect(Unit) {

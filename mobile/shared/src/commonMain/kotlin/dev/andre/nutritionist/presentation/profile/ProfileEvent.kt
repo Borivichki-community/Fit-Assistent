@@ -5,6 +5,7 @@ import dev.andre.nutritionist.domain.model.GoalType
 import dev.andre.nutritionist.domain.model.OnboardingData
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 
 sealed interface ProfileEvent {
 
@@ -14,6 +15,8 @@ sealed interface ProfileEvent {
             val userId: UserId,
             val displayName: String? = null,
             val age: String? = null,
+            val email: String? = null,
+            val userRole: UserRole? = null,
         ) : Ui
 
         data object Retry : Ui

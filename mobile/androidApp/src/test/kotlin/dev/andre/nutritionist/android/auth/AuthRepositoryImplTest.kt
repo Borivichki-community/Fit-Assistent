@@ -353,4 +353,37 @@ class AuthRepositoryImplTest {
 
         assertEquals(UserRole.CLIENT, repo.getUserRole())
     }
+
+    @Test
+    fun `getUserEmail extracts email claim from id token jwt payload and returns null when unauthorized`() = runTest {
+        assertNull(repository.getUserEmail())
+
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+
+        val mockIdToken = "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyLTQyIiwiZW1haWwiOiJhbGV4QGV4YW1wbGUuY29tIn0."
+
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("test-access-token")
+            .setIdToken(mockIdToken)
+            .setTokenType("Bearer")
+            .build()
+
+        repository.processAuthResponse(validIntent)
+
+        assertEquals("alex@example.com", repository.getUserEmail())
+    }
 }

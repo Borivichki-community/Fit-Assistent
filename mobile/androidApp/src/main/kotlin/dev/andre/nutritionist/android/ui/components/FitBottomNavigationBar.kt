@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +15,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
+import dev.andre.nutritionist.android.ui.theme.FitThemeTokens
 
 /**
- * Нижняя плавающая панель навигации приложения
+ * Нижняя плавающая панель навигации приложения в стиле Aether Glass / Precision Mint.
  */
 @Composable
 fun FitBottomNavigationBar(
@@ -24,13 +26,17 @@ fun FitBottomNavigationBar(
     onDestinationSelected: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val extendedColors = FitThemeTokens.colors
+    val shadowElevation = if (extendedColors.isDark) 0.dp else 6.dp
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = Spacing.medium, vertical = Spacing.small),
         shape = RoundedCornerShape(Spacing.buttonRadius),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, extendedColors.glassBorderLevel2),
+        shadowElevation = shadowElevation,
     ) {
         Row(
             modifier = Modifier

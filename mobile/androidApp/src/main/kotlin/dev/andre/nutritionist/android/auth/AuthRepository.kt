@@ -39,6 +39,11 @@ interface AuthRepository : AuthTokenProvider {
     fun getUserDisplayName(): String?
 
     /**
+     * Возвращает email текущего пользователя (claim "email" из ID Token / Access Token), либо null.
+     */
+    fun getUserEmail(): String?
+
+    /**
      * Возвращает выбранную роль пользователя ([UserRole.CLIENT] или [UserRole.COACH]), либо null.
      */
     fun getUserRole(): UserRole?

@@ -2,6 +2,7 @@ package dev.andre.nutritionist.presentation.profile
 
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 
 data class ProfileState(
     val content: Content = Content.Loading,
@@ -10,6 +11,8 @@ data class ProfileState(
     val isSaving: Boolean = false,
     val displayName: String? = null,
     val age: String? = null,
+    val email: String? = null,
+    val userRole: UserRole? = null,
 ) {
     sealed interface Content {
         data object Loading : Content

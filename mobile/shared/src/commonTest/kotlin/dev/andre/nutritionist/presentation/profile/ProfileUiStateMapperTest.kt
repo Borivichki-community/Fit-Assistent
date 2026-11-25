@@ -7,6 +7,7 @@ import dev.andre.nutritionist.domain.model.NutritionGoal
 import dev.andre.nutritionist.domain.model.Profile
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -127,5 +128,28 @@ class ProfileUiStateMapperTest {
         assertEquals(ActivityLevel.MODERATE, uiModel.rawActivityLevel)
         assertEquals(GoalType.LOSE_WEIGHT, uiModel.rawGoalType)
         assertEquals(5000.0, uiModel.rawWeeklyBudget)
+    }
+
+    @Test
+    fun `map Success state formats email userRole and formatter-based nutrition and budget labels`() {
+        val state = ProfileState(
+            content = ProfileState.Content.Success(testProfile),
+            displayName = "Anna Petrova",
+            email = "anna@example.com",
+            userRole = UserRole.COACH,
+        )
+        val uiState = mapper.map(state)
+
+        assertIs<ProfileUiState.Content.Success>(uiState.content)
+        val uiModel = uiState.content.profile
+
+        assertEquals("anna@example.com", uiModel.email)
+        assertEquals(UserRole.COACH, uiModel.userRole)
+        assertEquals("714 ₽", uiModel.dailyBudgetLabel)
+        assertEquals("5 000 ₽", uiModel.weeklyBudgetFormattedLabel)
+        assertEquals("2 000 ккал", uiModel.caloriesGoalFormatted)
+        assertEquals("150 г", uiModel.proteinsGoalFormatted)
+        assertEquals("60 г", uiModel.fatsGoalFormatted)
+        assertEquals("200 г", uiModel.carbsGoalFormatted)
     }
 }

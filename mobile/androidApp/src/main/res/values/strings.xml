@@ -200,4 +200,20 @@
     <string name="role_coach_desc">Create meal plans and guide your clients</string>
     <string name="role_badge_client">USER</string>
     <string name="role_badge_coach">COACH</string>
+
+    <!-- Profile Redesign (fitapp_8) -->
+    <string name="profile_eyebrow">FITAPP PROFILE</string>
+    <string name="profile_edit_data">Edit data</string>
+    <string name="profile_health_params">HEALTH METRICS</string>
+    <string name="profile_target_weight_format">Target: %1$s</string>
+    <string name="profile_per_day_format">%1$s / day</string>
+    <string name="profile_biometrics_format">%1$s • %2$s</string>
+    <string name="profile_daily_kbju_title">DAILY NUTRITION TARGETS</string>
+    <string name="profile_macro_proteins">Protein</string>
+    <string name="profile_macro_fats">Fats</string>
+    <string name="profile_macro_carbs">Carbs</string>
+    <string name="profile_menu_settings_desc">Account, sync, security</string>
+    <string name="profile_fill_survey_desc">Update body parameters &amp; goals</string>
+    <string name="profile_menu_notifications_desc">Meal &amp; hydration reminders</string>
+    <string name="profile_menu_help_desc">FAQ &amp; nutrition support</string>
 </resources>

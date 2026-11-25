@@ -79,6 +79,15 @@ class AuthRepositoryImpl(
             ?: extractClaimFromJwt(token, "preferred_username")
     }
 
+    override fun getUserEmail(): String? {
+        val claims = currentAuthState.parsedIdToken?.additionalClaims
+        val email = claims?.get("email") as? String
+        if (!email.isNullOrBlank()) return email
+
+        val token = currentAuthState.idToken ?: currentAuthState.accessToken ?: return null
+        return extractClaimFromJwt(token, "email")
+    }
+
     override fun getUserRole(): UserRole? = currentUserRole
 
     override suspend fun setUserRole(role: UserRole): Unit = withContext(dispatchers.io) {

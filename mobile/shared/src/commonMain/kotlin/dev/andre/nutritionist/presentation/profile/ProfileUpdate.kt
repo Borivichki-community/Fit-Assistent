@@ -15,6 +15,8 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                         currentUserId = event.userId,
                         displayName = event.displayName ?: state.displayName,
                         age = event.age ?: state.age,
+                        email = event.email ?: state.email,
+                        userRole = event.userRole ?: state.userRole,
                     )
                 }
                 commands(ProfileCommand.LoadProfile(event.userId))

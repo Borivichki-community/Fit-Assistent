@@ -200,4 +200,20 @@
     <string name="role_coach_desc">Создавайте рационы и ведите учеников</string>
     <string name="role_badge_client">ПОЛЬЗОВАТЕЛЬ</string>
     <string name="role_badge_coach">ТРЕНЕР</string>
+
+    <!-- Редизайн Профиля (fitapp_8) -->
+    <string name="profile_eyebrow">FITAPP ПРОФИЛЬ</string>
+    <string name="profile_edit_data">Редактировать данные</string>
+    <string name="profile_health_params">ПАРАМЕТРЫ ЗДОРОВЬЯ</string>
+    <string name="profile_target_weight_format">Целевой вес: %1$s</string>
+    <string name="profile_per_day_format">%1$s / день</string>
+    <string name="profile_biometrics_format">%1$s • %2$s</string>
+    <string name="profile_daily_kbju_title">СУТОЧНАЯ НОРМА КБЖУ</string>
+    <string name="profile_macro_proteins">Белки</string>
+    <string name="profile_macro_fats">Жиры</string>
+    <string name="profile_macro_carbs">Углеводы</string>
+    <string name="profile_menu_settings_desc">Аккаунт, интеграции, безопасность</string>
+    <string name="profile_fill_survey_desc">Обновить анкету и параметры тела</string>
+    <string name="profile_menu_notifications_desc">Напоминания о приёмах пищи</string>
+    <string name="profile_menu_help_desc">Частые вопросы и справка</string>
 </resources>
