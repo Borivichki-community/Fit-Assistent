@@ -4,6 +4,9 @@ import com.budgetntr.proto.diary.v1.AddEntryRequest
 import com.budgetntr.proto.diary.v1.CostSnapshotProto
 import com.budgetntr.proto.diary.v1.DiaryEntryItemProto
 import com.budgetntr.proto.diary.v1.EntrySourceTypeProto
+import com.budgetntr.proto.diary.v1.GetDailyEntriesRequest
+import com.budgetntr.proto.diary.v1.GetRangeRequest
+import com.budgetntr.proto.diary.v1.GetRangeResponse
 import com.budgetntr.proto.diary.v1.MoneyProto
 import com.budgetntr.proto.diary.v1.NutritionSummaryProto
 import com.budgetntr.proto.profile.v1.TimestampProto
@@ -15,6 +18,7 @@ import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.domain.model.Money
 import dev.andre.nutritionist.domain.model.NutritionFacts
 import dev.andre.nutritionist.domain.model.SyncStatus
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.datetime.Instant
 import kotlin.math.roundToInt
 
@@ -81,4 +85,28 @@ object DiaryDtoMapper {
         idempotencyKey = IdempotencyKey.generate(),
         syncStatus = SyncStatus.SYNCED,
     )
+
+    fun toGetDailyEntriesRequest(
+        date: String,
+        timeZone: String = "UTC",
+        targetUserId: UserId? = null,
+    ): GetDailyEntriesRequest = GetDailyEntriesRequest(
+        date = date,
+        timeZone = timeZone,
+        targetUserId = targetUserId?.raw?.takeIf { it.isNotBlank() },
+    )
+
+    fun toGetRangeRequest(
+        fromIso: String,
+        untilIso: String,
+        timeZone: String = "UTC",
+        targetUserId: UserId? = null,
+    ): GetRangeRequest = GetRangeRequest(
+        startDate = fromIso,
+        endDate = untilIso,
+        timeZone = timeZone,
+        targetUserId = targetUserId?.raw?.takeIf { it.isNotBlank() },
+    )
+
+    fun GetRangeResponse.toDomain(): List<MealRecord> = entries.map { it.toDomain() }
 }

@@ -9,6 +9,7 @@ import dev.andre.nutritionist.data.remote.DiaryRemoteDataSource
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.MealRecord
 import dev.andre.nutritionist.domain.model.SyncStatus
+import dev.andre.nutritionist.domain.model.UserId
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -124,6 +125,32 @@ class SyncDiaryWorkerTest {
         }
     }
 
+    @Test
+    fun `syncPendingEntries processes DELETED_PENDING tombstones via deleteMeal and removes permanently`() {
+        val dispatcher = StandardTestDispatcher()
+        runTest(dispatcher) {
+            val dao = LocalFakeMealRecordDao()
+            dao.insert(
+                pendingEntity(id = "del-1", idempotencyKey = "idem-del-1").copy(
+                    syncStatus = SyncStatus.DELETED_PENDING.name,
+                    isDeleted = true,
+                ),
+            )
+            val remote = LocalFakeDiaryRemoteDataSource()
+
+            val result = SyncDiaryWorker.syncPendingEntries(
+                mealRecordDao = dao,
+                diaryRemoteDataSource = remote,
+                dispatchers = testDispatchers(dispatcher),
+                runAttemptCount = 0,
+            )
+
+            assertEquals(ListenableWorker.Result.success(), result)
+            assertEquals(listOf("del-1"), remote.deletedIds)
+            assertEquals(null, dao.getById("del-1"))
+        }
+    }
+
     private fun pendingEntity(id: String, idempotencyKey: String) = MealRecordEntity(
         id = id,
         idempotencyKey = idempotencyKey,
@@ -154,7 +181,10 @@ class SyncDiaryWorkerTest {
         override suspend fun getById(id: String): MealRecordEntity? = items[id]
 
         override suspend fun getPendingRecords(): List<MealRecordEntity> =
-            items.values.filter { it.syncStatus == SyncStatus.PENDING.name }
+            items.values.filter { !it.isDeleted && it.syncStatus == SyncStatus.PENDING.name }
+
+        override suspend fun getPendingDeletedRecords(): List<MealRecordEntity> =
+            items.values.filter { it.isDeleted && it.syncStatus == SyncStatus.DELETED_PENDING.name }
 
         override suspend fun updateSyncStatus(id: String, status: String) {
             items[id]?.let { existing ->
@@ -163,15 +193,26 @@ class SyncDiaryWorkerTest {
             }
         }
 
+        override suspend fun markAsDeleted(id: String, status: String) {
+            items[id]?.let { existing ->
+                items[id] = existing.copy(isDeleted = true, syncStatus = status)
+                flow.value = items.values.toList()
+            }
+        }
+
         override fun getDailyRecordsFlow(fromEpoch: Long, toEpoch: Long): Flow<List<MealRecordEntity>> =
-            flow.map { list -> list.filter { it.recordedAtEpoch in fromEpoch..toEpoch } }
+            flow.map { list -> list.filter { !it.isDeleted && it.recordedAtEpoch in fromEpoch..toEpoch } }
 
         override suspend fun getDailyRecords(fromEpoch: Long, toEpoch: Long): List<MealRecordEntity> =
-            items.values.filter { it.recordedAtEpoch in fromEpoch..toEpoch }
+            items.values.filter { !it.isDeleted && it.recordedAtEpoch in fromEpoch..toEpoch }
 
-        override suspend fun deleteById(id: String) {
+        override suspend fun deletePermanently(id: String) {
             items.remove(id)
             flow.value = items.values.toList()
+        }
+
+        override suspend fun deleteById(id: String) {
+            deletePermanently(id)
         }
     }
 
@@ -179,6 +220,7 @@ class SyncDiaryWorkerTest {
         var shouldFail: Throwable? = null
         val sentRecords = mutableListOf<MealRecord>()
         val receivedKeys = mutableListOf<String>()
+        val deletedIds = mutableListOf<String>()
 
         override suspend fun addEntry(record: MealRecord): Result<MealRecord> {
             receivedKeys.add(record.idempotencyKey.raw)
@@ -187,9 +229,23 @@ class SyncDiaryWorkerTest {
             return Result.success(record)
         }
 
-        override suspend fun getDailyEntries(date: String, timeZone: String): Result<List<MealRecord>> =
-            Result.success(sentRecords.toList())
+        override suspend fun getDailyEntries(
+            date: String,
+            timeZone: String,
+            targetUserId: UserId?,
+        ): Result<List<MealRecord>> = Result.success(sentRecords.toList())
 
-        override suspend fun deleteMeal(entryId: String): Result<Unit> = Result.success(Unit)
+        override suspend fun getRange(
+            fromIso: String,
+            untilIso: String,
+            timeZone: String,
+            targetUserId: UserId?,
+        ): Result<List<MealRecord>> = Result.success(sentRecords.toList())
+
+        override suspend fun deleteMeal(entryId: String): Result<Unit> {
+            shouldFail?.let { return Result.failure(it) }
+            deletedIds.add(entryId)
+            return Result.success(Unit)
+        }
     }
 }

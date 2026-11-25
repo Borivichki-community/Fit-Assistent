@@ -40,9 +40,10 @@ object MealRecordEntityMapper {
         ),
         cost = costAmountMinor?.let { Money.fromMinor(it) },
         idempotencyKey = IdempotencyKey(idempotencyKey),
-        syncStatus = when (syncStatus.uppercase()) {
-            "SYNCED" -> SyncStatus.SYNCED
-            "FAILED" -> SyncStatus.FAILED
+        syncStatus = when {
+            isDeleted || syncStatus.uppercase() == "DELETED_PENDING" -> SyncStatus.DELETED_PENDING
+            syncStatus.uppercase() == "SYNCED" -> SyncStatus.SYNCED
+            syncStatus.uppercase() == "FAILED" -> SyncStatus.FAILED
             else -> SyncStatus.PENDING
         },
     )
@@ -63,5 +64,6 @@ object MealRecordEntityMapper {
         carbs = nutrition.carbs,
         costAmountMinor = cost?.amountMinor,
         costCurrency = if (cost != null) Money.CURRENCY_RUB else null,
+        isDeleted = syncStatus == SyncStatus.DELETED_PENDING,
     )
 }

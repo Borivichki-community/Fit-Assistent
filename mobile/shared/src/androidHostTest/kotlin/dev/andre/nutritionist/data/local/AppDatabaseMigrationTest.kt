@@ -72,6 +72,7 @@ class AppDatabaseMigrationTest {
             .addMigrations(
                 DatabaseMigrations.MIGRATION_2_3,
                 DatabaseMigrations.MIGRATION_3_4,
+                DatabaseMigrations.MIGRATION_4_5,
             )
             .build()
 
@@ -176,6 +177,7 @@ class AppDatabaseMigrationTest {
             .addMigrations(
                 DatabaseMigrations.MIGRATION_2_3,
                 DatabaseMigrations.MIGRATION_3_4,
+                DatabaseMigrations.MIGRATION_4_5,
             )
             .build()
 
@@ -184,6 +186,7 @@ class AppDatabaseMigrationTest {
             assertNotNull(meal)
             assertEquals("PENDING", meal.syncStatus)
             assertEquals("idem-v2-keep", meal.idempotencyKey)
+            assertFalse(meal.isDeleted)
 
             migratedDb.favoriteProductDao().upsert(
                 FavoriteProductEntity(
@@ -200,6 +203,69 @@ class AppDatabaseMigrationTest {
                 ),
             )
             assertTrue(migratedDb.favoriteProductDao().existsById("fav-v4"))
+        } finally {
+            migratedDb.close()
+        }
+    }
+
+    @Test
+    fun migrate4To5_addsIsDeletedColumnToMealRecordsAndSupportsTombstone() = runTest {
+        val dbFile = tempFolder.newFile("migration_4_5_test.db")
+        val driver = AndroidSQLiteDriver()
+
+        val v4Connection = driver.open(dbFile.absolutePath)
+        try {
+            seedV2Tables(v4Connection)
+            DatabaseMigrations.MIGRATION_2_3.migrate(v4Connection)
+            DatabaseMigrations.MIGRATION_3_4.migrate(v4Connection)
+            v4Connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+            )
+            v4Connection.execSQL(
+                """
+                INSERT INTO `meal_records` (
+                    `id`, `idempotency_key`, `sync_status`, `meal_type`, `recorded_at_epoch`,
+                    `source_type`, `source_id`, `name_snapshot`, `weight_grams`,
+                    `calories`, `proteins`, `fats`, `carbs`, `cost_amount_minor`, `cost_currency`
+                ) VALUES (
+                    'meal-v4-keep', 'idem-v4-keep', 'SYNCED', 'LUNCH', 1700000000000,
+                    'PRODUCT', 'prod-v4', 'Гречка с курицей', 250.0,
+                    320.0, 28.0, 8.0, 34.0, 9500, 'RUB'
+                )
+                """.trimIndent(),
+            )
+            v4Connection.execSQL("PRAGMA user_version = 4")
+        } finally {
+            v4Connection.close()
+        }
+
+        val context = RuntimeEnvironment.getApplication()
+        val migratedDb = Room.databaseBuilder<AppDatabase>(
+            context = context,
+            name = dbFile.absolutePath,
+        )
+            .setDriver(driver)
+            .setQueryCoroutineContext(Dispatchers.IO)
+            .addMigrations(
+                DatabaseMigrations.MIGRATION_2_3,
+                DatabaseMigrations.MIGRATION_3_4,
+                DatabaseMigrations.MIGRATION_4_5,
+            )
+            .build()
+
+        try {
+            val mealDao = migratedDb.mealRecordDao()
+            val preserved = mealDao.getById("meal-v4-keep")
+            assertNotNull(preserved)
+            assertFalse(preserved.isDeleted)
+            assertEquals("SYNCED", preserved.syncStatus)
+
+            mealDao.markAsDeleted("meal-v4-keep")
+            assertEquals(1, mealDao.getPendingDeletedRecords().size)
+            assertTrue(mealDao.getDailyRecords(0L, 2_000_000_000_000L).isEmpty())
+
+            mealDao.deletePermanently("meal-v4-keep")
+            assertEquals(null, mealDao.getById("meal-v4-keep"))
         } finally {
             migratedDb.close()
         }

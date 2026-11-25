@@ -22,6 +22,7 @@ class AndroidDatabaseBuilder(
             .addMigrations(
                 DatabaseMigrations.MIGRATION_2_3,
                 DatabaseMigrations.MIGRATION_3_4,
+                DatabaseMigrations.MIGRATION_4_5,
             )
             .build()
     }

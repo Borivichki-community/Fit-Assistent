@@ -26,6 +26,7 @@ import dev.andre.nutritionist.domain.repository.RecipeCatalogRepository
 import dev.andre.nutritionist.domain.repository.RecipeRepository
 import dev.andre.nutritionist.domain.usecase.ApplyMealPlanDayToDiaryUseCase
 import dev.andre.nutritionist.domain.usecase.GenerateBudgetMenuUseCase
+import dev.andre.nutritionist.domain.usecase.GetNutritionAnalyticsUseCase
 import dev.andre.nutritionist.domain.usecase.LogRecipeToDiaryUseCase
 import dev.andre.nutritionist.presentation.airecipe.MenuCommandsFlowHandler
 import dev.andre.nutritionist.presentation.airecipe.MenuUiStateMapper
@@ -55,6 +56,13 @@ val domainModule: Module = module {
         GenerateBudgetMenuUseCase(
             recipeRepository = get(),
             catalogRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory {
+        GetNutritionAnalyticsUseCase(
+            diaryRepository = get(),
+            profileRepository = get(),
             dispatchers = get(),
         )
     }

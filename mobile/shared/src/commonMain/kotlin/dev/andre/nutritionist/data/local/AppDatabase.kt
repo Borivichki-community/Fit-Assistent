@@ -30,7 +30,7 @@ import dev.andre.nutritionist.data.local.entity.SavedRecipeEntity
         FavoriteProductEntity::class,
         SavedRecipeEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)

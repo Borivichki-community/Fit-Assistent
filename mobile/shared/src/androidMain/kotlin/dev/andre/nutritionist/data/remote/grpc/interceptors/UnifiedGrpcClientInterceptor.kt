@@ -1,15 +1,24 @@
 package dev.andre.nutritionist.data.remote.grpc.interceptors
 
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
+import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
+import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
+import dev.andre.nutritionist.domain.error.DomainError
 import dev.andre.nutritionist.domain.trace.TraceContextHolder
 import io.grpc.CallOptions
 import io.grpc.Channel
 import io.grpc.ClientCall
 import io.grpc.ClientInterceptor
 import io.grpc.Context
-import io.grpc.ForwardingClientCall.SimpleForwardingClientCall
 import io.grpc.Metadata
 import io.grpc.MethodDescriptor
+import io.grpc.Status
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.random.Random
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -19,7 +28,8 @@ import kotlin.uuid.Uuid
  * Автоматически инжектирует в метаданные каждого исходящего RPC-вызова:
  * 1. authorization: Bearer <token> (из AuthTokenProvider);
  * 2. traceparent: 00-<traceId>-<spanId>-01 (из TraceContextHolder);
- * 3. idempotency-key: <uuid> (если задан в Context или если RPC-метод мутирующий).
+ * 3. idempotency-key: <uuid> (если задан в Context или если RPC-метод мутирующий);
+ * 4. Автоматический однократный refresh OAuth-токена (под Mutex) при Status.UNAUTHENTICATED.
  */
 class UnifiedGrpcClientInterceptor(
     private val tokenProvider: AuthTokenProvider? = null,
@@ -27,52 +37,273 @@ class UnifiedGrpcClientInterceptor(
     private val userIdProvider: (() -> String?)? = null,
     private val idempotencyKeyProvider: (() -> String?)? = null,
     private val devBypass: Boolean = false,
+    dispatchers: CoroutineDispatchers = DefaultCoroutineDispatchers(),
 ) : ClientInterceptor {
+
+    private val refreshMutex = Mutex()
+    private val refreshScope = CoroutineScope(SupervisorJob() + dispatchers.io)
 
     override fun <ReqT, RespT> interceptCall(
         method: MethodDescriptor<ReqT, RespT>,
         callOptions: CallOptions,
         next: Channel,
     ): ClientCall<ReqT, RespT> {
-        return object : SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-            override fun start(responseListener: Listener<RespT>, headers: Metadata) {
-                // 1. Authorization: Bearer <token>
-                if (tokenProvider != null) {
-                    val token = runCatching { tokenProvider.getAccessToken() }.getOrNull()
-                    if (!token.isNullOrBlank()) {
-                        headers.put(AUTHORIZATION_METADATA_KEY, "Bearer $token")
-                    }
-                }
+        val stableIdempotencyKey = resolveIdempotencyKey(method.fullMethodName, callOptions)
+        val initialDelegate = next.newCall(method, callOptions)
+        return RetryingClientCall(
+            method = method,
+            callOptions = callOptions,
+            next = next,
+            initialDelegate = initialDelegate,
+            stableIdempotencyKey = stableIdempotencyKey,
+        )
+    }
 
-                // 2. Traceparent: 00-<traceId>-<spanId>-01
-                val traceparent = traceContextHolder?.getTraceparent() ?: generateTraceparent()
-                headers.put(TRACEPARENT_METADATA_KEY, traceparent)
+    private inner class RetryingClientCall<ReqT, RespT>(
+        private val method: MethodDescriptor<ReqT, RespT>,
+        private val callOptions: CallOptions,
+        private val next: Channel,
+        initialDelegate: ClientCall<ReqT, RespT>,
+        private val stableIdempotencyKey: String?,
+    ) : ClientCall<ReqT, RespT>() {
 
-                // 3. Idempotency-Key
-                val optionKey = callOptions.getOption(IDEMPOTENCY_KEY_CALL_OPTION)
-                val contextKey = IDEMPOTENCY_KEY_CTX.get()
-                val providedKey = idempotencyKeyProvider?.invoke()
-                val idempotencyKey = optionKey ?: contextKey ?: providedKey
-                if (!idempotencyKey.isNullOrBlank()) {
-                    headers.put(IDEMPOTENCY_METADATA_KEY, idempotencyKey)
-                } else if (isMutatingMethod(method.fullMethodName)) {
-                    val generated = generateUuid()
-                    headers.put(IDEMPOTENCY_METADATA_KEY, generated)
-                }
+        private val lock = Any()
+        private var delegate: ClientCall<ReqT, RespT> = initialDelegate
+        private var outerListener: Listener<RespT>? = null
+        private val originalHeaders = Metadata()
+        private val sentMessages = mutableListOf<ReqT>()
+        private var requestedMessages = 0
+        private var halfClosed = false
+        private var messageCompression: Boolean? = null
+        private var cancelled = false
 
-                // 4. User ID (in development or when provided)
-                val userId = userIdProvider?.invoke()
-                if (!userId.isNullOrBlank()) {
-                    headers.put(USER_ID_METADATA_KEY, userId)
-                }
-
-                // 5. Dev bypass (for direct service-to-service testing)
-                if (devBypass) {
-                    headers.put(DEV_BYPASS_METADATA_KEY, "true")
-                }
-
-                super.start(responseListener, headers)
+        override fun start(responseListener: Listener<RespT>, headers: Metadata) {
+            val attemptToken: String?
+            val attemptHeaders = Metadata()
+            synchronized(lock) {
+                outerListener = responseListener
+                originalHeaders.merge(headers)
+                attemptHeaders.merge(originalHeaders)
+                attemptToken = currentAccessToken()
+                injectHeaders(attemptHeaders, attemptToken, stableIdempotencyKey)
             }
+            delegate.start(
+                AttemptListener(attemptToken = attemptToken, isRetry = false),
+                attemptHeaders,
+            )
+        }
+
+        override fun request(numMessages: Int) {
+            val active = synchronized(lock) {
+                requestedMessages += numMessages
+                delegate
+            }
+            active.request(numMessages)
+        }
+
+        override fun cancel(message: String?, cause: Throwable?) {
+            val active = synchronized(lock) {
+                cancelled = true
+                delegate
+            }
+            active.cancel(message, cause)
+        }
+
+        override fun halfClose() {
+            val active = synchronized(lock) {
+                halfClosed = true
+                delegate
+            }
+            active.halfClose()
+        }
+
+        override fun sendMessage(message: ReqT) {
+            val active = synchronized(lock) {
+                sentMessages.add(message)
+                delegate
+            }
+            active.sendMessage(message)
+        }
+
+        override fun setMessageCompression(enabled: Boolean) {
+            val active = synchronized(lock) {
+                messageCompression = enabled
+                delegate
+            }
+            active.setMessageCompression(enabled)
+        }
+
+        override fun isReady(): Boolean = synchronized(lock) { delegate }.isReady
+
+        private inner class AttemptListener(
+            private val attemptToken: String?,
+            private val isRetry: Boolean,
+        ) : Listener<RespT>() {
+
+            private var pendingHeaders: Metadata? = null
+            private var hasEmittedMessage = false
+
+            override fun onHeaders(headers: Metadata) {
+                if (isRetry) {
+                    outerListener?.onHeaders(headers)
+                } else {
+                    pendingHeaders = Metadata().apply { merge(headers) }
+                }
+            }
+
+            override fun onMessage(message: RespT) {
+                hasEmittedMessage = true
+                flushPendingHeaders()
+                outerListener?.onMessage(message)
+            }
+
+            override fun onReady() {
+                outerListener?.onReady()
+            }
+
+            override fun onClose(status: Status, trailers: Metadata) {
+                val canRetry = synchronized(lock) { !cancelled } &&
+                    !isRetry &&
+                    !hasEmittedMessage &&
+                    status.code == Status.Code.UNAUTHENTICATED &&
+                    tokenProvider != null
+
+                if (!canRetry) {
+                    flushPendingHeaders()
+                    outerListener?.onClose(status, trailers)
+                    return
+                }
+
+                refreshScope.launch {
+                    val refreshResult = refreshAccessToken(attemptToken)
+                    if (synchronized(lock) { cancelled }) {
+                        return@launch
+                    }
+
+                    refreshResult.fold(
+                        onSuccess = { newToken ->
+                            val retryDelegate = next.newCall(method, callOptions)
+                            val retryHeaders = Metadata().apply { merge(originalHeaders) }
+                            injectHeaders(retryHeaders, newToken, stableIdempotencyKey)
+
+                            val replay = synchronized(lock) {
+                                if (cancelled) {
+                                    retryDelegate.cancel("Coroutine cancelled", null)
+                                    return@launch
+                                }
+                                delegate = retryDelegate
+                                ReplaySnapshot(
+                                    requested = requestedMessages,
+                                    messages = sentMessages.toList(),
+                                    shouldHalfClose = halfClosed,
+                                    compression = messageCompression,
+                                )
+                            }
+
+                            retryDelegate.start(
+                                AttemptListener(attemptToken = newToken, isRetry = true),
+                                retryHeaders,
+                            )
+                            replay.compression?.let { retryDelegate.setMessageCompression(it) }
+                            if (replay.requested > 0) {
+                                retryDelegate.request(replay.requested)
+                            }
+                            for (msg in replay.messages) {
+                                retryDelegate.sendMessage(msg)
+                            }
+                            if (replay.shouldHalfClose) {
+                                retryDelegate.halfClose()
+                            }
+                        },
+                        onFailure = { error ->
+                            if (error is CancellationException) return@launch
+                            flushPendingHeaders()
+                            val failureStatus = Status.UNAUTHENTICATED
+                                .withDescription(error.message ?: "Authentication refresh failed")
+                                .withCause(error)
+                            outerListener?.onClose(failureStatus, trailers)
+                        },
+                    )
+                }
+            }
+
+            private fun flushPendingHeaders() {
+                val buffered = pendingHeaders ?: return
+                pendingHeaders = null
+                outerListener?.onHeaders(buffered)
+            }
+        }
+    }
+
+    private data class ReplaySnapshot<ReqT>(
+        val requested: Int,
+        val messages: List<ReqT>,
+        val shouldHalfClose: Boolean,
+        val compression: Boolean?,
+    )
+
+    private suspend fun refreshAccessToken(failedToken: String?): Result<String> {
+        val provider = tokenProvider
+            ?: return Result.failure(DomainError.Unauthorized("AuthTokenProvider is not configured"))
+
+        return refreshMutex.withLock {
+            val current = runCatching { provider.getAccessToken() }.getOrNull()
+            if (!current.isNullOrBlank() && current != failedToken) {
+                Result.success(current)
+            } else {
+                provider.refreshIfNeeded().mapCatching { refreshed ->
+                    if (refreshed.isBlank()) {
+                        throw DomainError.Unauthorized("Refreshed token is blank")
+                    }
+                    refreshed
+                }
+            }
+        }
+    }
+
+    private fun currentAccessToken(): String? =
+        tokenProvider?.let { provider ->
+            runCatching { provider.getAccessToken() }.getOrNull()
+        }
+
+    private fun resolveIdempotencyKey(
+        fullMethodName: String,
+        callOptions: CallOptions,
+    ): String? {
+        val optionKey = callOptions.getOption(IDEMPOTENCY_KEY_CALL_OPTION)
+        val contextKey = IDEMPOTENCY_KEY_CTX.get()
+        val providedKey = idempotencyKeyProvider?.invoke()
+        val candidate = optionKey ?: contextKey ?: providedKey
+        return when {
+            !candidate.isNullOrBlank() -> candidate
+            isMutatingMethod(fullMethodName) -> generateUuid()
+            else -> null
+        }
+    }
+
+    private fun injectHeaders(
+        headers: Metadata,
+        accessToken: String?,
+        idempotencyKey: String?,
+    ) {
+        if (!accessToken.isNullOrBlank()) {
+            headers.put(AUTHORIZATION_METADATA_KEY, "Bearer $accessToken")
+        }
+
+        val traceparent = traceContextHolder?.getTraceparent() ?: generateTraceparent()
+        headers.put(TRACEPARENT_METADATA_KEY, traceparent)
+
+        if (!idempotencyKey.isNullOrBlank()) {
+            headers.put(IDEMPOTENCY_METADATA_KEY, idempotencyKey)
+        }
+
+        val userId = userIdProvider?.invoke()
+        if (!userId.isNullOrBlank()) {
+            headers.put(USER_ID_METADATA_KEY, userId)
+        }
+
+        if (devBypass) {
+            headers.put(DEV_BYPASS_METADATA_KEY, "true")
         }
     }
 

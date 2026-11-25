@@ -68,11 +68,12 @@ class SyncDiaryWorker(
         ): Result = withContext(dispatchers.io) {
             try {
                 val pendingRecords = mealRecordDao.getPendingRecords()
-                if (pendingRecords.isEmpty()) {
+                val pendingDeletions = mealRecordDao.getPendingDeletedRecords()
+                if (pendingRecords.isEmpty() && pendingDeletions.isEmpty()) {
                     return@withContext Result.success()
                 }
 
-                val failedEntities = mutableListOf<MealRecordEntity>()
+                val failedAdditions = mutableListOf<MealRecordEntity>()
                 for (entity in pendingRecords) {
                     val domainRecord = entity.toDomain()
                     val remoteResult = diaryRemoteDataSource.addEntry(domainRecord)
@@ -81,17 +82,32 @@ class SyncDiaryWorker(
                     } else {
                         val error = remoteResult.exceptionOrNull()
                         if (error is CancellationException) throw error
-                        failedEntities.add(entity)
+                        failedAdditions.add(entity)
                     }
                 }
 
-                if (failedEntities.isEmpty()) {
+                val failedDeletions = mutableListOf<MealRecordEntity>()
+                for (entity in pendingDeletions) {
+                    val remoteResult = diaryRemoteDataSource.deleteMeal(entity.id)
+                    if (remoteResult.isSuccess) {
+                        mealRecordDao.deletePermanently(entity.id)
+                    } else {
+                        val error = remoteResult.exceptionOrNull()
+                        if (error is CancellationException) throw error
+                        failedDeletions.add(entity)
+                    }
+                }
+
+                if (failedAdditions.isEmpty() && failedDeletions.isEmpty()) {
                     return@withContext Result.success()
                 }
 
                 if (runAttemptCount >= MAX_RETRIES) {
-                    for (failed in failedEntities) {
+                    for (failed in failedAdditions) {
                         mealRecordDao.updateSyncStatus(failed.id, SyncStatus.FAILED.name)
+                    }
+                    for (failedDel in failedDeletions) {
+                        mealRecordDao.updateSyncStatus(failedDel.id, SyncStatus.FAILED.name)
                     }
                     Result.failure()
                 } else {

@@ -149,4 +149,12 @@ object DatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "ALTER TABLE `meal_records` ADD COLUMN `is_deleted` INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+    }
 }

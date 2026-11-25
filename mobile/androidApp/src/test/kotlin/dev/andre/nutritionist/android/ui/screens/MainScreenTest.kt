@@ -59,6 +59,13 @@ class FakeDiaryRepository : DiaryRepository {
     override suspend fun getPendingRecords(): List<MealRecord> =
         records.filter { it.syncStatus == SyncStatus.PENDING }
 
+    override suspend fun getRange(
+        fromIso: String,
+        untilIso: String,
+        targetUserId: UserId?,
+        timeZone: String,
+    ): Result<List<MealRecord>> = Result.success(records.toList())
+
     override suspend fun syncPendingRecords(): Result<Int> = Result.success(0)
 }
 

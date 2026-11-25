@@ -5,6 +5,25 @@
 
 Обновлено: 2026-11-25
 
+### Контракты Diary GetRange, Coach targetUserId, Offline Delete Tombstone, gRPC Auth Refresh, ConnectivityObserver и GetNutritionAnalyticsUseCase (2026-11-25)
+
+- **Активные Skills:** `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Дневник (`GetRange`, `targetUserId` для тренера и Offline Soft-Delete Tombstone):**
+  - Proto/DTO/gRPC (`DiaryProto.kt`, `DiaryDtoMapper.kt`, `DiaryRemoteDataSource.kt`, `DiaryGrpcRemoteDataSource.kt`, `AndroidDiaryGrpcServiceClient.kt`): добавлены `GetRangeRequest` / `GetRangeResponse`, `targetUserId: String?` (proto field `10`) в `GetDailyEntriesRequest` и `GetRangeRequest`, round-trip маршаллеры `GetRangeRequestMarshaller` и `GetRangeResponseMarshaller`, `errorMapper` (`GrpcErrorMapper`) в `DiaryGrpcRemoteDataSource`.
+  - Room KMP v5 (`AppDatabase.kt`, `DatabaseMigrations.kt`, `AndroidDatabaseBuilder.kt`, `schemas/.../5.json`): добавлен столбец `is_deleted INTEGER NOT NULL DEFAULT 0` в `MealRecordEntity`, статус `SyncStatus.DELETED_PENDING`, миграция `MIGRATION_4_5`.
+  - DAO & Repository (`MealRecordDao.kt`, `DiaryRepository.kt`, `DiaryRepositoryImpl.kt`, `SyncDiaryWorker.kt`): `markAsDeleted`, `getPendingDeletedRecords`, `deletePermanently`, исключение `is_deleted = 1` из UI-запросов, `getRange` (режим тренера с `targetUserId` напрямую через gRPC без смешивания с локальной Room; свой диапазон с объединением `PENDING` и сокрытием `DELETED_PENDING`), tombstone-удаление и двусторонняя синхронизация `PENDING` + `DELETED_PENDING` в `syncPendingRecords()` и `SyncDiaryWorker`.
+- **Блок 2 — Автоматический Refresh токена при `Status.UNAUTHENTICATED` (`UnifiedGrpcClientInterceptor.kt`):**
+  - Внедрена обёртка `RetryingClientCall`: при `Status.UNAUTHENTICATED` запрашивает `AuthTokenProvider.refreshIfNeeded()` под `Mutex` (с double-check относительно неудавшегося токена, чтобы параллельные RPC делали только один refresh) и повторяет вызов ровно 1 раз с сохранением исходного `idempotency-key` и заголовков; при провале refresh или повторной ошибке прокидывает `UNAUTHENTICATED` (маппится в `DomainError.Unauthorized`).
+- **Блок 3 — Реактивный `ConnectivityObserver`:**
+  - Интерфейс `ConnectivityObserver` (`val isConnected: StateFlow<Boolean>`) в `commonMain`, реализация `AndroidConnectivityObserver` (`ConnectivityManager.NetworkCallback`) в `androidMain`, разрешение `ACCESS_NETWORK_STATE` в манифестах и биндинг в `AndroidDataModule.kt`.
+- **Блок 4 — `GetNutritionAnalyticsUseCase` (`NutritionAnalytics.kt`, `GetNutritionAnalyticsUseCase.kt`, `Koin.kt`):**
+  - Добавлены модели `PeriodAnalytics`, `DailyNutritionPoint` и UseCase расчёта КБЖУ, соблюдения норм, трат бюджета и дневной разбивки за период (включая `targetUserId` для тренера), зарегистрирован в `domainModule`.
+- **Тестирование и верификация (без MockK, только Fakes):**
+  - Новые тесты: `DiaryTombstoneSyncTest` (5 тестов), `GetNutritionAnalyticsUseCaseTest` (4 теста), `AuthTokenRefreshInterceptorTest` (4 теста), `DiaryGetRangeGrpcTest` (4 теста).
+  - Обновлены и расширены: `FakeMealRecordDao`, `FakeDiaryRemoteDataSource`, `FakeDiaryRepository`, `SyncDiaryWorkerTest`, `MealRecordDaoTest`, `AppDatabaseMigrationTest` (`4 -> 5` и `3 -> 5`), `RecipeDatabaseMigrationTest`, `MainScreenTest`.
+  - `:mobile:shared:testAndroidHostTest :mobile:shared:assemble` (234 passed, 0 failed) и `:mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` (80 passed, 0 failed) — **BUILD SUCCESSFUL**.
+
 ### Адаптивная иконка приложения и динамический Splash-экран (День / Ночь) (2026-11-25)
 
 - **Активные Skills:** `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

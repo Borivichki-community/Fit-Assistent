@@ -47,5 +47,6 @@ object MealRecordUiMapper {
         SyncStatus.PENDING -> "Ожидает синхронизации"
         SyncStatus.SYNCED -> "Синхронизировано"
         SyncStatus.FAILED -> "Ошибка синхронизации"
+        SyncStatus.DELETED_PENDING -> "Ожидает удаления"
     }
 }

@@ -117,6 +117,33 @@ class MealRecordDaoTest {
         assertNull(dao.getById("to-del"))
     }
 
+    @Test
+    fun markAsDeleted_excludesFromFlowAndAppearsInPendingDeletedRecords() = runTest {
+        val dayStart = 1700000000000L
+        val dayEnd = 1700086400000L
+        val entity = createEntity(id = "tomb-1", syncStatus = "SYNCED", timestampEpoch = 1700010000000L)
+        dao.insert(entity)
+
+        dao.getDailyRecordsFlow(dayStart, dayEnd).test {
+            assertEquals(1, awaitItem().size)
+
+            dao.markAsDeleted("tomb-1")
+            assertEquals(0, awaitItem().size)
+
+            val pendingDeleted = dao.getPendingDeletedRecords()
+            assertEquals(1, pendingDeleted.size)
+            assertEquals("tomb-1", pendingDeleted.first().id)
+            assertEquals("DELETED_PENDING", pendingDeleted.first().syncStatus)
+            assertTrue(pendingDeleted.first().isDeleted)
+
+            dao.deletePermanently("tomb-1")
+            assertNull(dao.getById("tomb-1"))
+            assertTrue(dao.getPendingDeletedRecords().isEmpty())
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun createEntity(
         id: String,
         name: String = "Test Meal",
