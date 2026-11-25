@@ -8,6 +8,7 @@ import app.cash.turbine.test
 import dev.andre.nutritionist.android.fake.FakeAuthStorage
 import dev.andre.nutritionist.android.fake.FakeTokenExchanger
 import dev.andre.nutritionist.android.fake.TestCoroutineDispatchers
+import dev.andre.nutritionist.domain.model.UserRole
 import kotlinx.coroutines.test.runTest
 import net.openid.appauth.AuthState
 import net.openid.appauth.AuthorizationException
@@ -323,5 +324,33 @@ class AuthRepositoryImplTest {
             assertEquals(true, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `setUserRole persists role and logout clears it`() = runTest {
+        assertNull(repository.getUserRole())
+
+        repository.setUserRole(UserRole.COACH)
+
+        assertEquals(UserRole.COACH, repository.getUserRole())
+        assertEquals("COACH", fakeStorage.savedRole)
+
+        repository.logout()
+
+        assertNull(repository.getUserRole())
+        assertNull(fakeStorage.savedRole)
+    }
+
+    @Test
+    fun `initialization restores persisted user role from authStorage`() {
+        val storageWithRole = FakeAuthStorage(initialRole = UserRole.CLIENT.name)
+        val repo = AuthRepositoryImpl(
+            authStorage = storageWithRole,
+            tokenExchanger = fakeTokenExchanger,
+            authService = authService,
+            dispatchers = dispatchers,
+        )
+
+        assertEquals(UserRole.CLIENT, repo.getUserRole())
     }
 }

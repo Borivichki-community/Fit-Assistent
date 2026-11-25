@@ -190,4 +190,14 @@
     <string name="btn_quick_copy">Копировать</string>
     <string name="dashboard_empty_meal">Пусто</string>
     <string name="portion_format">%1$d порция</string>
+
+    <!-- Выбор роли -->
+    <string name="role_selection_title">Выберите свою роль</string>
+    <string name="role_selection_subtitle">Это поможет настроить интерфейс под ваши задачи</string>
+    <string name="role_client_title">Пользователь</string>
+    <string name="role_client_desc">Отслеживайте питание, КБЖУ и бюджет на продукты</string>
+    <string name="role_coach_title">Тренер</string>
+    <string name="role_coach_desc">Создавайте рационы и ведите учеников</string>
+    <string name="role_badge_client">ПОЛЬЗОВАТЕЛЬ</string>
+    <string name="role_badge_coach">ТРЕНЕР</string>
 </resources>

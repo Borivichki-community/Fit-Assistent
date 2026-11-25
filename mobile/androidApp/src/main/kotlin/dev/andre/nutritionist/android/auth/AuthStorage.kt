@@ -8,5 +8,7 @@ interface AuthStorage {
     fun getAuthStateJsonSync(): String?
     suspend fun getAuthStateJson(): String?
     suspend fun saveAuthStateJson(json: String)
+    fun getUserRoleSync(): String?
+    suspend fun saveUserRole(roleName: String)
     suspend fun clear()
 }

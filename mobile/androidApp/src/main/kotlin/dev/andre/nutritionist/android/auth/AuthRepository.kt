@@ -4,6 +4,7 @@ import android.content.Intent
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
 import dev.andre.nutritionist.domain.model.AccessToken
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -36,6 +37,16 @@ interface AuthRepository : AuthTokenProvider {
      * Возвращает отображаемое имя текущего пользователя (given_name / name / preferred_username из ID Token).
      */
     fun getUserDisplayName(): String?
+
+    /**
+     * Возвращает выбранную роль пользователя ([UserRole.CLIENT] или [UserRole.COACH]), либо null.
+     */
+    fun getUserRole(): UserRole?
+
+    /**
+     * Сохраняет выбранную роль пользователя в безопасном хранилище.
+     */
+    suspend fun setUserRole(role: UserRole)
 
     /**
      * Проверяет, авторизован ли пользователь в данный момент.

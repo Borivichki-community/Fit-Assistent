@@ -866,4 +866,35 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка тренера / наставника (группа / бейдж) */
+    val Coach: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitCoach",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                // Основной силуэт тренера
+                moveTo(9f, 5f)
+                arcTo(3.5f, 3.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 9f, 12f)
+                arcTo(3.5f, 3.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 9f, 5f)
+                close()
+                moveTo(3f, 20f)
+                arcTo(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 15f, 20f)
+                // Звезда / акцент наставника
+                moveTo(19f, 5f)
+                lineTo(19f, 11f)
+                moveTo(16f, 8f)
+                lineTo(22f, 8f)
+            }
+        }.build()
+    }
 }

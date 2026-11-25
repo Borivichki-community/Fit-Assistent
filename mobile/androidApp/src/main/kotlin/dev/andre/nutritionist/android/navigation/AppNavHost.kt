@@ -22,6 +22,7 @@ import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
+import dev.andre.nutritionist.android.ui.screens.role.RoleSelectionRoute
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileNews
@@ -66,7 +67,7 @@ fun AppNavHost(
         composable(AppDestination.SignUp.route) {
             SignUpRoute(
                 onRegistrationSuccess = { _ ->
-                    navController.navigate(AppDestination.Registration.route) {
+                    navController.navigate(AppDestination.RoleSelection.route) {
                         popUpTo(AppDestination.SignUp.route) { inclusive = true }
                     }
                 },
@@ -74,6 +75,21 @@ fun AppNavHost(
                     navController.popBackStack()
                 },
                 viewModel = authViewModel,
+            )
+        }
+        composable(AppDestination.RoleSelection.route) {
+            RoleSelectionRoute(
+                onNavigateToOnboarding = {
+                    navController.navigate(AppDestination.Registration.route) {
+                        popUpTo(AppDestination.RoleSelection.route) { inclusive = true }
+                    }
+                },
+                onNavigateToDashboard = {
+                    navController.navigate(AppDestination.Dashboard.route) {
+                        popUpTo(AppDestination.RoleSelection.route) { inclusive = true }
+                    }
+                },
+                authRepository = authRepository,
             )
         }
         composable(AppDestination.Dashboard.route) {

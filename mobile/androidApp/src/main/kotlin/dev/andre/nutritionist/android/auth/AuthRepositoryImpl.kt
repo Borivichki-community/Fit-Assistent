@@ -4,6 +4,7 @@ import android.content.Intent
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.model.AccessToken
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +28,7 @@ class AuthRepositoryImpl(
 ) : AuthRepository {
 
     private var currentAuthState: AuthState = AuthState()
+    private var currentUserRole: UserRole? = null
     private val _authStateFlow = MutableStateFlow(false)
 
     init {
@@ -37,6 +39,10 @@ class AuthRepositoryImpl(
                 currentAuthState = AuthState.jsonDeserialize(cachedJson)
                 _authStateFlow.value = currentAuthState.isAuthorized
             }
+        }
+        val cachedRole = authStorage.getUserRoleSync()
+        if (!cachedRole.isNullOrBlank()) {
+            currentUserRole = UserRole.entries.firstOrNull { it.name == cachedRole }
         }
     }
 
@@ -73,6 +79,13 @@ class AuthRepositoryImpl(
             ?: extractClaimFromJwt(token, "preferred_username")
     }
 
+    override fun getUserRole(): UserRole? = currentUserRole
+
+    override suspend fun setUserRole(role: UserRole): Unit = withContext(dispatchers.io) {
+        currentUserRole = role
+        authStorage.saveUserRole(role.name)
+    }
+
     override fun isAuthenticated(): Boolean = currentAuthState.isAuthorized
 
     override suspend fun processAuthResponse(intent: Intent): Result<Unit> =
@@ -101,6 +114,7 @@ class AuthRepositoryImpl(
     override suspend fun logout(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
             currentAuthState = AuthState()
+            currentUserRole = null
             authStorage.clear()
             _authStateFlow.value = false
         }
