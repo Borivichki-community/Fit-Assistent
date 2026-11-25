@@ -5,21 +5,21 @@
 
 Обновлено: 2026-11-25
 
-### Маршрутизация роли `COACH` на онбординг, JWT-провайдер эмулятора в Gateway и попытка E2E-поднятия кластера (2026-11-25)
+### Маршрутизация роли `COACH` на онбординг, JWT-провайдер эмулятора в Gateway и E2E-проверка в кластере (2026-11-25)
 
 - **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
-- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite` (коммит кода и Gateway-конфига: `486f360`).
 - **Изменения в коде и конфигурации:**
   - `mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/role/RoleSelectionRoute.kt`: выбор `UserRole.COACH` («Тренер») теперь ведёт на `onNavigateToOnboarding()` (раньше вёл сразу на `Dashboard` в обход `RegistrationWizardScreen`, из-за чего профиль тренера и цель КБЖУ на `profile-service` не создавались).
-  - `infrastructure/k8s/gateway/05-security-policy.yaml`: добавлен второй JWT-провайдер `keycloak-emulator` с `issuer: "http://10.0.2.2:8080/realms/FitAssistant"` (наряду с `localhost:8080`) для работы OAuth/gRPC с Android-эмулятора через Envoy Gateway (не проверен в живом Envoy Gateway из-за сетевой блокировки).
-- **Статус инфраструктуры и сборки:**
-  - Собраны `profile-service.jar` и `catalog-price-service.jar`, собраны Docker-образы `profile-service:latest` (934 MB) и `catalog-price-service:latest` (932 MB) через `Dockerfile.runtime`.
-  - Поднят `kind`-кластер `fitassistant-cluster`, загружен образ `catalog-price-service:latest`, применены `01-postgres.yaml`, `02-redis.yaml`, `03-keycloak.yaml` в namespace `budget-nutritionist`.
-  - Эмулятор `emulator-5554` подключён, `androidApp-debug.apk` установлен через `adb install -r`.
-  - Выполнены `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug --offline` — **BUILD SUCCESSFUL**.
-- **Блокер E2E-проверки в кластере и на эмуляторе:**
-  - После начала развёртывания пропала внешняя HTTP/HTTPS-связность на хосте (активный сетевой интерфейс `happ-xray` / `Happ Tunnel`): `curl` возвращает `schannel: failed to receive handshake` к `github.com`, `registry-1.docker.io`, `quay.io`, `ya.ru` и `Empty reply from server` по HTTP; `docker pull postgres:17-alpine` падает с `EOF` на `https://auth.docker.io/token`.
-  - По этой причине поды `postgres-0`, `redis-*`, `keycloak` находятся в `ImagePullBackOff`, Gateway API CRDs / Envoy Gateway не скачаны, а живая регистрация на эмуляторе и проверка пересчёта КБЖУ против работающего `profile-service` не завершены.
+  - `infrastructure/k8s/gateway/05-security-policy.yaml`: добавлен второй JWT-провайдер `keycloak-emulator` с `issuer: "http://10.0.2.2:8080/realms/FitAssistant"` (наряду с `localhost:8080`) для работы OAuth/gRPC с Android-эмулятора через Envoy Gateway (`SecurityPolicy` принят контроллером, `Accepted = True`).
+- **E2E-проверка в `kind`-кластере и на эмуляторе `emulator-5554` (пройдена полностью):**
+  - Развёрнуты Gateway API v1.2.0 CRDs, Envoy Gateway v1.2.4, PostgreSQL 17, Redis State/Cache, Keycloak 26 (импортирован realm `FitAssistant` с ролью `ROLE_COACH`), `profile-service`, `GRPCRoute` и `SecurityPolicy`.
+  - В приложении выполнена регистрация нового пользователя `coach_e2e_1` (`coach.e2e@fitapp.io`, `Alex Coach`) через Keycloak OAuth 2.1 PKCE, выбор роли **Coach** (`UserRole.COACH`) на `RoleSelectionScreen` и прохождение 4 шагов `RegistrationWizardScreen` (`180 см`, `80 кг`, `30 лет`, `Male`, `Moderate`, `5000 ₽`, `Weight loss`).
+  - На экране **Profile** подтверждены бейдж `COACH`, соответствие макету `fitapp_8` (заголовок, identity-карточка, сетка 2×2, блок `DAILY NUTRITION TARGETS`, пункты настроек и нижняя навигация) и первичная цель: целевой вес `72 кг`, `2 294 ккал` (`160 г` Б / `80 г` Ж / `233,5 г` У).
+  - Выполнены два изменения параметров профиля с проверкой пересчёта через Envoy Gateway → `profile-service` → PostgreSQL (`profile_db.profiles`, `version = 2`):
+    1. Смена цели `Weight loss` → `Muscle gain` (`Набор массы`): целевой вес `88 кг`, `3 133 ккал` (`160 г` Б / `87 г` Ж / `427,4 г` У).
+    2. Смена веса `80 кг` → `90 кг`: целевой вес `99 кг`, `3 307 ккал` (`180 г` Б / `91,9 г` Ж / `440,1 г` У).
+  - **Тесты и сборка:** `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug --offline` — **BUILD SUCCESSFUL**. (Побочное наблюдение: `catalog-price-service` в кластере находится в `CrashLoopBackOff`, на E2E-флоу профиля не влияет.)
 
 ### Полировка экрана Профиля под `fitapp_8`, роль `ROLE_COACH` в Keycloak и пересчёт КБЖУ при редактировании (2026-11-25)
 
