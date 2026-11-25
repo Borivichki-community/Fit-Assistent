@@ -14,9 +14,9 @@ import org.koin.compose.koinInject
 
 /**
  * Stateful Route экрана выбора роли после регистрации.
- * Сохраняет выбранную роль в [AuthRepository] и направляет пользователя:
- * - [UserRole.CLIENT] → в мастер ввода параметров ([onNavigateToOnboarding]);
- * - [UserRole.COACH] → на главный экран ([onNavigateToDashboard]).
+ * Сохраняет выбранную роль в [AuthRepository] и направляет пользователя
+ * в мастер ввода параметров ([onNavigateToOnboarding]), чтобы и клиент, и тренер
+ * получили профиль и рассчитанную цель по КБЖУ на бэкенде.
  */
 @Composable
 fun RoleSelectionRoute(
@@ -36,7 +36,7 @@ fun RoleSelectionRoute(
                     runCatching { authRepository.setUserRole(role) }
                     when (role) {
                         UserRole.CLIENT -> onNavigateToOnboarding()
-                        UserRole.COACH -> onNavigateToDashboard()
+                        UserRole.COACH -> onNavigateToOnboarding()
                     }
                 }
             }
