@@ -5,13 +5,19 @@ import dev.andre.nutritionist.domain.model.Product
 import dev.andre.nutritionist.domain.model.ProductId
 import dev.andre.nutritionist.domain.model.RegionId
 import dev.andre.nutritionist.domain.repository.CatalogRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class FakeCatalogRepository : CatalogRepository {
 
     // mutable by design: test control
     val products = mutableMapOf<ProductId, Product>()
     val averagePrices = mutableMapOf<ProductId, Money>()
+    private val favoritesFlow = MutableStateFlow<List<Product>>(emptyList())
+    var searchResultHandler: ((query: String, category: String, pageToken: String) -> Result<Pair<List<Product>, String>>)? = null
     var shouldThrow: Throwable? = null
+    var searchCallCount: Int = 0
 
     override suspend fun searchProducts(
         query: String,
@@ -24,6 +30,10 @@ class FakeCatalogRepository : CatalogRepository {
         pageSize: Int,
         pageToken: String,
     ): Result<Pair<List<Product>, String>> {
+        searchCallCount++
+        searchResultHandler?.let { handler ->
+            return handler(query, category, pageToken)
+        }
         val error = shouldThrow
         if (error != null) return Result.failure(error)
 
@@ -57,9 +67,33 @@ class FakeCatalogRepository : CatalogRepository {
         return Result.success(result)
     }
 
+    override suspend fun toggleFavoriteProduct(product: Product): Result<Boolean> {
+        val error = shouldThrow
+        if (error != null) return Result.failure(error)
+
+        val current = favoritesFlow.value
+        val exists = current.any { it.id == product.id }
+        return if (exists) {
+            favoritesFlow.value = current.filterNot { it.id == product.id }
+            Result.success(false)
+        } else {
+            favoritesFlow.value = listOf(product) + current
+            Result.success(true)
+        }
+    }
+
+    override fun observeFavoriteProducts(): Flow<List<Product>> = favoritesFlow.asStateFlow()
+
+    fun setFavorites(items: List<Product>) {
+        favoritesFlow.value = items
+    }
+
     fun reset() {
         products.clear()
         averagePrices.clear()
+        favoritesFlow.value = emptyList()
+        searchResultHandler = null
         shouldThrow = null
+        searchCallCount = 0
     }
 }

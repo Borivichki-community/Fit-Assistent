@@ -5,6 +5,31 @@
 
 Обновлено: 2026-11-25
 
+### T-070 — T-073 — Фоновая синхронизация (WorkManager), Избранное в Room v4, KoTEA ViewModels и Форматтеры (2026-11-25)
+
+- **Активные Skills:** `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`.
+- **Блок 1 [T-070] — Фоновая синхронизация дневника (`SyncScheduler` + `SyncDiaryWorker`):**
+  - `:mobile:shared`: создан интерфейс `SyncScheduler` (`dev.andre.nutritionist.domain.sync`); внедрён как опциональная зависимость в `DiaryRepositoryImpl` (при сбое сети и сохранении записи со статусом `PENDING` вызывается `syncScheduler?.scheduleDiarySync()`).
+  - `:mobile:androidApp`: реализованы `SyncDiaryWorker` (`CoroutineWorker`, `KoinComponent`, `MAX_RETRIES = 5`, `BackoffPolicy.EXPONENTIAL` 10 сек, `NetworkType.CONNECTED`, перевод `PENDING -> SYNCED` или `FAILED` после исчерпания попыток с сохранением `idempotencyKey`) и `WorkManagerSyncScheduler` (`enqueueUniqueWork(..., ExistingWorkPolicy.KEEP)`), зарегистрированы в `workModule` (`AndroidModule.kt`).
+- **Блок 2 [T-071] — Избранные продукты и сохранённые рецепты в Room KMP (миграция v3 → v4):**
+  - *Примечание по версионированию:* схема v3 была занята ранее в `T-078` (`local_recipes`, `local_meal_plans`), поэтому `AppDatabase` переведён на `version = 4` с сохранением `3.json` и `MIGRATION_2_3`, добавлена явная миграция `MIGRATION_3_4` (`DatabaseMigrations.kt`, подключена в `AndroidDatabaseBuilder.kt` без `fallbackToDestructiveMigration()`), экспортирована схема `mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/4.json`.
+  - Созданы `FavoriteProductEntity`, `SavedRecipeEntity`, `FavoriteProductDao`, `SavedRecipeDao`, мапперы `FavoriteProductEntityMapper` и `SavedRecipeEntityMapper` (чистый KMP JSON сериализатор/парсер для `ingredients_json` без `java.*`).
+  - Расширены `CatalogRepository`/`CatalogRepositoryImpl` (`toggleFavoriteProduct`, `observeFavoriteProducts`) и `RecipeRepository`/`RecipeRepositoryImpl` (`saveRecipe`, `deleteSavedRecipe`, `observeSavedRecipes`).
+- **Блок 3 [T-072] — Презентационный MVI-слой KoTEA в `:mobile:shared` (без правок UI):**
+  - `presentation/catalog/`: `CatalogSearchState`, `CatalogSearchEvent`, `CatalogSearchCommand`, `CatalogSearchNews`, `CatalogSearchUpdate`, `CatalogSearchCommandsFlowHandler` (`debounce(300ms)` + `distinctUntilChanged()` + пагинация и избранное на раздельном потоке), `CatalogSearchUiState`, `CatalogSearchUiStateMapper`, `CatalogSearchViewModel`.
+  - `presentation/airecipe/`: `MenuState`, `MenuEvent`, `MenuCommand`, `MenuNews`, `MenuUpdate`, `MenuCommandsFlowHandler` (отмена предыдущего расчёта через `collectLatest` + `GenerateBudgetMenuUseCase`), `MenuUiState`, `MenuUiStateMapper`, `MenuViewModel`.
+  - `presentation/dashboard/`: `DiaryState`, `DiaryEvent`, `DiaryCommand`, `DiaryNews`, `DiaryUpdate`, `DiaryCommandsFlowHandler` (реактивное наблюдение Room `observeDailyRecords` + пересчёт баланса КБЖУ через `DailyNutritionBalanceCalculator`), `DiaryUiState`, `DiaryUiStateMapper`, `DiaryViewModel`.
+  - Все UseCase, DAO, репозитории и ViewModel зарегистрированы в `Koin.kt`.
+- **Блок 4 [T-073] — Чистые KMP-форматтеры, UI-модели и мапперы:**
+  - Созданы `MoneyFormatter`, `NutritionFormatter`, `DateFormatter` (на `kotlinx-datetime` и `kotlin.time.Instant`, без `java.*` и `String.format`).
+  - Созданы UI-модели (`ProductUiModel`, `MealRecordUiModel`, `MealPlanUiModel`, `DailyNutritionUiModel`) и мапперы (`ProductUiMapper`, `MealRecordUiMapper`, `MealPlanUiMapper`, `DailyNutritionUiMapper`).
+- **Тестирование и верификация (без MockK, только Fakes):**
+  - `commonTest`: `FormattersTest`, `CatalogSearchUpdateTest`, `MenuUpdateTest`, `DiaryUpdateTest`, `CommandsFlowHandlerTest` (Turbine: debounce 300ms, `collectLatest`, реактивный дневник), `FavoritesAndSavedRecipesRepositoryTest`, расширен `DiaryRepositoryImplTest` (`FakeSyncScheduler`).
+  - `androidHostTest`: `AppDatabaseMigrationTest` (проверка `3 -> 4` и `2 -> 4`, CRUD `FavoriteProductDao`/`SavedRecipeDao`).
+  - `androidApp/test`: `SyncDiaryWorkerTest` (WorkRequest constraints/backoff, пустая очередь, успех `SYNCED`, retry < 5, `FAILED` >= 5).
+  - `:mobile:shared:allTests` (215 passed, 0 failed, 0 skipped), `:mobile:androidApp:testDebugUnitTest` (79 passed, 0 failed, 0 skipped), `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
 ### Fix CI — Устранение гонки в `LocalRecipeDaoTest` и дедупликация `observeMyRecipes` (2026-11-25)
 
 - **Активные Skills:** `diagnose-build-failure`, `testing-and-verification`. Роль: `implementer`.

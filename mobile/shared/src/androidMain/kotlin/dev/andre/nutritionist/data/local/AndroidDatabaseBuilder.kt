@@ -19,7 +19,10 @@ class AndroidDatabaseBuilder(
         )
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO)
-            .addMigrations(DatabaseMigrations.MIGRATION_2_3)
+            .addMigrations(
+                DatabaseMigrations.MIGRATION_2_3,
+                DatabaseMigrations.MIGRATION_3_4,
+            )
             .build()
     }
 }

@@ -4,6 +4,7 @@ import dev.andre.nutritionist.domain.model.Money
 import dev.andre.nutritionist.domain.model.Product
 import dev.andre.nutritionist.domain.model.ProductId
 import dev.andre.nutritionist.domain.model.RegionId
+import kotlinx.coroutines.flow.Flow
 
 interface CatalogRepository {
     suspend fun searchProducts(
@@ -21,4 +22,8 @@ interface CatalogRepository {
     suspend fun getProduct(id: ProductId, regionId: RegionId? = null): Result<Product>
 
     suspend fun getAveragePrices(productIds: List<ProductId>, regionId: RegionId? = null): Result<Map<ProductId, Money>>
+
+    suspend fun toggleFavoriteProduct(product: Product): Result<Boolean>
+
+    fun observeFavoriteProducts(): Flow<List<Product>>
 }

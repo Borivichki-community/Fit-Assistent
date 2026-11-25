@@ -9,6 +9,7 @@ import dev.andre.nutritionist.domain.model.MealRecord
 import dev.andre.nutritionist.domain.model.MealRecordId
 import dev.andre.nutritionist.domain.model.SyncStatus
 import dev.andre.nutritionist.domain.repository.DiaryRepository
+import dev.andre.nutritionist.domain.sync.SyncScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -18,6 +19,7 @@ class DiaryRepositoryImpl(
     private val dao: MealRecordDao,
     private val remoteDataSource: DiaryRemoteDataSource,
     private val dispatchers: CoroutineDispatchers,
+    private val syncScheduler: SyncScheduler? = null,
 ) : DiaryRepository {
 
     override suspend fun addEntry(record: MealRecord): Result<MealRecord> =
@@ -37,7 +39,8 @@ class DiaryRepositoryImpl(
                     dao.updateSyncStatus(pendingRecord.id.raw, SyncStatus.SYNCED.name)
                     syncedRecord
                 } else {
-                    // e. If network failed -> record stays PENDING for background sync
+                    // e. If network failed -> record stays PENDING and schedule background sync
+                    syncScheduler?.scheduleDiarySync()
                     pendingRecord
                 }
             }

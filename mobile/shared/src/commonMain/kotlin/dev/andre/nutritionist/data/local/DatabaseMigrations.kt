@@ -107,4 +107,46 @@ object DatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_3_4: Migration = object : Migration(3, 4) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `favorite_products` (
+                    `id` TEXT NOT NULL,
+                    `product_id` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `category` TEXT NOT NULL,
+                    `calories` REAL NOT NULL,
+                    `proteins` REAL NOT NULL,
+                    `fats` REAL NOT NULL,
+                    `carbs` REAL NOT NULL,
+                    `price_amount_minor` INTEGER,
+                    `saved_at` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `saved_recipes` (
+                    `id` TEXT NOT NULL,
+                    `plan_id` TEXT,
+                    `title` TEXT NOT NULL,
+                    `meal_type` TEXT NOT NULL,
+                    `calories` REAL NOT NULL,
+                    `proteins` REAL NOT NULL,
+                    `fats` REAL NOT NULL,
+                    `carbs` REAL NOT NULL,
+                    `cost_minor` INTEGER NOT NULL,
+                    `ingredients_json` TEXT NOT NULL,
+                    `instructions` TEXT NOT NULL,
+                    `saved_at` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

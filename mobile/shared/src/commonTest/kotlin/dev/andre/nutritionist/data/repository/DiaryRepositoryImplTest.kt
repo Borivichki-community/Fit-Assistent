@@ -11,19 +11,21 @@ import dev.andre.nutritionist.domain.model.NutritionFacts
 import dev.andre.nutritionist.domain.model.SyncStatus
 import dev.andre.nutritionist.fake.FakeDiaryRemoteDataSource
 import dev.andre.nutritionist.fake.FakeMealRecordDao
+import dev.andre.nutritionist.fake.FakeSyncScheduler
 import dev.andre.nutritionist.fake.TestCoroutineDispatchers
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Instant
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class DiaryRepositoryImplTest {
 
     private lateinit var dao: FakeMealRecordDao
     private lateinit var remoteDataSource: FakeDiaryRemoteDataSource
+    private lateinit var syncScheduler: FakeSyncScheduler
     private lateinit var dispatchers: TestCoroutineDispatchers
     private lateinit var repository: DiaryRepositoryImpl
 
@@ -31,11 +33,13 @@ class DiaryRepositoryImplTest {
     fun setUp() {
         dao = FakeMealRecordDao()
         remoteDataSource = FakeDiaryRemoteDataSource()
+        syncScheduler = FakeSyncScheduler()
         dispatchers = TestCoroutineDispatchers()
         repository = DiaryRepositoryImpl(
             dao = dao,
             remoteDataSource = remoteDataSource,
             dispatchers = dispatchers,
+            syncScheduler = syncScheduler,
         )
     }
 
@@ -50,11 +54,12 @@ class DiaryRepositoryImplTest {
         val returned = result.getOrThrow()
         assertEquals(SyncStatus.SYNCED, returned.syncStatus)
 
-        // Verify Room has SYNCED
+        // Verify Room has SYNCED and SyncScheduler was not triggered
         val inRoom = dao.getById("rec-1")
         assertNotNull(inRoom)
         assertEquals("SYNCED", inRoom.syncStatus)
         assertEquals(key.raw, inRoom.idempotencyKey)
+        assertEquals(0, syncScheduler.scheduleCallCount)
 
         // Verify remote was called once with that idempotency key
         assertEquals(1, remoteDataSource.addEntryCallCount)
@@ -62,7 +67,7 @@ class DiaryRepositoryImplTest {
     }
 
     @Test
-    fun `addEntry offline-first saves to Room as PENDING when remote fails and preserves idempotencyKey`() = runTest {
+    fun `addEntry offline-first saves PENDING preserves idempotencyKey and schedules background sync`() = runTest {
         remoteDataSource.shouldFail = RuntimeException("Network timeout")
         val key = IdempotencyKey.generate()
         val record = createRecord(id = "rec-offline", key = key)
@@ -73,6 +78,7 @@ class DiaryRepositoryImplTest {
         assertTrue(result.isSuccess)
         val returned = result.getOrThrow()
         assertEquals(SyncStatus.PENDING, returned.syncStatus)
+        assertEquals(1, syncScheduler.scheduleCallCount)
 
         // Room keeps PENDING with unchanged idempotencyKey
         val inRoom = dao.getById("rec-offline")
