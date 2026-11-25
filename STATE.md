@@ -5,6 +5,25 @@
 
 Обновлено: 2026-11-25
 
+### Темы Aether Zero-G / Precision Mint, экран выбора роли и редизайн Профиля (`fitapp_8`) (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite` (коммиты: `b1f89d6`, `708b119`, `d74d660`, `4dd7215`).
+- **Блок 1 — Очистка debug-артефактов и дубля иконки:**
+  - Удалены устаревшие debug-экраны `ServiceCheckActivity` (`mobile/androidApp/src/debug/`, 18 файлов) и `ServiceCheckUpdateTest.kt`, а также неиспользуемый `protobuf`/`grpc` debug-конфиг в `mobile/androidApp/build.gradle.kts`.
+- **Блок 2 — Адаптивные темы Material 3 (Dark *Aether Zero-G Luxury* & Light *Precision Mint & Slate Wellness*):**
+  - Обновлены `Color.kt`, `FitAssistantTheme.kt` (`DarkColorScheme`, `LightColorScheme`, `FitExtendedColors` / `FitThemeTokens` с `glassBorderLevel1`/`2`, автопереключение по `isSystemInDarkTheme()`) и `NutritionistTheme.kt`.
+  - Адаптированы `BottomNavItem.kt`, `FitBottomNavigationBar.kt`, `MetricCard.kt`, `SettingsActionRow.kt` под обе темы без жёстко заданных hex-цветов в экранах.
+- **Блок 3 — Экран выбора роли («Пользователь» / «Тренер»):**
+  - В `:mobile:shared` добавлен `UserRole` (`CLIENT`, `COACH`); в `AuthStorage` / `EncryptedPrefsAuthStorage` / `AuthRepository` / `AuthRepositoryImpl` добавлено безопасное хранение роли (`getUserRole`, `setUserRole`, очистка при `logout`/`clear`).
+  - Реализованы `RoleOptionCard.kt`, stateless `RoleSelectionScreen.kt` (ровно 2 кликабельные карточки) и `RoleSelectionRoute.kt`; в `AppNavHost.kt` выстроен маршрут `SignUp` → `RoleSelection` → `Registration` (`CLIENT`) / `Dashboard` (`COACH`).
+- **Блок 4 — Редизайн Профиля (`fitapp_8`) без фейковых заглушек:**
+  - Расширены `AuthRepository` (`getUserEmail()` из JWT claims без fallback-заглушек), `ProfileEvent`, `ProfileState`, `ProfileUpdate` и `ProfileUiStateMapper` (`email`, `userRole`, `dailyBudgetLabel` через `MoneyFormatter`, `caloriesGoalFormatted` / макросы через `NutritionFormatter`).
+  - Разделены и обновлены `ProfileRoute.kt`, `ProfileHeader.kt`, `ProfileScreen.kt`, `ProfileIdentityCard.kt`, `ProfileDailyKbjuCard.kt` и `ProfileSuccessContent.kt` с сохранением всех диалогов редактирования (`EditWeightDialog`, `EditActivityDialog`, `EditGoalDialog`, `EditBudgetDialog`) и двуязычной локализации (`values` + `values-ru`).
+- **Тестирование и верификация:**
+  - Добавлены `RoleSelectionScreenTest`, `ProfileRedesignTest`, расширены `AuthRepositoryImplTest` и `ProfileUiStateMapperTest`.
+  - `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
 ### Контракты Diary GetRange, Coach targetUserId, Offline Delete Tombstone, gRPC Auth Refresh, ConnectivityObserver и GetNutritionAnalyticsUseCase (2026-11-25)
 
 - **Активные Skills:** `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
