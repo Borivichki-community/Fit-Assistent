@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Inner background disk -->
+    <path
+        android:pathData="M 54,50 m -19,0 a 19,19 0 1,1 38,0 a 19,19 0 1,1 -38,0"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Outer Nutrient Segments -->
+    <!-- Top-Right (0 to 30 deg): Light Mint -->
+    <path
+        android:pathData="M 76.52,37.00 A 26.00,26.00 0 0,1 80.00,50.00 L 73.00,50.00 A 19.00,19.00 0 0,0 70.45,40.50 Z"
+        android:fillColor="#D5FCE6" />
+
+    <!-- Top-Right (30 to 60 deg): Soft Mint -->
+    <path
+        android:pathData="M 67.00,27.48 A 26.00,26.00 0 0,1 76.52,37.00 L 70.45,40.50 A 19.00,19.00 0 0,0 63.50,33.55 Z"
+        android:fillColor="#B6F2D6" />
+
+    <!-- Top (60 to 90 deg): Mint -->
+    <path
+        android:pathData="M 54.00,24.00 A 26.00,26.00 0 0,1 67.00,27.48 L 63.50,33.55 A 19.00,19.00 0 0,0 54.00,31.00 Z"
+        android:fillColor="#8CE6BC" />
+
+    <!-- Top-Left (90 to 135 deg): Emerald -->
+    <path
+        android:pathData="M 35.62,31.62 A 26.00,26.00 0 0,1 54.00,24.00 L 54.00,31.00 A 19.00,19.00 0 0,0 40.56,36.56 Z"
+        android:fillColor="#00C875" />
+
+    <!-- Left (135 to 180 deg): Vibrant Green -->
+    <path
+        android:pathData="M 28.00,50.00 A 26.00,26.00 0 0,1 35.62,31.62 L 40.56,36.56 A 19.00,19.00 0 0,0 35.00,50.00 Z"
+        android:fillColor="#10B981" />
+
+    <!-- Bottom-Left (180 to 225 deg): Medium Emerald -->
+    <path
+        android:pathData="M 35.62,68.38 A 26.00,26.00 0 0,1 28.00,50.00 L 35.00,50.00 A 19.00,19.00 0 0,0 40.56,63.44 Z"
+        android:fillColor="#34D399" />
+
+    <!-- Segment Dividers & Outer Ring Contours -->
+    <path
+        android:pathData="M 54,50 m -26,0 a 26,26 0 1,1 52,0 a 26,26 0 1,1 -52,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000" />
+
+    <path
+        android:pathData="M 54,50 m -19,0 a 19,19 0 1,1 38,0 a 19,19 0 1,1 -38,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000" />
+
+    <!-- White radial dividers -->
+    <path
+        android:pathData="M 72.50,50.00 L 80.50,50.00 M 70.02,40.75 L 76.95,36.75 M 63.25,33.98 L 67.25,27.05 M 54.00,31.50 L 54.00,23.50 M 40.92,36.92 L 35.26,31.26 M 35.50,50.00 L 27.50,50.00 M 40.92,63.08 L 35.26,68.74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5" />
+
+    <!-- Pedestal / Base Collar -->
+    <path
+        android:pathData="M 43,65 C 47,72 61,72 65,65 L 70,72 C 61,79 47,79 38,72 Z"
+        android:fillColor="#D5FCE6"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.0"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:pathData="M 43,65 C 47,72 61,72 65,65"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M 46,75 C 49,71 59,71 62,75"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round" />
+
+    <!-- Lower-right Crescent Telemetry Track -->
+    <path
+        android:pathData="M 41,63.5 A 19,19 0 0,0 72.5,50"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M 44,60.5 A 15,15 0 0,0 68,50"
+        android:strokeColor="#A7F3D0"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round" />
+
+    <!-- Sprout Stem -->
+    <path
+        android:pathData="M 54,64 L 54,53"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round" />
+
+    <!-- Left Leaf -->
+    <path
+        android:pathData="M 52,52 C 47,51 42,47 42,42 C 48,42 53,46 53,51 Z"
+        android:fillColor="#D5FCE6"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.0"
+        android:strokeLineJoin="round" />
+
+    <!-- Right Leaf -->
+    <path
+        android:pathData="M 54,53 C 55,47 58,41 64,39 C 66,45 62,51 55,53 Z"
+        android:fillColor="#00C875"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="2.0"
+        android:strokeLineJoin="round" />
+
+    <!-- Right Leaf Spine & Highlight -->
+    <path
+        android:pathData="M 54,53 C 57,48 60,44 64,39"
+        android:strokeColor="#102A1E"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round" />
+
+    <path
+        android:pathData="M 57,45 L 61,42"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+</vector>

@@ -1,8 +1,8 @@
 package dev.andre.nutritionist.android
 
-import android.content.Intent
 import android.widget.ImageView
 import android.widget.TextView
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -22,16 +22,17 @@ class SplashActivityTest {
         val controller = Robolectric.buildActivity(SplashActivity::class.java).setup()
         val activity = controller.get()
 
-        val tvSplashLogo = activity.findViewById<TextView>(R.id.tvSplashLogo)
         val ivSplashLogo = activity.findViewById<ImageView>(R.id.ivSplashLogo)
-        val tvGreeting = activity.findViewById<TextView>(R.id.tvGreeting)
+        val tvSplashTitle = activity.findViewById<TextView>(R.id.tvSplashTitle)
+        val tvSplashSubtitle = activity.findViewById<TextView>(R.id.tvSplashSubtitle)
+        val progressIndicator = activity.findViewById<LinearProgressIndicator>(R.id.progressIndicator)
 
-        assertNotNull("tvSplashLogo must be present", tvSplashLogo)
         assertNotNull("ivSplashLogo must be present", ivSplashLogo)
-        assertNotNull("tvGreeting must be present", tvGreeting)
+        assertNotNull("tvSplashTitle must be present", tvSplashTitle)
+        assertNotNull("tvSplashSubtitle must be present", tvSplashSubtitle)
+        assertNotNull("progressIndicator must be present", progressIndicator)
 
-        assertEquals("fit-assistent", tvSplashLogo.text.toString())
-        assertEquals("Здравствуйте!", tvGreeting.text.toString())
+        assertEquals("Fit Assistant", tvSplashTitle.text.toString())
     }
 
     @Test
@@ -39,7 +40,7 @@ class SplashActivityTest {
         val controller = Robolectric.buildActivity(SplashActivity::class.java).setup()
         val activity = controller.get()
 
-        // Wait for coroutine delay (1500ms)
+        // Wait for coroutine delay (1200ms)
         org.robolectric.shadows.ShadowLooper.runUiThreadTasksIncludingDelayedTasks()
 
         val shadowActivity = shadowOf(activity)

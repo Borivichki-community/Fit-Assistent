@@ -5,7 +5,25 @@
 
 Обновлено: 2026-11-25
 
-### T-070 — T-073 — Фоновая синхронизация (WorkManager), Избранное в Room v4, KoTEA ViewModels и Форматтеры (2026-11-25)
+### Адаптивная иконка приложения и динамический Splash-экран (День / Ночь) (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Новая адаптивная иконка приложения (Adaptive Icon):**
+  - `mobile/androidApp/src/main/res/drawable/ic_launcher_background.xml`: векторный градиент в стиле Aether Emerald (#00F5A0 / #00C875 -> #005232 / #003921).
+  - `mobile/androidApp/src/main/res/drawable/ic_launcher_foreground.xml` (и `drawable-v24/`): центральный векторный логотип — круговой циферблат с делениями нутриентов, внутренний белый диск, нижняя серповидная дуга телеметрии, росток с двумя листьями (контур `#102A1E`, заливки `#D5FCE6` и `#00C875`, блик `#FFFFFF`) и постамент, подогнанный под 72dp безопасную зону adaptive icon.
+  - `mobile/androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml`: обновлены ссылки на `@drawable/ic_launcher_background` и `@drawable/ic_launcher_foreground`.
+  - Растровые ассеты: сгенерированы сглаженные `ic_launcher.png`, `ic_launcher_round.png` и `ic_launcher_foreground.png` для всех плотностей (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi), обновлен `ic_launcher-playstore.png` (512x512), удалены устаревшие `.webp` ассеты.
+- **Блок 2 — Адаптивный Splash-экран (День / Ночь):**
+  - Токены цветов: созданы `res/values/colors.xml` (светлая тема: `splash_bg` #FFFFFF, `splash_title` #0F172A, `splash_subtitle` #64748B, `splash_progress_track` #E2E8F0, `splash_progress_indicator` #00C875) и `res/values-night/colors.xml` (тёмная тема: `splash_bg` #0B0E14, `splash_title` #F4F7FA, `splash_subtitle` #8C96A8, `splash_progress_track` #1E293B, `splash_progress_indicator` #00F5A0).
+  - Тема `Theme.FitAssistant.Splash` в `res/values/themes.xml` (на базе `Theme.Material3.DayNight.NoActionBar`), зарегистрирована в `AndroidManifest.xml`.
+  - Векторный логотип `res/drawable/ic_splash_logo.xml` (180dp x 180dp) с орбитальными линиями ретикла и перекрестьями телеметрии.
+  - Строковые ресурсы: добавлены `splash_title` ("Fit Assistant") и локализованные `splash_subtitle` ("Точный КБЖУ · Умный бюджет" / "Precise Nutrition · Smart Budget").
+  - Вёрстка `res/layout/activity_splash.xml`: фон `@color/splash_bg`, логотип `ivSplashLogo`, заголовок `tvSplashTitle` (`sans-serif-black`, 32sp), подзаголовок `tvSplashSubtitle` (`sans-serif`, 16sp) и `LinearProgressIndicator` (180dp, высота 4dp, скругление 2dp, бесконечная плавная анимация).
+  - Логика в `SplashActivity.kt`: плавная анимация появления (Alpha 0 -> 1 и Scale 0.95 -> 1.0 за 600 мс с `DecelerateInterpolator`), асинхронная проверка `authRepository.isAuthenticated()`, через 1.2 с бесшовный переход с fade-анимацией в `MainActivity` (`Dashboard` при авторизации, иначе `Auth/Login`) и `finish()`.
+- **Тестирование и верификация:**
+  - Обновлён `SplashActivityTest.kt` на базе Robolectric (проверка компонентов вёрстки, текстов и перехода в `MainActivity` с завершением `SplashActivity`).
+  - Успешный запуск `:mobile:androidApp:assembleDebug` и `:mobile:androidApp:testDebugUnitTest` (79 passed, 0 failed).
 
 - **Активные Skills:** `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
 - **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`.

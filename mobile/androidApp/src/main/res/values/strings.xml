@@ -149,6 +149,8 @@
     <string name="validation_error_code_invalid">Code must be 4–6 digits</string>
 
     <!-- Splash Screen -->
+    <string name="splash_title">Fit Assistant</string>
+    <string name="splash_subtitle">Precise Nutrition · Smart Budget</string>
     <string name="splash_logo_title">fit-assistent</string>
     <string name="splash_greeting">Здравствуйте!</string>
 

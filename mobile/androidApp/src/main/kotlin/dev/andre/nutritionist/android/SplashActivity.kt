@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -8,71 +9,94 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.progressindicator.LinearProgressIndicator
+import dev.andre.nutritionist.android.auth.AuthRepository
+import dev.andre.nutritionist.android.navigation.AppDestination
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 /**
- * Легковесный и высокопроизводительный сплэш-экран приложения «fit-assistent».
- * Реализует 1.5-секундную анимацию в стиле антигравити-минимализма без сторонних библиотек.
+ * Адаптивный сплэш-экран приложения «Fit Assistant» с поддержкой светлой и тёмной тем.
+ * Выполняет проверку статуса авторизации и бесшовный переход в [MainActivity].
  */
+@SuppressLint("CustomSplashScreen")
 class SplashActivity : ComponentActivity() {
+
+    private val authRepository: AuthRepository by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
-        val tvSplashLogo = findViewById<TextView>(R.id.tvSplashLogo)
-        val ivSplashLogo = findViewById<ImageView>(R.id.ivSplashLogo)
-        val tvGreeting = findViewById<TextView>(R.id.tvGreeting)
+        val ivLogo = findViewById<ImageView>(R.id.ivSplashLogo)
+        val tvTitle = findViewById<TextView>(R.id.tvSplashTitle)
+        val tvSubtitle = findViewById<TextView>(R.id.tvSplashSubtitle)
+        val progressIndicator = findViewById<LinearProgressIndicator>(R.id.progressIndicator)
 
-        // Начальное состояние для 50dp смещения
-        val offset50dp = 50f * resources.displayMetrics.density
+        // Начальное состояние для плавного появления
+        ivLogo.alpha = 0f
+        ivLogo.scaleX = 0.95f
+        ivLogo.scaleY = 0.95f
 
-        // 1. Верхний текст (fit-assistent): изначально скрыт и сдвинут вверх на 50dp
-        tvSplashLogo.alpha = 0f
-        tvSplashLogo.translationY = -offset50dp
+        tvTitle.alpha = 0f
+        tvTitle.scaleX = 0.95f
+        tvTitle.scaleY = 0.95f
 
-        // 2. Нижний текст (Здравствуйте!): изначально скрыт и сдвинут вниз на 50dp
-        tvGreeting.alpha = 0f
-        tvGreeting.translationY = offset50dp
+        tvSubtitle.alpha = 0f
+        tvSubtitle.scaleX = 0.95f
+        tvSubtitle.scaleY = 0.95f
 
-        // 3. Центральная 3D-иконка яблока: изначально масштаб 1.1f
-        ivSplashLogo.scaleX = 1.1f
-        ivSplashLogo.scaleY = 1.1f
+        progressIndicator?.alpha = 0f
 
-        // Анимация верхнего текста: за 1200ms проявляется и опускается
-        tvSplashLogo.animate()
+        // Анимация 0 -> 1 и масштаб 0.95 -> 1.0 за 600 мс с DecelerateInterpolator
+        ivLogo.animate()
             .alpha(1f)
-            .translationY(0f)
-            .setDuration(ANIM_TEXT_DURATION_MS)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(ANIM_DURATION_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
 
-        // Анимация нижнего текста: за 1200ms проявляется и поднимается
-        tvGreeting.animate()
+        tvTitle.animate()
             .alpha(1f)
-            .translationY(0f)
-            .setDuration(ANIM_TEXT_DURATION_MS)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(ANIM_DURATION_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
 
-        // Анимация центральной иконки: за 1500ms плавно уменьшается до 0.85f (уход вглубь)
-        ivSplashLogo.animate()
-            .scaleX(0.85f)
-            .scaleY(0.85f)
-            .setDuration(TOTAL_SPLASH_TIME_MS)
+        tvSubtitle.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(ANIM_DURATION_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
 
-        // По завершении ровно 1500 мс — плавный переход на MainActivity
+        progressIndicator?.animate()
+            ?.alpha(1f)
+            ?.setDuration(ANIM_DURATION_MS)
+            ?.setInterpolator(DecelerateInterpolator())
+            ?.start()
+
+        // Проверка авторизации и переход через 1.2 секунды
         lifecycleScope.launch {
-            delay(TOTAL_SPLASH_TIME_MS)
-            navigateToMain()
+            val isAuth = runCatching { authRepository.isAuthenticated() }.getOrDefault(defaultValue = false)
+            delay(SPLASH_DURATION_MS)
+            navigateToMain(isAuth)
         }
     }
 
-    private fun navigateToMain() {
-        val intent = Intent(this, MainActivity::class.java)
+    private fun navigateToMain(isAuth: Boolean) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            val destination = if (isAuth) {
+                AppDestination.Dashboard.route
+            } else {
+                AppDestination.Auth.route
+            }
+            putExtra(MainActivity.EXTRA_START_DESTINATION, destination)
+        }
         startActivity(intent)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -90,7 +114,7 @@ class SplashActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val ANIM_TEXT_DURATION_MS = 1200L
-        private const val TOTAL_SPLASH_TIME_MS = 1500L
+        private const val ANIM_DURATION_MS = 600L
+        private const val SPLASH_DURATION_MS = 1200L
     }
 }
