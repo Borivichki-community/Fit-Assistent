@@ -11,6 +11,7 @@ import dev.andre.nutritionist.domain.model.RecipeId
  */
 data class AddMealState(
     val mealType: MealType = MealType.LUNCH,
+    val dailyTargetCalories: Int = 2000,
     val selectedDateEpochMs: Long = 0L,
     val query: String = "",
     val items: List<AddMealSearchItemUiModel> = emptyList(),

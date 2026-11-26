@@ -93,6 +93,11 @@ fun ProfileDailyKbjuCard(
                 )
             }
 
+            if (profile.editStatus == dev.andre.nutritionist.presentation.profile.ProfileEditStatus.RECALCULATING) {
+                Text("Обновляем норму КБЖУ…")
+                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
             HorizontalDivider(color = extendedColors.glassBorderLevel1)
 
             Row(

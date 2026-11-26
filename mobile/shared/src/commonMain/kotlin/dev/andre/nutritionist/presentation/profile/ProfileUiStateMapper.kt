@@ -13,6 +13,8 @@ import dev.andre.nutritionist.presentation.formatters.MoneyFormatter
 import dev.andre.nutritionist.presentation.formatters.NutritionFormatter
 import kotlin.math.roundToLong
 
+enum class ProfileEditStatus { IDLE, SAVING_BUDGET, RECALCULATING, RETRY }
+
 data class ProfileUiModel(
     val id: ProfileId,
     val userId: UserId,
@@ -48,6 +50,7 @@ data class ProfileUiModel(
     val rawActivityLevel: ActivityLevel = ActivityLevel.MODERATE,
     val rawGoalType: GoalType = GoalType.LOSE_WEIGHT,
     val rawWeeklyBudget: Double = 0.0,
+    val editStatus: ProfileEditStatus = ProfileEditStatus.IDLE,
 )
 
 data class ProfileUiState(
@@ -96,7 +99,20 @@ class ProfileUiStateMapper : UiStateMapper<ProfileState, ProfileUiState> {
                         displayName = resolvedName,
                         email = resolvedEmail,
                         userRole = state.userRole,
-                    ),
+                    ).let { confirmed ->
+                        val draft = state.editDraft ?: return@let confirmed
+                        confirmed.copy(
+                            rawWeightKg = draft.weightKg,
+                            rawActivityLevel = draft.activityLevel,
+                            rawGoalType = draft.goalType,
+                            rawWeeklyBudget = draft.weeklyBudget,
+                            editStatus = when {
+                                !state.isSaving -> ProfileEditStatus.RETRY
+                                draft.weeklyBudget != content.profile.weeklyBudget || draft.nutritionGoal != dev.andre.nutritionist.domain.model.NutritionGoal.EMPTY -> ProfileEditStatus.SAVING_BUDGET
+                                else -> ProfileEditStatus.RECALCULATING
+                            },
+                        )
+                    },
                 )
             }
             is ProfileState.Content.Error -> ProfileUiState.Content.Error(content.message)

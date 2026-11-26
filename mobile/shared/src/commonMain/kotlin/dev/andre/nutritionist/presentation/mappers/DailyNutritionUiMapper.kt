@@ -2,6 +2,7 @@ package dev.andre.nutritionist.presentation.mappers
 
 import dev.andre.nutritionist.domain.model.DailyNutritionBalance
 import dev.andre.nutritionist.domain.model.Money
+import dev.andre.nutritionist.domain.model.NutritionFacts
 import dev.andre.nutritionist.presentation.formatters.MoneyFormatter
 import dev.andre.nutritionist.presentation.formatters.NutritionFormatter
 import dev.andre.nutritionist.presentation.model.DailyNutritionUiModel
@@ -54,6 +55,13 @@ object DailyNutritionUiMapper {
         val carbsTargetVal = NutritionFormatter.formatMacroValue(carbs.targetGrams)
 
         return DailyNutritionUiModel(
+            remainingNutrition = NutritionFacts(
+                calories = remainingCalories.coerceAtLeast(0).toDouble(),
+                proteins = (proteins.targetGrams - proteins.consumedGrams).coerceAtLeast(0.0),
+                fats = (fats.targetGrams - fats.consumedGrams).coerceAtLeast(0.0),
+                carbs = (carbs.targetGrams - carbs.consumedGrams).coerceAtLeast(0.0),
+            ),
+            dailyTargetCalories = targetCalories.toInt(),
             targetCaloriesLabel = NutritionFormatter.formatCalories(targetCalories.toDouble()),
             consumedCaloriesLabel = NutritionFormatter.formatCalories(consumedCalories.toDouble()),
             remainingCaloriesLabel = remainingLabel,

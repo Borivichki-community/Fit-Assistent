@@ -5,6 +5,45 @@
 
 Обновлено: 2026-11-26
 
+### Генератор блюда из дневника (2026-11-26)
+
+- Skills `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Для диагностики сборки применён `diagnose-build-failure`.
+- Выбор слота и даты открывает генератор. KoTEA запускает GenerateBudgetMenuUseCase и сохраняет порцию через LogRecipeToDiaryUseCase. Карточка отображает ответ сервиса и доступные цены каталога.
+- Выполнены `:mobile:shared:testAndroidHostTest`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug`. Pod recipe-ai-service готов. Ручной сценарий на устройстве с реальным LLM и последующей синхронизацией не проверен.
+
+### Сохранение правок профиля (2026-11-26)
+
+- Skills `android-compose-feature` и `kmp-shared-feature`. Пока сервер пересчитывает КБЖУ, карточка показывает прогресс и подтверждённые значения. После сбоя можно повторить отправку черновика.
+- Debug APK собран, Android host-тесты `*Profile*` прошли. Ручная проверка на эмуляторе не выполнялась.
+
+### Исправление создания клиента дневника (2026-11-26)
+
+- Активный Skill — `kmp-shared-feature`.
+- В Android-модуле Koin существующий ManagedChannel привязан также к io.grpc.Channel для gRPC-клиентов.
+- `:mobile:androidApp:assembleDebug` прошла. Открытие дневника на эмуляторе не проверялось.
+
+### Перезапуск kind после обновления Android (2026-11-26)
+
+- **Активный Skill:** `testing-and-verification`. Роль: `test-reviewer`.
+- Существующий узел kind перезапущен. JVM-сервисы, которые не проходили startup probe при одновременном старте, подняты последовательно. Реплики всех сервисов восстановлены.
+- Проверено: 10 из 10 подов готовы, Gateway `Programmed=True`, `localhost:9090` возвращает gRPC `UNAUTHENTICATED` без JWT, OIDC discovery Keycloak на `localhost:8080` отвечает через восстановленный `port-forward`. UID `postgres-0` совпадает с исходным, Docker-том `fitassistant-verification_postgres_data` сохранён.
+
+### Перезапуск kind и проверка входа тестового пользователя (2026-11-26)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Восстановлены `spring.starter.web` и порт HTTP `8083` в исходниках дневника. Перезапущен существующий узел kind без пересоздания кластера. После старта все 10 подов готовы, дневник возвращает `UP`. UID пода `postgres-0` сохранился, Docker-том `fitassistant-verification_postgres_data` на месте.
+- После восстановления `port-forward` эмулятор получил HTTP 200 от OIDC discovery на `10.0.2.2:8080`. Keycloak выдал JWT штатному `testuser` с issuer эмулятора. Чтение профиля через Envoy с этим токеном вернуло gRPC `NOT_FOUND`. Dashboard показывает предложение заполнить профиль при любой ошибке его загрузки. Пользовательский вход через Android Custom Tabs и исходный экран `Network error` не воспроизводились.
+
+### Локальное развёртывание Kubernetes на macOS arm64 (2026-11-26)
+
+- **Активные Skills:** `testing-and-verification`, `diagnose-build-failure`, `spring-grpc-service`. Роли: `implementer`, `test-reviewer`.
+- Envoy Gateway 1.2.4 установлен в kind через OCI. Сборка контейнеров выявила несколько JAR в `build/libs`; в `Dockerfile.service` добавлена очистка внутри сборочного этапа перед `bootJar`.
+- Дневник получил HTTP Actuator через `libs.spring.starter.web` и локальный порт `8083` по умолчанию. Образы `profile-service`, `catalog-price-service`, `diary-service` и `recipe-ai-service` собраны для `linux/arm64` и загружены в kind.
+- В кластер `kind-fitassistant-cluster` применены манифесты проекта. Kafka и Schema Registry добавлены в namespace `budget-nutritionist` с образами из Docker Compose. Только в работающем кластере настроены `enableServiceLinks: false` у Schema Registry, ссылки на `postgres-secret` у каталога и дневника, адреса Kafka и Schema Registry у профиля и каталога и тип `NodePort` у EnvoyProxy. Realm `FitAssistant` импортирован через `kcadm`.
+- Проверено: все 10 подов в `budget-nutritionist` готовы, четыре HTTP readiness-пробы возвращают `UP`, все четыре gRPC-маршрута приняты, Gateway `Programmed=True`, запрос к `localhost:9090` без JWT возвращает `UNAUTHENTICATED`. OIDC realm доступен с Mac на `localhost:8080` через запущенный `kubectl port-forward`. Все три shell-скрипта проходят `bash -n` на macOS.
+- Docker-том `fitassistant-verification_postgres_data` сохранён. Наличие `PG_VERSION` и `global/pg_control` проверено при подключении тома только для чтения. PostgreSQL в Kubernetes использует отдельный `emptyDir`. Проверка Android E2E и генерации через Gemini не выполнялась.
+Обновлено: 2026-11-26
+
 ### Меню добавления приёма пищи (@fitapp_4) с живым поиском по микросервисам (2026-11-26)
 
 - **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

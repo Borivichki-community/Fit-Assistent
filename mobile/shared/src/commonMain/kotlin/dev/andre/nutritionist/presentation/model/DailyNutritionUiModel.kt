@@ -1,5 +1,7 @@
 package dev.andre.nutritionist.presentation.model
 
+import dev.andre.nutritionist.domain.model.NutritionFacts
+
 data class DailyNutritionUiModel(
     val targetCaloriesLabel: String = "2 000 ккал",
     val consumedCaloriesLabel: String = "0 ккал",
@@ -25,5 +27,7 @@ data class DailyNutritionUiModel(
     val carbsTargetShortLabel: String = "/ 250 г",
     val carbsProgress: Float = 0f,
     val totalMealCostLabel: String = "0 ₽",
+    val remainingNutrition: NutritionFacts = NutritionFacts.ZERO,
+    val dailyTargetCalories: Int = 2000,
     val dailyBudgetLabel: String = "Бюджет: ~0 ₽",
 )

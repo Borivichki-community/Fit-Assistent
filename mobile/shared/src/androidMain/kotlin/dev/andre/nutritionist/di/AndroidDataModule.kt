@@ -48,7 +48,7 @@ val androidRemoteDataModule = module {
             port = 9090,
             unifiedInterceptor = get(),
         )
-    }
+    } bind io.grpc.Channel::class
     single<ProfileGrpcServiceClient> { AndroidProfileGrpcServiceClient(channel = get()) }
     single { ProfileGrpcRemoteDataSource(client = get(), dispatchers = get()) } bind ProfileRemoteDataSource::class
 

@@ -173,6 +173,11 @@ val presentationModule: Module = module {
     factory { DiaryUiStateMapper() }
     factory { DiaryViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
 
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeUpdate() }
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeCommandsFlowHandler(get(), get(), get()) }
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeUiStateMapper() }
+    factory { params -> dev.andre.nutritionist.presentation.airecipe.AiRecipeViewModel(params.get(), get(), get(), get()) }
+
     factory { AddMealUpdate() }
     factory {
         AddMealCommandsFlowHandler(

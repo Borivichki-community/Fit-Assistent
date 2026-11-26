@@ -9,6 +9,7 @@ data class ProfileState(
     val currentUserId: UserId? = null,
     val isOffline: Boolean = false,
     val isSaving: Boolean = false,
+    val editDraft: Profile? = null,
     val displayName: String? = null,
     val age: String? = null,
     val email: String? = null,

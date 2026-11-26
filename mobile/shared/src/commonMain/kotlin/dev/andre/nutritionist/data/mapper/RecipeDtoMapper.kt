@@ -72,7 +72,7 @@ object RecipeDtoMapper {
     )
 
     fun GeneratedMealProto.toDomain(): Recipe = Recipe(
-        id = RecipeId(title.hashCode().toString()),
+        id = RecipeId(kotlin.uuid.Uuid.random().toString()),
         title = title,
         mealType = when (type) {
             MealTypeProto.MEAL_TYPE_BREAKFAST -> MealType.BREAKFAST
@@ -84,7 +84,8 @@ object RecipeDtoMapper {
             -> MealType.SNACK
         },
         ingredients = ingredients.map { it.toDomain() },
-        nutrition = nutrition.toDomain(),
+        totalWeightGrams = ingredients.sumOf { it.grams.toDouble() },
+        nutrition = nutrition.toDomain() * (100.0 / ingredients.sumOf { it.grams.toDouble() }.coerceAtLeast(1.0)),
         estimatedCost = Money.fromMinor(estimatedCostMinor),
         cookingTimeMinutes = cookingTimeMinutes,
     )

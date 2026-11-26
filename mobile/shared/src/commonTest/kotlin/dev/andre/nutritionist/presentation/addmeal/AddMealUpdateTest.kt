@@ -184,6 +184,7 @@ class AddMealUpdateTest {
     @Test
     fun `stub buttons produce no commands and Dismiss emits Dismiss news`() {
         val ai = update.update(AddMealState(), AddMealEvent.Ui.AiGenerateClicked)
+        assertEquals(listOf(AddMealNews.NavigateToAiGenerator(MealType.LUNCH, 0L, 700)), ai.news)
         val photo = update.update(AddMealState(), AddMealEvent.Ui.TakePhotoClicked)
         val voice = update.update(AddMealState(), AddMealEvent.Ui.VoiceAssistantClicked)
         val saved = update.update(AddMealState(), AddMealEvent.Ui.SavedFoodClicked)

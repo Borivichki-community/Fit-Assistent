@@ -52,6 +52,7 @@ import dev.andre.nutritionist.domain.model.GoalType
 import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.UserId
 import dev.andre.nutritionist.domain.model.UserRole
+import dev.andre.nutritionist.presentation.profile.ProfileEditStatus
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileUiModel
 
@@ -185,7 +186,7 @@ fun ProfileSuccessContent(
                     icon = FitIcons.WeightScale,
                     accentColor = extendedColors.infoAccent,
                     modifier = Modifier.weight(1f),
-                    onClick = { activeDialog = ProfileEditField.WEIGHT },
+                    onClick = { if (profile.editStatus == ProfileEditStatus.IDLE || profile.editStatus == ProfileEditStatus.RETRY) activeDialog = ProfileEditField.WEIGHT },
                 )
                 MetricCard(
                     label = stringResource(R.string.profile_label_activity),
@@ -196,7 +197,7 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Lightning,
                     accentColor = extendedColors.activityAccent,
                     modifier = Modifier.weight(1f),
-                    onClick = { activeDialog = ProfileEditField.ACTIVITY },
+                    onClick = { if (profile.editStatus == ProfileEditStatus.IDLE || profile.editStatus == ProfileEditStatus.RETRY) activeDialog = ProfileEditField.ACTIVITY },
                 )
             }
 
@@ -214,7 +215,7 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Target,
                     accentColor = extendedColors.emeraldAccent,
                     modifier = Modifier.weight(1f),
-                    onClick = { activeDialog = ProfileEditField.GOAL },
+                    onClick = { if (profile.editStatus == ProfileEditStatus.IDLE || profile.editStatus == ProfileEditStatus.RETRY) activeDialog = ProfileEditField.GOAL },
                 )
                 MetricCard(
                     label = stringResource(R.string.profile_label_budget),
@@ -224,13 +225,17 @@ fun ProfileSuccessContent(
                     icon = FitIcons.Wallet,
                     accentColor = extendedColors.budgetAccent,
                     modifier = Modifier.weight(1f),
-                    onClick = { activeDialog = ProfileEditField.BUDGET },
+                    onClick = { if (profile.editStatus == ProfileEditStatus.IDLE || profile.editStatus == ProfileEditStatus.RETRY) activeDialog = ProfileEditField.BUDGET },
                 )
             }
         }
 
         // 3. Карточка суточной нормы КБЖУ
         ProfileDailyKbjuCard(profile = profile)
+        if (profile.editStatus == ProfileEditStatus.RETRY) {
+            Text("Изменения не сохранены. Проверьте подключение.")
+            androidx.compose.material3.TextButton(onClick = { onEvent(ProfileEvent.Ui.Retry) }) { Text("Повторить") }
+        }
 
         // 4. Меню настроек и действий
         Surface(
@@ -353,6 +358,7 @@ fun ProfileSuccessContent(
     }
 
     // Модальные диалоги редактирования конкретных параметров
+    if (profile.editStatus == ProfileEditStatus.SAVING_BUDGET || profile.editStatus == ProfileEditStatus.RECALCULATING) return
     when (activeDialog) {
         ProfileEditField.WEIGHT -> {
             EditWeightDialog(

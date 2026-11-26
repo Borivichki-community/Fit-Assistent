@@ -86,6 +86,9 @@ spring:
     listener:
       ack-mode: manual_immediate
 
+server:
+  port: ${DIARY_MANAGEMENT_PORT:8083}
+
 management:
   endpoint:
     health:
@@ -96,3 +99,6 @@ management:
           include: livenessState
         readiness:
           include: readinessState,db
+йогурт 
+вода
+овсянка

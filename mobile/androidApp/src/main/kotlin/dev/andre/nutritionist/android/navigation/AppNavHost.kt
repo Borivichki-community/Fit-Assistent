@@ -7,6 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.dialog
+import dev.andre.nutritionist.presentation.dashboard.DiaryViewModel
+import dev.andre.nutritionist.android.ui.screens.airecipe.AiRecipeRoute
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -38,6 +43,8 @@ fun AppNavHost(
     authViewModel: AuthViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
 ) {
+    val currentEntry by navController.currentBackStackEntryAsState()
+    val isAiRecipeVisible = currentEntry?.destination?.route == AppDestination.AiRecipe.pattern
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val isLoggingOut = authState.content is AuthUiState.Content.Loading
     val destinationRoute = when (startDestination) {
@@ -94,6 +101,8 @@ fun AppNavHost(
         }
         composable(AppDestination.Dashboard.route) {
             DashboardRoute(
+                isAiRecipeVisible = isAiRecipeVisible,
+                onNavigateToAiGenerator = { slot, date, calories -> navController.navigate(AppDestination.AiRecipe(slot, date, calories).route) },
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true
@@ -107,6 +116,23 @@ fun AppNavHost(
                         launchSingleTop = true
                     }
                 },
+            )
+        }
+        dialog(
+            route = AppDestination.AiRecipe.pattern,
+            dialogProperties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) { entry ->
+            val args = requireNotNull(entry.arguments)
+            val diaryEntry = remember(entry) { requireNotNull(navController.previousBackStackEntry) }
+            val diary: DiaryViewModel = koinViewModel(viewModelStoreOwner = diaryEntry)
+            val diaryState by diary.state.collectAsStateWithLifecycle()
+            AiRecipeRoute(
+                dev.andre.nutritionist.domain.model.MealType.valueOf(requireNotNull(args.getString("slot"))),
+                requireNotNull(args.getString("date")).toLong(),
+                requireNotNull(args.getString("calories")).toInt(),
+                onBackClick = { navController.popBackStack() },
+                onRecipeAdded = { navController.popBackStack() },
+                remainingNutrition = diaryState.dailySummary.remainingNutrition,
             )
         }
         composable(AppDestination.Registration.route) {
@@ -183,6 +209,8 @@ fun AppNavHost(
         }
         composable(AppDestination.Recipes.route) {
             DashboardRoute(
+                isAiRecipeVisible = isAiRecipeVisible,
+                onNavigateToAiGenerator = { slot, date, calories -> navController.navigate(AppDestination.AiRecipe(slot, date, calories).route) },
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true
@@ -200,6 +228,8 @@ fun AppNavHost(
         }
         composable(AppDestination.Statistics.route) {
             DashboardRoute(
+                isAiRecipeVisible = isAiRecipeVisible,
+                onNavigateToAiGenerator = { slot, date, calories -> navController.navigate(AppDestination.AiRecipe(slot, date, calories).route) },
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true

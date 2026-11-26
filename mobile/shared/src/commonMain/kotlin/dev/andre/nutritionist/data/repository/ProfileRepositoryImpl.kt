@@ -52,26 +52,14 @@ class ProfileRepositoryImpl(
 
     override suspend fun updateProfile(profile: Profile): Result<Profile> =
         withContext(dispatchers.io) {
-            val existingProfile = dao.getProfile(profile.userId.raw)?.toDomain()
-            val optimisticProfile = if (
-                profile.nutritionGoal.targetCalories <= 0 &&
-                existingProfile != null &&
-                existingProfile.nutritionGoal.targetCalories > 0
-            ) {
-                profile.copy(nutritionGoal = existingProfile.nutritionGoal)
-            } else {
-                profile
-            }
-            // Гарантируем немедленное сохранение в локальный Room-кэш (offline-first)
-            dao.insertOrReplace(optimisticProfile.toEntity())
             remoteDataSource.updateProfile(profile)
                 .mapCatching { updatedProfile ->
+                    // Гарантируем немедленное сохранение в локальный Room-кэш (offline-first)
                     dao.insertOrReplace(updatedProfile.toEntity())
                     updatedProfile
                 }
-                .recover { error ->
+                .onFailure { error ->
                     if (error is CancellationException) throw error
-                    optimisticProfile
                 }
         }
 }

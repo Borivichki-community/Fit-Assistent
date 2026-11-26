@@ -80,6 +80,47 @@ class SplashActivity : ComponentActivity() {
             ?.setInterpolator(DecelerateInterpolator())
             ?.start()
 
+        val debugBuild = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+        if (debugBuild && Build.VERSION.SDK_INT >= 37 && !hasLocalNetworkAccess()) {
+            if (savedInstanceState == null) requestNetwork.launch(localNetworkPermission)
+        } else {
+            continueStartup()
+        }
+    }
+
+    private val localNetworkPermission = "android.permission.ACCESS_LOCAL_NETWORK"
+
+    private fun hasLocalNetworkAccess() =
+        checkSelfPermission(localNetworkPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private val openSettings = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (hasLocalNetworkAccess()) continueStartup() else showNetworkDialog()
+    }
+
+    private val requestNetwork = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) continueStartup() else showNetworkDialog()
+    }
+
+    private fun showNetworkDialog() {
+        val retry = shouldShowRequestPermissionRationale(localNetworkPermission)
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Доступ к локальной сети")
+            .setMessage("Для входа и связи с локальным сервером разрешите приложению доступ к локальной сети.")
+            .setPositiveButton(if (retry) "Запросить снова" else "Открыть настройки") { _, _ ->
+                if (retry) requestNetwork.launch(localNetworkPermission)
+                else openSettings.launch(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", packageName, null)))
+            }
+            .setNegativeButton("Выйти") { _, _ -> finish() }
+            .setOnCancelListener { finish() }
+            .show()
+    }
+
+    private fun continueStartup() {
         // Проверка авторизации и переход через 1.2 секунды
         lifecycleScope.launch {
             val isAuth = runCatching { authRepository.isAuthenticated() }.getOrDefault(defaultValue = false)

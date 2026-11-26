@@ -171,11 +171,9 @@ class ProfileRepositoryImplTest {
 
             val result = repository.updateProfile(pendingRecalcProfile)
 
-            assertTrue(result.isSuccess)
+            assertTrue(result.isFailure)
             assertEquals(NutritionGoal.EMPTY, fakeRemoteDataSource.lastUpdatedProfile?.nutritionGoal)
-            assertEquals(testProfile.nutritionGoal, result.getOrNull()?.nutritionGoal)
-            assertEquals(68.0, repository.getProfile(testUserId)?.weightKg)
-            assertEquals(testProfile.nutritionGoal, repository.getProfile(testUserId)?.nutritionGoal)
+            assertEquals(testProfile, repository.getProfile(testUserId))
         }
 
     private class FakeProfileDao : ProfileDao {

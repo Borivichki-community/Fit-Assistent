@@ -61,6 +61,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.starter.actuator)
+    implementation(libs.spring.starter.web)
     implementation(libs.kotlin.reflect)
 
     implementation(libs.spring.starter.grpc)

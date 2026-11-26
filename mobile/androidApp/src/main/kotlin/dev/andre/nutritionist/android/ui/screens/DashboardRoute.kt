@@ -8,6 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.android.navigation.AppDestination
@@ -34,6 +36,8 @@ fun DashboardRoute(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToRegistration: () -> Unit = {},
     onDestinationSelected: (AppDestination) -> Unit = {},
+    onNavigateToAiGenerator: (MealType, Long, Int) -> Unit = { _, _, _ -> },
+    isAiRecipeVisible: Boolean = false,
     onAddMealClick: (MealType) -> Unit = {},
     onMealItemClick: (MealRecordId) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -42,11 +46,14 @@ fun DashboardRoute(
     authRepository: AuthRepository = koinInject(),
 ) {
     val currentUserId = authRepository.getUserId() ?: UserId("testuser")
-    val initialEpochMs = remember { Clock.System.now().toEpochMilliseconds() }
+    val initialEpochMs = androidx.compose.runtime.saveable.rememberSaveable { Clock.System.now().toEpochMilliseconds() }
     val snackbarHostState = remember { SnackbarHostState() }
     var activeMealType by remember { mutableStateOf<MealType?>(null) }
 
+    var initialized by androidx.compose.runtime.saveable.rememberSaveable(currentUserId) { mutableStateOf(false) }
     LaunchedEffect(currentUserId) {
+        if (initialized) return@LaunchedEffect
+        initialized = true
         diaryViewModel.dispatch(
             DiaryEvent.Ui.DateSelected(
                 dateEpochMs = initialEpochMs,
@@ -66,6 +73,10 @@ fun DashboardRoute(
     LaunchedEffect(addMealViewModel) {
         addMealViewModel.news.collect { news ->
             when (news) {
+                is AddMealNews.NavigateToAiGenerator -> {
+                    activeMealType = null
+                    onNavigateToAiGenerator(news.mealType, news.dateEpochMs, news.targetCalories)
+                }
                 AddMealNews.Dismiss -> activeMealType = null
                 is AddMealNews.MealAdded -> activeMealType = null
                 is AddMealNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
@@ -103,9 +114,16 @@ fun DashboardRoute(
                 AddMealEvent.Ui.Open(
                     mealType = mealType,
                     dateEpochMs = uiState.selectedDateEpochMs,
+                    dailyTargetCalories = uiState.dailySummary.dailyTargetCalories,
                 ),
             )
             onAddMealClick(mealType)
+        },
+        onAiGenerateClick = { mealType ->
+            addMealViewModel.dispatch(
+                AddMealEvent.Ui.Open(mealType, uiState.selectedDateEpochMs, uiState.dailySummary.dailyTargetCalories),
+            )
+            addMealViewModel.dispatch(AddMealEvent.Ui.AiGenerateClicked)
         },
         onMealItemClick = onMealItemClick,
         onCompleteProfileClick = onNavigateToRegistration,
@@ -115,7 +133,7 @@ fun DashboardRoute(
             diaryViewModel.dispatch(DiaryEvent.Ui.Retry)
         },
         snackbarHostState = snackbarHostState,
-        modifier = modifier,
+        modifier = if (isAiRecipeVisible) modifier.blur(14.dp) else modifier,
     )
 
     if (activeMealType != null) {
@@ -126,3 +144,4 @@ fun DashboardRoute(
         )
     }
 }
+

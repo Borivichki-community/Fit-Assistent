@@ -14,6 +14,7 @@ sealed interface AddMealEvent {
         data class Open(
             val mealType: MealType,
             val dateEpochMs: Long,
+            val dailyTargetCalories: Int = 2000,
         ) : Ui
 
         data class QueryChanged(val query: String) : Ui

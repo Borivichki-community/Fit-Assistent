@@ -3,6 +3,7 @@ package dev.andre.nutritionist.recipe.infrastructure.llm
 import dev.andre.nutritionist.recipe.config.RecipeProperties
 import io.micrometer.core.instrument.MeterRegistry
 import kotlinx.coroutines.future.await
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import tools.jackson.core.JacksonException
 import tools.jackson.databind.JsonNode
@@ -20,6 +21,7 @@ class GeminiLlmClient(
     private val settings: RecipeProperties,
     metrics: MeterRegistry,
 ) : LlmClient {
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val inputTokens = metrics.counter("recipe.llm.tokens", "direction", "input")
     private val outputTokens = metrics.counter("recipe.llm.tokens", "direction", "output")
     private val cost = metrics.summary("recipe.llm.request.cost.usd")
@@ -53,11 +55,15 @@ class GeminiLlmClient(
         val response =
             try {
                 http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).await()
-            } catch (_: IOException) {
+            } catch (failure: IOException) {
+                logger.warn("Gemini transport failed for model {} ({})", settings.model, failure.javaClass.simpleName)
                 throw ProviderFailure(true, "LLM transport failure")
             }
         val status = response.statusCode()
-        if (status != 200) throw ProviderFailure(status == 408 || status == 429 || status in 500..599, "LLM HTTP $status")
+        if (status != 200) {
+            logger.warn("Gemini returned HTTP {} for model {}", status, settings.model)
+            throw ProviderFailure(status == 408 || status == 429 || status in 500..599, "LLM HTTP $status")
+        }
 
         val body =
             try {

@@ -14,6 +14,8 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                     copy(
                         content = ProfileState.Content.Loading,
                         currentUserId = event.userId,
+                        editDraft = null,
+                        isSaving = false,
                         displayName = event.displayName ?: state.displayName,
                         age = event.age ?: state.age,
                         email = event.email ?: state.email,
@@ -23,6 +25,14 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                 commands(ProfileCommand.LoadProfile(event.userId))
             }
             ProfileEvent.Ui.Retry -> {
+                val draft = state.editDraft
+                if (draft != null) {
+                    if (!state.isSaving) {
+                        state { copy(isSaving = true) }
+                        commands(ProfileCommand.UpdateProfile(draft))
+                    }
+                    return@update
+                }
                 val userId = state.currentUserId
                 if (userId != null) {
                     state { copy(content = ProfileState.Content.Loading) }
@@ -70,42 +80,42 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
             }
             is ProfileEvent.Ui.ChangeWeight -> {
                 val currentContent = state.content
-                if (currentContent is ProfileState.Content.Success) {
+                if (currentContent is ProfileState.Content.Success && !state.isSaving) {
                     val updatedProfile = currentContent.profile.copy(
                         weightKg = event.weightKg,
                         nutritionGoal = NutritionGoal.EMPTY,
                     )
-                    state { copy(isSaving = true) }
+                    state { copy(isSaving = true, editDraft = updatedProfile) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
             }
             is ProfileEvent.Ui.ChangeActivity -> {
                 val currentContent = state.content
-                if (currentContent is ProfileState.Content.Success) {
+                if (currentContent is ProfileState.Content.Success && !state.isSaving) {
                     val updatedProfile = currentContent.profile.copy(
                         activityLevel = event.activityLevel,
                         nutritionGoal = NutritionGoal.EMPTY,
                     )
-                    state { copy(isSaving = true) }
+                    state { copy(isSaving = true, editDraft = updatedProfile) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
             }
             is ProfileEvent.Ui.ChangeGoal -> {
                 val currentContent = state.content
-                if (currentContent is ProfileState.Content.Success) {
+                if (currentContent is ProfileState.Content.Success && !state.isSaving) {
                     val updatedProfile = currentContent.profile.copy(
                         goalType = event.goalType,
                         nutritionGoal = NutritionGoal.EMPTY,
                     )
-                    state { copy(isSaving = true) }
+                    state { copy(isSaving = true, editDraft = updatedProfile) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
             }
             is ProfileEvent.Ui.ChangeBudget -> {
                 val currentContent = state.content
-                if (currentContent is ProfileState.Content.Success) {
+                if (currentContent is ProfileState.Content.Success && !state.isSaving) {
                     val updatedProfile = currentContent.profile.copy(weeklyBudget = event.weeklyBudget)
-                    state { copy(isSaving = true) }
+                    state { copy(isSaving = true, editDraft = updatedProfile) }
                     commands(ProfileCommand.UpdateProfile(updatedProfile))
                 }
             }
@@ -166,6 +176,7 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                             age = resolvedAge,
                         ),
                         isSaving = false,
+                        editDraft = null,
                         displayName = resolvedDisplayName,
                         age = resolvedAge,
                     )
@@ -175,6 +186,11 @@ class ProfileUpdate : DslUpdate<ProfileState, ProfileEvent, ProfileCommand, Prof
                 }
             }
             is ProfileEvent.Internal.ProfileLoadFailed -> {
+                if (state.isSaving && state.content is ProfileState.Content.Success) {
+                    state { copy(isSaving = false) }
+                    news(ProfileNews.ShowSnackbar("Не удалось сохранить профиль. Проверьте подключение и повторите попытку."))
+                    return@update
+                }
                 val errorMessage = event.error.message?.takeIf { it.isNotBlank() } ?: "Не удалось загрузить профиль"
                 state { copy(content = ProfileState.Content.Error(errorMessage), isSaving = false) }
                 news(ProfileNews.ShowSnackbar(errorMessage))

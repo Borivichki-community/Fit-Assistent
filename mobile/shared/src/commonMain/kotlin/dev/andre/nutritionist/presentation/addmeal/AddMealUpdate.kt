@@ -17,6 +17,7 @@ class AddMealUpdate : DslUpdate<AddMealState, AddMealEvent, AddMealCommand, AddM
                     AddMealState(
                         mealType = event.mealType,
                         selectedDateEpochMs = event.dateEpochMs,
+                        dailyTargetCalories = event.dailyTargetCalories,
                         content = AddMealState.Content.Idle,
                     )
                 }
@@ -105,7 +106,16 @@ class AddMealUpdate : DslUpdate<AddMealState, AddMealEvent, AddMealCommand, AddM
                 news(AddMealNews.Dismiss)
             }
 
-            AddMealEvent.Ui.AiGenerateClicked,
+            AddMealEvent.Ui.AiGenerateClicked -> {
+                val share = when (state.mealType) {
+                    dev.andre.nutritionist.domain.model.MealType.BREAKFAST -> 0.25
+                    dev.andre.nutritionist.domain.model.MealType.LUNCH -> 0.35
+                    dev.andre.nutritionist.domain.model.MealType.DINNER -> 0.30
+                    dev.andre.nutritionist.domain.model.MealType.SNACK -> 0.10
+                }
+                news(AddMealNews.NavigateToAiGenerator(state.mealType, state.selectedDateEpochMs, (state.dailyTargetCalories * share).toInt().coerceAtLeast(1)))
+            }
+
             AddMealEvent.Ui.TakePhotoClicked,
             AddMealEvent.Ui.VoiceAssistantClicked,
             AddMealEvent.Ui.SavedFoodClicked,
