@@ -12,8 +12,18 @@ import dev.andre.nutritionist.domain.model.Money
 import dev.andre.nutritionist.domain.model.NutritionFacts
 import dev.andre.nutritionist.domain.model.Product
 import dev.andre.nutritionist.domain.model.ProductId
+import dev.andre.nutritionist.domain.model.ActivityLevel
+import dev.andre.nutritionist.domain.model.Gender
+import dev.andre.nutritionist.domain.model.GoalType
+import dev.andre.nutritionist.domain.model.NutritionGoal
+import dev.andre.nutritionist.domain.model.Profile
+import dev.andre.nutritionist.domain.model.ProfileId
 import dev.andre.nutritionist.domain.model.SyncStatus
 import dev.andre.nutritionist.domain.model.TargetPeriod
+import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.repository.ProfileRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.LocalDate
 import dev.andre.nutritionist.domain.usecase.GenerateBudgetMenuParams
 import dev.andre.nutritionist.domain.usecase.GenerateBudgetMenuUseCase
 import dev.andre.nutritionist.domain.usecase.MenuGenerationProgress
@@ -223,6 +233,97 @@ class CommandsFlowHandlerTest {
                 assertEquals(1, updated.records.size)
                 assertEquals(330, updated.balance.consumedCalories)
                 assertEquals(62.0, updated.balance.proteins.consumedGrams)
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+    }
+
+    @Test
+    fun `DiaryCommandsFlowHandler combines real profile goals, budget and loggedDatesInWeek`() {
+        val testDispatcher = StandardTestDispatcher()
+        runTest(testDispatcher) {
+            val diaryRepo = FakeDiaryRepository()
+            val userId = UserId("coach-e2e-1")
+            val profile = Profile(
+                id = ProfileId("prof-1"),
+                userId = userId,
+                heightCm = 180,
+                weightKg = 80.0,
+                gender = Gender.MALE,
+                activityLevel = ActivityLevel.MODERATE,
+                goalType = GoalType.GAIN_WEIGHT,
+                nutritionGoal = NutritionGoal(
+                    targetCalories = 3000,
+                    targetProteinsGrams = 170.0,
+                    targetFatsGrams = 85.0,
+                    targetCarbsGrams = 380.0,
+                    targetWeightKg = 88.0,
+                ),
+                weeklyBudget = 5600.0,
+                updatedAt = Instant.parse("2026-11-07T10:00:00Z"),
+            )
+            val profileFlow = MutableStateFlow<Profile?>(profile)
+            val fakeProfileRepo = object : ProfileRepository {
+                override fun observeProfile(userId: UserId): kotlinx.coroutines.flow.Flow<Profile?> = profileFlow
+                override suspend fun getProfile(userId: UserId): Profile? = profileFlow.value
+                override suspend fun refreshProfile(userId: UserId): Result<Unit> = Result.success(Unit)
+                override suspend fun updateProfile(profile: Profile): Result<Profile> {
+                    profileFlow.value = profile
+                    return Result.success(profile)
+                }
+            }
+
+            val satNov7Ms = Instant.parse("2026-11-07T12:00:00Z").toEpochMilliseconds()
+            val sunNov8Ms = Instant.parse("2026-11-08T12:00:00Z").toEpochMilliseconds()
+            diaryRepo.addEntry(
+                MealRecord(
+                    id = MealRecordId("seed-epica-lunch-1"),
+                    mealType = MealType.LUNCH,
+                    recordedAt = Instant.fromEpochMilliseconds(satNov7Ms),
+                    sourceType = EntrySourceType.PRODUCT,
+                    sourceId = "20000000-0000-0000-0000-000000000112",
+                    nameSnapshot = "Йогурт Epica",
+                    weightGrams = 130.0,
+                    nutrition = NutritionFacts(calories = 85.0, proteins = 4.93, fats = 1.25, carbs = 13.8),
+                    cost = Money.fromMinor(9500L),
+                    idempotencyKey = IdempotencyKey("seed-epica-lunch-1"),
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            )
+
+            val handler = DiaryCommandsFlowHandler(
+                diaryRepository = diaryRepo,
+                dispatchers = testDispatchers(testDispatcher),
+                profileRepository = fakeProfileRepo,
+                userIdProvider = { userId },
+                timeZone = TimeZone.UTC,
+            )
+
+            val commands = MutableSharedFlow<DiaryCommand>()
+            handler.handle(commands).test {
+                runCurrent()
+                commands.emit(DiaryCommand.ObserveDate(satNov7Ms, userId))
+                runCurrent()
+
+                val satLoaded = assertIs<DiaryEvent.Internal.RecordsLoaded>(awaitItem())
+                assertEquals(1, satLoaded.records.size)
+                assertEquals(3000, satLoaded.balance.targetCalories)
+                assertEquals(85, satLoaded.balance.consumedCalories)
+                assertEquals(Money.fromMinor(9500L), satLoaded.totalCost)
+                assertEquals(5600.0, satLoaded.weeklyBudget)
+                assertEquals(setOf(LocalDate(2026, 11, 7)), satLoaded.loggedDatesInWeek)
+
+                // Переключение на другой день (воскресенье 8 ноября, без записей)
+                commands.emit(DiaryCommand.ObserveDate(sunNov8Ms, userId))
+                runCurrent()
+
+                val sunLoaded = assertIs<DiaryEvent.Internal.RecordsLoaded>(awaitItem())
+                assertEquals(0, sunLoaded.records.size)
+                assertEquals(0, sunLoaded.balance.consumedCalories)
+                assertEquals(Money.ZERO, sunLoaded.totalCost)
+                // Индикатор недели по-прежнему знает о записи в субботу
+                assertEquals(setOf(LocalDate(2026, 11, 7)), sunLoaded.loggedDatesInWeek)
 
                 cancelAndIgnoreRemainingEvents()
             }

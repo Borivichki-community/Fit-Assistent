@@ -18,6 +18,7 @@ import dev.andre.nutritionist.android.work.WorkManagerSyncScheduler
 import dev.andre.nutritionist.di.androidLocalDataModule
 import dev.andre.nutritionist.di.androidRemoteDataModule
 import dev.andre.nutritionist.domain.auth.AuthTokenProvider
+import dev.andre.nutritionist.domain.auth.UserIdProvider
 import dev.andre.nutritionist.domain.sync.SyncScheduler
 import net.openid.appauth.AppAuthConfiguration
 import net.openid.appauth.AuthorizationService
@@ -52,6 +53,7 @@ val authModule = module {
             dispatchers = get(),
         )
     } bind AuthRepository::class bind AuthTokenProvider::class
+    single<UserIdProvider> { UserIdProvider { get<AuthRepository>().getUserId() } }
 
     single { AuthUpdate() }
     single { AuthUiStateMapper() }

@@ -173,7 +173,10 @@ class CatalogEndToEndIntegrationTest : AbstractPostgresIntegrationTest() {
             val getProductResp1 = stub.getProduct(productReq)
             assertEquals(productId, getProductResp1.product.id)
             assertTrue(getProductResp1.product.pricesCount > 0, "Product should have price for Central FO")
-            val oldPrice = getProductResp1.product.getPrices(0).price
+            val oldPriceProto = getProductResp1.product.getPrices(0)
+            val oldPrice = oldPriceProto.price
+            val oldCurrency = oldPriceProto.currency
+            val oldUnit = oldPriceProto.unit
 
             assertEquals(
                 initialProductMisses + 1.0,
@@ -212,36 +215,50 @@ class CatalogEndToEndIntegrationTest : AbstractPostgresIntegrationTest() {
 
             // 5. Администратор обновляет региональную цену
             val adminStub = stubWithAuth(userId = "admin_master", roles = "ROLE_ADMIN")
-            val newPriceValue = 299.90
-            val upsertReq =
-                UpsertPriceRequest
-                    .newBuilder()
-                    .setProductId(productId)
-                    .setRegionId(regionId)
-                    .setPrice(newPriceValue)
-                    .setCurrency("RUB")
-                    .setUnit("KG")
-                    .build()
+            try {
+                val newPriceValue = 299.90
+                val upsertReq =
+                    UpsertPriceRequest
+                        .newBuilder()
+                        .setProductId(productId)
+                        .setRegionId(regionId)
+                        .setPrice(newPriceValue)
+                        .setCurrency("RUB")
+                        .setUnit("KG")
+                        .build()
 
-            val upsertResp = adminStub.upsertPrice(upsertReq)
-            assertEquals(newPriceValue, upsertResp.price.price, 0.001)
+                val upsertResp = adminStub.upsertPrice(upsertReq)
+                assertEquals(newPriceValue, upsertResp.price.price, 0.001)
 
-            // 6. Проверка инвалидации кеша и возврата обновленной цены
-            val getProductResp3 = stub.getProduct(productReq)
-            assertEquals(newPriceValue, getProductResp3.product.getPrices(0).price, 0.001)
-            assertEquals(
-                initialProductMisses + 2.0,
-                getMetricCount("cache_misses_total", "catalog_product"),
-                "Must be a cache miss after invalidation",
-            )
+                // 6. Проверка инвалидации кеша и возврата обновленной цены
+                val getProductResp3 = stub.getProduct(productReq)
+                assertEquals(newPriceValue, getProductResp3.product.getPrices(0).price, 0.001)
+                assertEquals(
+                    initialProductMisses + 2.0,
+                    getMetricCount("cache_misses_total", "catalog_product"),
+                    "Must be a cache miss after invalidation",
+                )
 
-            val avgResp3 = stub.getAveragePrices(avgReq)
-            assertEquals(newPriceValue, avgResp3.getPrices(0).averagePrice, 0.01)
-            assertEquals(
-                initialAvgMisses + 2.0,
-                getMetricCount("cache_misses_total", "catalog_avg_prices"),
-                "Must be a cache miss after invalidation",
-            )
+                val avgResp3 = stub.getAveragePrices(avgReq)
+                assertEquals(newPriceValue, avgResp3.getPrices(0).averagePrice, 0.01)
+                assertEquals(
+                    initialAvgMisses + 2.0,
+                    getMetricCount("cache_misses_total", "catalog_avg_prices"),
+                    "Must be a cache miss after invalidation",
+                )
+            } finally {
+                // Восстанавливаем исходную seed-цену, чтобы не загрязнять общую БД для других тестов
+                adminStub.upsertPrice(
+                    UpsertPriceRequest
+                        .newBuilder()
+                        .setProductId(productId)
+                        .setRegionId(regionId)
+                        .setPrice(oldPrice)
+                        .setCurrency(oldCurrency)
+                        .setUnit(oldUnit)
+                        .build(),
+                )
+            }
         }
 
     @Test

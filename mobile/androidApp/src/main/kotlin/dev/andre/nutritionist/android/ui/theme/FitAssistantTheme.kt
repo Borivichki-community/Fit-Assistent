@@ -97,6 +97,7 @@ data class FitExtendedColors(
     val infoAccent: Color,
     val activityAccent: Color,
     val budgetAccent: Color,
+    val sunsetAccent: Color,
     val planAccent: Color,
     val isDark: Boolean,
 )
@@ -108,6 +109,7 @@ private val DarkExtendedColors = FitExtendedColors(
     infoAccent = InfoAccentDark,
     activityAccent = ActivityAccentDark,
     budgetAccent = BudgetAccentDark,
+    sunsetAccent = SunsetAccentDark,
     planAccent = PlanAccentDark,
     isDark = true,
 )
@@ -119,6 +121,7 @@ private val LightExtendedColors = FitExtendedColors(
     infoAccent = InfoAccentLight,
     activityAccent = ActivityAccentLight,
     budgetAccent = BudgetAccentLight,
+    sunsetAccent = SunsetAccentLight,
     planAccent = PlanAccentLight,
     isDark = false,
 )

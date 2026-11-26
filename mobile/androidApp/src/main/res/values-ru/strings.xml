@@ -220,4 +220,31 @@
     <string name="profile_menu_help_desc">Частые вопросы, поддержка куратора</string>
     <string name="profile_unit_kg">кг</string>
     <string name="profile_per_day_unit">₽ / день</string>
+
+    <!-- Редизайн Дневника питания (fitapp_1) -->
+    <string name="diary_active_plans_count">2 активных</string>
+    <string name="diary_daily_norm_title">СУТОЧНАЯ НОРМА</string>
+    <string name="diary_day_label">день</string>
+    <string name="diary_total_cost_label">Общая стоимость блюд:</string>
+    <string name="diary_empty_ai_title">Ничего не запланировано</string>
+    <string name="diary_empty_ai_subtitle">Вы можете сгенерировать персональный приём пищи с ИИ или составить меню вручную</string>
+    <string name="diary_btn_ai_generate">Сгенерировать с ИИ</string>
+    <string name="diary_btn_create_manually">Создать вручную</string>
+    <string name="diary_quick_presets_label">Быстрый выбор:</string>
+    <string name="diary_preset_oatmeal">🥣 Овсянка + ягоды</string>
+    <string name="diary_preset_omelette">🍳 Омлет со шпинатом</string>
+    <string name="diary_empty_lunch_subtitle">Добавьте блюдо на обед</string>
+    <string name="diary_empty_dinner_title">Ничего не добавлено</string>
+    <string name="diary_empty_dinner_subtitle">Рекомендуется ~ 600 ккал</string>
+    <string name="diary_empty_snack_title">Перекус не внесен</string>
+    <string name="diary_empty_snack_subtitle">Орехи, фрукты или протеин</string>
+    <string name="diary_btn_fill">Заполнить</string>
+    <string name="diary_balance_share_title">Доля в дневном балансе:</string>
+    <string name="diary_tag_healthy">#ПП</string>
+    <string name="diary_btn_in_favorites">В избранном</string>
+    <string name="diary_prev_week">Предыдущая неделя</string>
+    <string name="diary_next_week">Следующая неделя</string>
+    <string name="diary_delete_meal">Удалить блюдо</string>
+    <string name="diary_favorite">Избранное</string>
+    <string name="diary_edit">Редактировать</string>
 </resources>

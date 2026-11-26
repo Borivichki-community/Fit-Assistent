@@ -1008,4 +1008,168 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка закрытия / удаления (✕) */
+    val Close: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitClose",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(6f, 6f)
+                lineTo(18f, 18f)
+                moveTo(18f, 6f)
+                lineTo(6f, 18f)
+            }
+        }.build()
+    }
+
+    /** Иконка стрелки влево (<) */
+    val ChevronLeft: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitChevronLeft",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2.4f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(15f, 19f)
+                lineTo(8f, 12f)
+                lineTo(15f, 5f)
+            }
+        }.build()
+    }
+
+    /** Иконка искры ИИ */
+    val Sparkle: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitSparkle",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12f, 2f)
+                lineTo(14.4f, 7.6f)
+                lineTo(20f, 10f)
+                lineTo(14.4f, 12.4f)
+                lineTo(12f, 18f)
+                lineTo(9.6f, 12.4f)
+                lineTo(4f, 10f)
+                lineTo(9.6f, 7.6f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка сердца (избранное / лайк) */
+    val Heart: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitHeart",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12f, 21.35f)
+                lineTo(10.55f, 20.03f)
+                curveTo(5.4f, 15.36f, 2f, 12.28f, 2f, 8.5f)
+                curveTo(2f, 5.42f, 4.42f, 3f, 7.5f, 3f)
+                curveTo(9.24f, 3f, 10.91f, 3.81f, 12f, 5.09f)
+                curveTo(13.09f, 3.81f, 14.76f, 3f, 16.5f, 3f)
+                curveTo(19.58f, 3f, 22f, 5.42f, 22f, 8.5f)
+                curveTo(22f, 12.28f, 18.6f, 15.36f, 13.45f, 20.04f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка закладки («В избранном») */
+    val Bookmark: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitBookmark",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(17f, 3f)
+                lineTo(7f, 3f)
+                curveTo(5.9f, 3f, 5f, 3.9f, 5f, 5f)
+                lineTo(5f, 21f)
+                lineTo(12f, 18f)
+                lineTo(19f, 21f)
+                lineTo(19f, 5f)
+                curveTo(19f, 3.9f, 18.1f, 3f, 17f, 3f)
+                close()
+            }
+        }.build()
+    }
+
+    /** Иконка часов (пустой слот перекуса) */
+    val Clock: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitClock",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(12f, 4f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 20f)
+                arcTo(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 4f)
+                close()
+                moveTo(12f, 8f)
+                lineTo(12f, 12f)
+                lineTo(14.5f, 14.5f)
+            }
+        }.build()
+    }
+
+    /** Иконка трёх строк меню (пустой слот ужина) */
+    val MenuLines: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitMenuLines",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+            ) {
+                moveTo(4f, 6f)
+                lineTo(20f, 6f)
+                moveTo(4f, 12f)
+                lineTo(20f, 12f)
+                moveTo(4f, 18f)
+                lineTo(11f, 18f)
+            }
+        }.build()
+    }
 }

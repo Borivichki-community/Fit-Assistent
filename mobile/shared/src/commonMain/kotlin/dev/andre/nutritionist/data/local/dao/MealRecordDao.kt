@@ -13,6 +13,9 @@ interface MealRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(record: MealRecordEntity)
 
+    @Query("SELECT COUNT(*) FROM meal_records")
+    suspend fun countAllIncludingDeleted(): Int
+
     @Query("SELECT * FROM meal_records WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): MealRecordEntity?
 

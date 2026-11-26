@@ -220,4 +220,31 @@
     <string name="profile_menu_help_desc">FAQ &amp; curator support</string>
     <string name="profile_unit_kg">kg</string>
     <string name="profile_per_day_unit">₽ / day</string>
+
+    <!-- Diary Redesign (fitapp_1) -->
+    <string name="diary_active_plans_count">2 active</string>
+    <string name="diary_daily_norm_title">DAILY NORM</string>
+    <string name="diary_day_label">day</string>
+    <string name="diary_total_cost_label">Total meal cost:</string>
+    <string name="diary_empty_ai_title">Nothing scheduled</string>
+    <string name="diary_empty_ai_subtitle">You can generate a personalized meal with AI or build your menu manually</string>
+    <string name="diary_btn_ai_generate">Generate with AI</string>
+    <string name="diary_btn_create_manually">Create manually</string>
+    <string name="diary_quick_presets_label">Quick select:</string>
+    <string name="diary_preset_oatmeal">🥣 Oatmeal + berries</string>
+    <string name="diary_preset_omelette">🍳 Spinach omelette</string>
+    <string name="diary_empty_lunch_subtitle">Add a dish for lunch</string>
+    <string name="diary_empty_dinner_title">Nothing added</string>
+    <string name="diary_empty_dinner_subtitle">Recommended ~ 600 kcal</string>
+    <string name="diary_empty_snack_title">No snacks logged</string>
+    <string name="diary_empty_snack_subtitle">Nuts, fruit, or protein</string>
+    <string name="diary_btn_fill">Fill in</string>
+    <string name="diary_balance_share_title">Share in daily balance:</string>
+    <string name="diary_tag_healthy">#Healthy</string>
+    <string name="diary_btn_in_favorites">Saved</string>
+    <string name="diary_prev_week">Previous week</string>
+    <string name="diary_next_week">Next week</string>
+    <string name="diary_delete_meal">Delete dish</string>
+    <string name="diary_favorite">Favorite</string>
+    <string name="diary_edit">Edit</string>
 </resources>

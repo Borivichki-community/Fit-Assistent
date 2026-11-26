@@ -54,6 +54,7 @@ val GlassBorderLevel2 = Color(0x1AFFFFFF)
 val InfoAccentDark = Color(0xFF60A5FA)
 val ActivityAccentDark = Color(0xFFFF9F1C)
 val BudgetAccentDark = Color(0xFF22D3EE)
+val SunsetAccentDark = Color(0xFFFB7185)
 val PlanAccentDark = Color(0xFFB072FF)
 
 // ==============================================================================
@@ -108,4 +109,5 @@ val GlassBorderLevel2Light = Color(0x1A000000)
 val InfoAccentLight = Color(0xFF2563EB)
 val ActivityAccentLight = Color(0xFFD97706)
 val BudgetAccentLight = Color(0xFF0891B2)
+val SunsetAccentLight = Color(0xFFE11D48)
 val PlanAccentLight = Color(0xFF7C3AED)

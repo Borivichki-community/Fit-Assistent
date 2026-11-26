@@ -178,6 +178,8 @@ class SyncDiaryWorkerTest {
             flow.value = items.values.toList()
         }
 
+        override suspend fun countAllIncludingDeleted(): Int = items.size
+
         override suspend fun getById(id: String): MealRecordEntity? = items[id]
 
         override suspend fun getPendingRecords(): List<MealRecordEntity> =

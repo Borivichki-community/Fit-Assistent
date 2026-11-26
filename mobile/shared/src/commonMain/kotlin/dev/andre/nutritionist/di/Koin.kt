@@ -2,6 +2,8 @@ package dev.andre.nutritionist.di
 
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
+import dev.andre.nutritionist.data.local.DiaryInitialSeeder
+import dev.andre.nutritionist.data.local.RoomDiaryInitialSeeder
 import dev.andre.nutritionist.data.local.dao.FavoriteProductDao
 import dev.andre.nutritionist.data.local.dao.LocalMealPlanDao
 import dev.andre.nutritionist.data.local.dao.LocalRecipeDao
@@ -15,6 +17,7 @@ import dev.andre.nutritionist.data.repository.MealPlanRepositoryImpl
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.data.repository.RecipeCatalogRepositoryImpl
 import dev.andre.nutritionist.data.repository.RecipeRepositoryImpl
+import dev.andre.nutritionist.domain.auth.UserIdProvider
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.domain.repository.CatalogRepository
@@ -76,6 +79,7 @@ val localDataModule: Module = module {
     single<LocalMealPlanDao> { get<AppDatabase>().localMealPlanDao() }
     single<FavoriteProductDao> { get<AppDatabase>().favoriteProductDao() }
     single<SavedRecipeDao> { get<AppDatabase>().savedRecipeDao() }
+    single<DiaryInitialSeeder> { RoomDiaryInitialSeeder(mealRecordDao = get(), dispatchers = get()) }
 }
 
 val dataModule: Module = module {
@@ -158,6 +162,8 @@ val presentationModule: Module = module {
             diaryRepository = get(),
             dispatchers = get(),
             profileRepository = getOrNull(),
+            userIdProvider = { getOrNull<UserIdProvider>()?.getUserId() },
+            diaryInitialSeeder = getOrNull(),
         )
     }
     factory { DiaryUiStateMapper() }

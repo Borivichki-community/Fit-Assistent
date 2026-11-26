@@ -1,9 +1,12 @@
 package dev.andre.nutritionist.presentation.formatters
 
 import dev.andre.nutritionist.domain.model.Money
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class FormattersTest {
@@ -30,9 +33,14 @@ class FormattersTest {
     fun `NutritionFormatter formats calories grams and percentages`() {
         assertEquals("2 150 ккал", NutritionFormatter.formatCalories(2150.4))
         assertEquals("0 ккал", NutritionFormatter.formatCalories(Double.NaN))
+        assertEquals("2 150", NutritionFormatter.formatCaloriesNumber(2150.4))
         assertEquals("145 г", NutritionFormatter.formatGram(145.0))
         assertEquals("12,5 г", NutritionFormatter.formatGram(12.5))
         assertEquals("1 200 г", NutritionFormatter.formatGram(1200.0))
+        assertEquals("1,25", NutritionFormatter.formatMacroValue(1.25))
+        assertEquals("13,8", NutritionFormatter.formatMacroValue(13.8))
+        assertEquals("4,93", NutritionFormatter.formatMacroValue(4.93))
+        assertEquals("85", NutritionFormatter.formatMacroValue(85.0))
         assertEquals("74%", NutritionFormatter.formatPercentage(0.744))
         assertEquals("0%", NutritionFormatter.formatPercentage(-0.2))
         assertEquals("120%", NutritionFormatter.formatPercentage(1.2))
@@ -67,5 +75,39 @@ class FormattersTest {
 
         assertEquals(Instant.parse("2026-11-24T00:00:00Z").toEpochMilliseconds(), start)
         assertEquals(Instant.parse("2026-11-24T23:59:59.999Z").toEpochMilliseconds(), end)
+    }
+
+    @Test
+    fun `DateFormatter calendar helpers compute week days month year ISO week and shifting`() {
+        val satNov7Ms = Instant.parse("2026-11-07T12:00:00Z").toEpochMilliseconds()
+        assertEquals("Ноябрь 2026", DateFormatter.formatMonthYear(satNov7Ms, TimeZone.UTC))
+        assertEquals("НЕДЕЛЯ 45", DateFormatter.formatIsoWeekLabel(satNov7Ms, TimeZone.UTC))
+
+        val loggedDates = setOf(LocalDate(2026, 11, 6), LocalDate(2026, 11, 7))
+        val weekDays = DateFormatter.weekDaysForDate(
+            selectedDateEpochMs = satNov7Ms,
+            nowEpochMs = satNov7Ms,
+            datesWithMeals = loggedDates,
+            timeZone = TimeZone.UTC,
+        )
+
+        assertEquals(7, weekDays.size)
+        assertEquals("Пн", weekDays[0].dayOfWeekName)
+        assertEquals("02", weekDays[0].dayOfMonth)
+        assertFalse(weekDays[0].isSelected)
+        assertFalse(weekDays[0].hasLoggedMeals)
+
+        assertTrue(weekDays[4].hasLoggedMeals)
+        assertEquals("Сб", weekDays[5].dayOfWeekName)
+        assertEquals("07", weekDays[5].dayOfMonth)
+        assertTrue(weekDays[5].isSelected)
+        assertTrue(weekDays[5].isToday)
+        assertTrue(weekDays[5].hasLoggedMeals)
+
+        val prevWeekMs = DateFormatter.shiftDaysEpochMs(satNov7Ms, -7, TimeZone.UTC)
+        assertEquals("НЕДЕЛЯ 44", DateFormatter.formatIsoWeekLabel(prevWeekMs, TimeZone.UTC))
+
+        val nextWeekMs = DateFormatter.shiftDaysEpochMs(satNov7Ms, 7, TimeZone.UTC)
+        assertEquals("НЕДЕЛЯ 46", DateFormatter.formatIsoWeekLabel(nextWeekMs, TimeZone.UTC))
     }
 }

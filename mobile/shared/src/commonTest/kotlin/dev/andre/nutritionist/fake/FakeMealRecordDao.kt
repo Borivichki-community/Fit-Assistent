@@ -20,6 +20,12 @@ class FakeMealRecordDao : MealRecordDao {
         recordsFlow.value = records.values.toList()
     }
 
+    override suspend fun countAllIncludingDeleted(): Int {
+        val error = shouldThrow
+        if (error != null) throw error
+        return records.size
+    }
+
     override suspend fun getById(id: String): MealRecordEntity? {
         val error = shouldThrow
         if (error != null) throw error

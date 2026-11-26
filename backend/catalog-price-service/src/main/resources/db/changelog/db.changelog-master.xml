@@ -7,5 +7,6 @@
 
     <include file="v1/001-init-catalog-schema.xml" relativeToChangelogFile="true"/>
     <include file="v1/002-seed-initial-catalog.xml" relativeToChangelogFile="true"/>
+    <include file="v1/003-seed-epica-yogurt.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

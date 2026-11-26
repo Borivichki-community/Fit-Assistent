@@ -5,6 +5,23 @@
 
 Обновлено: 2026-11-25
 
+### Редизайн Дневника питания (fitapp_1) с реальным расчётом КБЖУ, календарём и товаром «Йогурт Epica» (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Шаг 1 — Реальный товар «Йогурт Epica» в БД:**
+  - `backend/catalog-price-service`: добавлен новый Liquibase-changeset `v1/003-seed-epica-yogurt.xml` (подключён в `db.changelog-master.xml`) с продуктом `20000000-0000-0000-0000-000000000112` («Йогурт Epica», `DAIRY`, `65.38 ккал / 3.79 Б / 0.96 Ж / 10.62 У` на 100 г) и региональными ценами `95.00 RUB / UNIT` (без правки существующих миграций `001`/`002`).
+  - `:mobile:shared`: добавлен `RoomDiaryInitialSeeder` (`DiaryInitialSeeder.kt`, `MealRecordDao.countAllIncludingDeleted()`), идемпотентно создающий реальную запись `MealRecord` (`seed-epica-lunch-1`, `LUNCH`, `130 г`, `85 ккал`, `95 ₽`) на текущий день при первом открытии дневника, с защитой от воскрешения после удаления.
+- **Шаг 2 — Реальные расчёты КБЖУ, бюджета и календаря в KoTEA (`:mobile:shared`):**
+  - `UserIdProvider` + биндинг в `Koin.kt` / `AndroidModule.kt`: `DiaryCommandsFlowHandler` реактивно комбинирует `diaryRepository.observeDailyRecords(weekStart, weekEnd)` и `profileRepository.observeProfile(userId)` (с фоновой подгрузкой `profileRepository.getProfile(userId)`), вычисляя `DailyNutritionBalance`, общую стоимость блюд (`NutritionCalculator.sumMealCost`) и дневной бюджет (`weeklyBudget / 7.0`).
+  - Расширены `DateFormatter` (`weekDaysForDate`, `formatMonthYear`, `formatIsoWeekLabel`, `shiftDaysEpochMs`, `weekRangeEpochMs`), `NutritionFormatter` (`formatCaloriesNumber`, `formatMacroValue`), `DailyNutritionUiMapper`, `MealRecordUiMapper` (`dailyBalanceShareLabel`), `DiaryState`, `DiaryEvent` (`DateSelected`, `PreviousWeekClicked`, `NextWeekClicked`, `Retry`, `ToggleMealSection`), `DiaryUpdate` и `DiaryUiStateMapper` (4 слота приёмов пищи, удаление захардкоженного `defaultSampleDiary`).
+- **Шаги 3–4 — Редизайн UI под `fitapp_1` (Dark *Aether Zero-G Luxury* & Light *Precision Mint & Slate Wellness*):**
+  - Обновлены `FitTopBar`, `DashboardWeekStreakBar`, `PlanChip`, `DashboardNutritionKpiBar`, `MealSectionCard`, `MealItemRow`, `MainScreen`, `FitIcons`, `Color.kt`, `FitAssistantTheme.kt`, `values/strings.xml`, `values-ru/strings.xml`.
+  - Подключён только календарь (выбор дня, переключение недель `<` / `>`, сворачивание слотов, удаление записи); остальные действия оставлены как UI-заглушки через коллбэки.
+- **Шаг 5 — Интеграция `DashboardRoute` и верификация:**
+  - `DashboardRoute` переведён на `DiaryViewModel` (`koinViewModel()`) и `AuthRepository`; удалены устаревшие `DashboardUiState.kt` и `DashboardUiStateMapper.kt`.
+  - Обновлены и добавлены тесты: `CatalogSeedDataIntegrationTest`, `MealRecordDaoTest`, `FormattersTest`, `DiaryUpdateTest`, `DiaryUiStateMapperTest`, `CommandsFlowHandlerTest`, `MainScreenTest`, `SyncDiaryWorkerTest`.
+
 ### Маршрутизация роли `COACH` на онбординг, JWT-провайдер эмулятора в Gateway и E2E-проверка в кластере (2026-11-25)
 
 - **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.

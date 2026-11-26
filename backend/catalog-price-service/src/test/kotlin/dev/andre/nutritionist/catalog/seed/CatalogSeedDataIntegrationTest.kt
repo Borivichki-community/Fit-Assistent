@@ -133,4 +133,31 @@ class CatalogSeedDataIntegrationTest : AbstractPostgresIntegrationTest() {
         assertEquals("RUB", item.currency)
         assertEquals(BigDecimal("104.50"), item.averagePrice)
     }
+
+    @Test
+    fun `testEpicaYogurtProductAndPriceSeeded`() {
+        val epicaId = UUID.fromString("20000000-0000-0000-0000-000000000112")
+        val epica = productRepository.findById(epicaId).orElse(null)
+        assertNotNull(epica, "Йогурт Epica must be seeded")
+        assertEquals("Йогурт Epica", epica?.name)
+        assertEquals("DAIRY", epica?.category)
+        assertEquals(BigDecimal("65.38"), epica?.caloriesPer100g)
+        assertEquals(BigDecimal("3.79"), epica?.proteinsPer100g)
+        assertEquals(BigDecimal("0.96"), epica?.fatsPer100g)
+        assertEquals(BigDecimal("10.62"), epica?.carbsPer100g)
+
+        val moscowId = UUID.fromString("10000000-0000-0000-0000-000000000001")
+        val regionalPrices = regionalPriceRepository.findByProductId(epicaId)
+        assertEquals(6, regionalPrices.size)
+        regionalPrices.forEach { price ->
+            assertEquals("RUB", price.currency)
+            assertEquals("UNIT", price.unit)
+            assertEquals(0, price.price.compareTo(BigDecimal("95.00")), "Expected 95.00 but got ${price.price}")
+        }
+
+        val prices = catalogService.getAveragePrices(listOf(epicaId), regionId = moscowId)
+        assertEquals(1, prices.size)
+        assertEquals("RUB", prices[0].currency)
+        assertEquals(BigDecimal("95.00"), prices[0].averagePrice)
+    }
 }

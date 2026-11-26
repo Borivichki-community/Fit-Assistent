@@ -182,11 +182,14 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Recipes.route) {
-            MainScreen(
+            DashboardRoute(
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true
                     }
+                },
+                onNavigateToRegistration = {
+                    navController.navigate(AppDestination.Registration.route)
                 },
                 onDestinationSelected = { dest ->
                     navController.navigate(dest.route) {
@@ -196,11 +199,14 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Statistics.route) {
-            MainScreen(
+            DashboardRoute(
                 onNavigateToProfile = {
                     navController.navigate(AppDestination.Profile.route) {
                         launchSingleTop = true
                     }
+                },
+                onNavigateToRegistration = {
+                    navController.navigate(AppDestination.Registration.route)
                 },
                 onDestinationSelected = { dest ->
                     navController.navigate(dest.route) {
