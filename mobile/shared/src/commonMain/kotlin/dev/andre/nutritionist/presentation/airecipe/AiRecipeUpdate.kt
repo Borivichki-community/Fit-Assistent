@@ -39,10 +39,25 @@ class AiRecipeUpdate : DslUpdate<AiRecipeState, AiRecipeEvent, AiRecipeCommand, 
             }
             is Internal.RecipeGenerated -> if (current is Content.Generating) state { copy(content = Content.Success(event.recipe)) }
             is Internal.GenerationFailed -> if (current is Content.Generating) {
-                state { copy(content = Content.Error(when (event.error) {
-                    is dev.andre.nutritionist.domain.error.DomainError.Unauthorized -> "Не удалось подтвердить вход. Попробуйте войти снова."
-                    else -> "Не удалось сгенерировать блюдо. Попробуйте ещё раз."
-                })) }
+                val message = when (val error = event.error as? dev.andre.nutritionist.domain.error.DomainError) {
+                    is dev.andre.nutritionist.domain.error.DomainError.Unauthorized ->
+                        "Не удалось подтвердить вход. Попробуйте войти снова."
+                    is dev.andre.nutritionist.domain.error.DomainError.NetworkUnavailable ->
+                        "Сервис генерации временно недоступен. Проверьте подключение и попробуйте ещё раз."
+                    is dev.andre.nutritionist.domain.error.DomainError.BudgetExceededError ->
+                        "Указанный бюджет слишком мал для подбора блюда. Попробуйте увеличить бюджет."
+                    is dev.andre.nutritionist.domain.error.DomainError.ValidationError ->
+                        error.reason
+                    is dev.andre.nutritionist.domain.error.DomainError.InvalidBudgetError,
+                    is dev.andre.nutritionist.domain.error.DomainError.Forbidden,
+                    is dev.andre.nutritionist.domain.error.DomainError.NotFound,
+                    is dev.andre.nutritionist.domain.error.DomainError.Conflict,
+                    is dev.andre.nutritionist.domain.error.DomainError.ConcurrentModification,
+                    is dev.andre.nutritionist.domain.error.DomainError.Unknown,
+                    null,
+                    -> "Не удалось сгенерировать блюдо. Попробуйте ещё раз."
+                }
+                state { copy(content = Content.Error(message)) }
             }
             is Internal.RecipeAddedToDiary -> news(AiRecipeNews.RecipeAddedSuccess)
             is Internal.SaveFailed -> if (current is Content.Success) {

@@ -22,3 +22,5 @@ data:
   SPRING_DATA_REDIS_PORT: "6379"
   DIARY_RECIPE_ADDRESS: "recipe-ai-service.budget-nutritionist.svc.cluster.local:9194"
   DIARY_RECIPE_PLAINTEXT: "true"
+  DIARY_OUTBOX_ENABLED: "false"
+  DIARY_REGISTRATION_CONSUMER_ENABLED: "false"

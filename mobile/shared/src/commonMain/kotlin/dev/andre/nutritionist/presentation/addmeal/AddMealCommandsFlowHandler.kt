@@ -130,7 +130,7 @@ class AddMealCommandsFlowHandler(
                 }
             }
 
-            if (productsResult.isSuccess || recipesResult.isSuccess || recipes.isNotEmpty()) {
+            if (products.isNotEmpty() || recipes.isNotEmpty() || (productsResult.isSuccess && recipesResult.isSuccess)) {
                 AddMealEvent.Internal.SearchLoaded(
                     query = query,
                     products = products,

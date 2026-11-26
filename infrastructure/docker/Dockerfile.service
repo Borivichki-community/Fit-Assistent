@@ -15,7 +15,7 @@ COPY backend/ backend/
 COPY shared/contracts/ shared/contracts/
 COPY proto/ proto/
 
-RUN chmod +x gradlew
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
 ARG SERVICE_NAME
 

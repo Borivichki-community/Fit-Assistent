@@ -183,6 +183,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "start-dev"
+            - "--import-realm"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

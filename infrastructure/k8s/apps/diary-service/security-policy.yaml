@@ -1,0 +1,33 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: diary-jwt-auth
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: diary-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: GRPCRoute
+    name: diary-grpc-route
+  jwt:
+    providers:
+      - name: keycloak
+        issuer: "http://localhost:8080/realms/FitAssistant"
+        remoteJWKS:
+          uri: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+          - claim: realm_access.roles
+            header: x-user-roles
+      - name: keycloak-emulator
+        issuer: "http://10.0.2.2:8080/realms/FitAssistant"
+        remoteJWKS:
+          uri: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+          - claim: realm_access.roles
+            header: x-user-roles

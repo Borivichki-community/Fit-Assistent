@@ -218,7 +218,8 @@ class UnifiedGrpcClientInterceptor(
                         onFailure = { error ->
                             if (error is CancellationException) return@launch
                             flushPendingHeaders()
-                            val failureStatus = Status.UNAUTHENTICATED
+                            val isNetworkFailure = error is java.io.IOException || error.cause is java.io.IOException
+                            val failureStatus = (if (isNetworkFailure) Status.UNAVAILABLE else Status.UNAUTHENTICATED)
                                 .withDescription(error.message ?: "Authentication refresh failed")
                                 .withCause(error)
                             outerListener?.onClose(failureStatus, trailers)
@@ -251,7 +252,7 @@ class UnifiedGrpcClientInterceptor(
             if (!current.isNullOrBlank() && current != failedToken) {
                 Result.success(current)
             } else {
-                provider.refreshIfNeeded().mapCatching { refreshed ->
+                provider.forceRefresh().mapCatching { refreshed ->
                     if (refreshed.isBlank()) {
                         throw DomainError.Unauthorized("Refreshed token is blank")
                     }

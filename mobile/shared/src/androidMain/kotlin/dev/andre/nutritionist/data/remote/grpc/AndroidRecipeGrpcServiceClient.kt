@@ -57,13 +57,18 @@ import kotlinx.coroutines.flow.Flow
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 
 class AndroidRecipeGrpcServiceClient(
     private val channel: Channel,
 ) : RecipeGrpcServiceClient {
 
     override suspend fun generateMealPlan(request: GenerateMealPlanRequest): GenerateMealPlanResponse =
-        channel.unaryCall(generateMealPlanMethod, request)
+        channel.unaryCall(
+            generateMealPlanMethod,
+            request,
+            CallOptions.DEFAULT.withDeadlineAfter(65L, TimeUnit.SECONDS),
+        )
 
     override fun generateWeekMenu(request: GenerateWeekMenuRequest): Flow<GenerateWeekMenuResponse> =
         channel.serverStreamingCall(generateWeekMenuMethod, request)

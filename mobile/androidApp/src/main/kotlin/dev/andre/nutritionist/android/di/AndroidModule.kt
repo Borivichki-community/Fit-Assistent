@@ -51,6 +51,7 @@ val authModule = module {
             tokenExchanger = get(),
             authService = get(),
             dispatchers = get(),
+            authConfig = get(),
         )
     } bind AuthRepository::class bind AuthTokenProvider::class
     single<UserIdProvider> { UserIdProvider { get<AuthRepository>().getUserId() } }

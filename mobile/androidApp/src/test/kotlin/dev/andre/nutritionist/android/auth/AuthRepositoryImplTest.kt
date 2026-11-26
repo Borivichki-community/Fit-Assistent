@@ -58,6 +58,7 @@ class AuthRepositoryImplTest {
             tokenExchanger = fakeTokenExchanger,
             authService = authService,
             dispatchers = dispatchers,
+            authConfig = authConfig,
         )
     }
 
@@ -420,5 +421,71 @@ class AuthRepositoryImplTest {
         repository.processAuthResponse(validIntent)
 
         assertEquals(UserRole.COACH, repository.getUserRole())
+    }
+
+    @Test
+    fun `forceRefresh exchanges refresh token even when local access token is still fresh`() = runTest {
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("initial-jwt")
+            .setRefreshToken("refresh-token-1")
+            .setTokenType("Bearer")
+            .setAccessTokenExpirationTime(System.currentTimeMillis() + 3600_000L)
+            .build()
+        repository.processAuthResponse(validIntent)
+
+        val refreshReq = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("refreshed-jwt")
+            .setRefreshToken("refresh-token-2")
+            .setTokenType("Bearer")
+            .build()
+        fakeTokenExchanger.tokenResponseToReturn = refreshReq
+
+        val result = repository.forceRefresh()
+
+        assertTrue(result.isSuccess)
+        assertEquals("refreshed-jwt", result.getOrNull())
+        assertEquals("refreshed-jwt", repository.getAccessToken())
+    }
+
+    @Test
+    fun `forceRefresh clears session when refresh token is missing`() = runTest {
+        val authRequest = AuthorizationRequest.Builder(
+            serviceConfig,
+            authConfig.clientId,
+            ResponseTypeValues.CODE,
+            authConfig.redirectUri,
+        ).build()
+        val authResponse = AuthorizationResponse.Builder(authRequest)
+            .setAuthorizationCode("auth-code")
+            .setState(authRequest.state)
+            .build()
+        val validIntent = Intent().apply {
+            putExtra(AuthorizationResponse.EXTRA_RESPONSE, authResponse.jsonSerializeString())
+        }
+        fakeTokenExchanger.tokenResponseToReturn = TokenResponse.Builder(authResponse.createTokenExchangeRequest())
+            .setAccessToken("zombie-jwt-without-refresh")
+            .setTokenType("Bearer")
+            .build()
+        repository.processAuthResponse(validIntent)
+        assertTrue(repository.isAuthenticated())
+
+        val result = repository.forceRefresh()
+
+        assertTrue(result.isFailure)
+        assertEquals(false, repository.isAuthenticated())
+        assertNull(repository.getAccessToken())
     }
 }

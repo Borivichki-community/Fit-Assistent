@@ -3,210 +3,519 @@ package dev.andre.nutritionist.android.ui.screens.airecipe
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.andre.nutritionist.android.ui.components.FitIcons
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeEvent.Ui
+import dev.andre.nutritionist.presentation.airecipe.AiRecipePrompt
 import dev.andre.nutritionist.presentation.airecipe.AiRecipeUiState.Content
 
-private val mint = Color(0xFF00F5A0)
-private val muted = Color(0xFF9EADC1)
-private val card = Color(0xFF161922)
-private val control = Color(0xFF12151C)
-private val outline = Color(0xFF282D39)
+private val SheetSurface = Color(0xFF12151E)
+private val CardSurface = Color(0xFF161923)
+private val ControlSurface = Color(0xFF10131A)
+private val BudgetInputSurface = Color(0xFF10131B)
+private val ChipUnselectedSurface = Color(0xFF1C2130)
+private val CloseBtnSurface = Color(0xFF1B1F2B)
+private val MintAccent = Color(0xFF00F5A0)
+private val MintButtonEnd = Color(0xFF00D680)
+private val CyanAccent = Color(0xFF22D3EE)
+private val AmberAccent = Color(0xFFFBBF24)
+private val MutedText = Color(0xFF94A3B8)
+private val MutedDimText = Color(0xFF64748B)
+private val ChipText = Color(0xFFCBD5E1)
+private val HairlineWhite = Color(0x0FFFFFFF)
+private val CardOutline = Color(0x0DFFFFFF)
+private val InputOutline = Color(0x1AFFFFFF)
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AiRecipeConfiguringContent(
     state: Content.Configuring,
     onEvent: (Ui) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ProvideTextStyle(TextStyle(lineHeight = 14.sp, letterSpacing = 0.sp)) {
-        RecipeSettingsPanel(state, onEvent, modifier)
-    }
+    RecipeSettingsPanel(state = state, onEvent = onEvent, modifier = modifier)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RecipeSettingsPanel(state: Content.Configuring, onEvent: (Ui) -> Unit, modifier: Modifier) {
-    val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+private fun RecipeSettingsPanel(
+    state: Content.Configuring,
+    onEvent: (Ui) -> Unit,
+    modifier: Modifier,
+) {
+    val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.92f).dp
+    val focusManager = LocalFocusManager.current
+    val sheetShape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+    val dietaryTags = listOf(
+        "⚡ До 15 мин",
+        "🌾 Без глютена",
+        "💪 Высокий белок",
+        "🥬 Из простых продуктов",
+    )
+
     Column(
-        modifier
+        modifier = modifier
             .widthIn(max = 480.dp)
+            .heightIn(max = maxSheetHeight)
             .fillMaxWidth()
-            .clip(shape)
-            .background(Color(0xFF141720))
-            .border(1.dp, Brush.verticalGradient(listOf(mint.copy(alpha = 0.40f), Color.Transparent), endY = 60f), shape)
+            .shadow(24.dp, sheetShape, ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(sheetShape)
+            .background(SheetSurface)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(MintAccent.copy(alpha = 0.30f), CardOutline),
+                    endY = 120f,
+                ),
+                shape = sheetShape,
+            )
             .imePadding()
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 20.dp),
+            .navigationBarsPadding(),
     ) {
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(
-            0.24f to Color.Transparent, 0.5f to mint, 0.76f to Color.Transparent,
-        )))
         Box(
-            Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp)
-                .size(38.dp, 4.dp).background(Color(0xFF3A4556), CircleShape),
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .width(192.dp)
+                .height(3.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        0.5f to MintAccent.copy(alpha = 0.80f),
+                        1f to Color.Transparent,
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 10.dp)
+                .size(width = 40.dp, height = 4.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF334155).copy(alpha = 0.80f)),
         )
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(
-                Modifier.size(32.dp).background(mint.copy(alpha = .12f), RoundedCornerShape(12.dp))
-                    .border(1.dp, mint.copy(alpha = .32f), RoundedCornerShape(12.dp)),
+                modifier = Modifier
+                    .size(32.dp)
+                    .shadow(8.dp, RoundedCornerShape(10.dp), ambientColor = MintAccent.copy(alpha = 0.3f), spotColor = MintAccent.copy(alpha = 0.3f))
+                    .background(MintAccent.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                    .border(1.dp, MintAccent.copy(alpha = 0.30f), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(FitIcons.Sparkle, null, Modifier.size(16.dp), tint = mint)
+                Icon(FitIcons.Sparkle, contentDescription = null, modifier = Modifier.size(16.dp), tint = MintAccent)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("Генерация с ИИ", color = Color.White, fontSize = 16.sp, lineHeight = 19.sp, fontWeight = FontWeight.ExtraBold)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
-                        "PRO", Modifier.background(mint.copy(alpha = .13f), RoundedCornerShape(4.dp))
-                            .border(1.dp, mint.copy(alpha = .4f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 1.dp),
-                        color = mint, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        text = "Генерация с ИИ",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                    Text(
+                        text = "PRO",
+                        modifier = Modifier
+                            .background(MintAccent.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .border(1.dp, MintAccent.copy(alpha = 0.30f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                        color = MintAccent,
+                        fontSize = 10.sp,
+                        lineHeight = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
                     )
                 }
-                Text("Настройте параметры идеального приёма пищи", color = muted, fontSize = 11.sp)
+                Text(
+                    text = "Настройте параметры идеального приёма пищи",
+                    color = MutedText,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                )
             }
             Box(
-                Modifier.size(32.dp).clip(CircleShape).background(Color(0xFF202531))
-                    .clickable(role = Role.Button) { onEvent(Ui.CancelClicked) }
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(CloseBtnSurface)
+                    .border(1.dp, CardOutline, CircleShape)
+                    .clickable(role = Role.Button) {
+                        focusManager.clearFocus(force = true)
+                        onEvent(Ui.CancelClicked)
+                    }
                     .semantics { contentDescription = "Закрыть" },
                 contentAlignment = Alignment.Center,
             ) {
-                Text("×", color = muted, fontSize = 20.sp)
+                Icon(
+                    imageVector = FitIcons.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MutedText,
+                )
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(outline))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(HairlineWhite))
+
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 16.dp),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             RecipeSettingsCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SettingTitle("▤", "Максимальный бюджет", mint, Modifier.weight(1f))
-                    Text(
-                        state.budgetLabel, Modifier.background(control, RoundedCornerShape(12.dp))
-                            .border(1.dp, outline, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 18.dp, vertical = 5.dp),
-                        color = mint, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SettingTitle(
+                        icon = FitIcons.Wallet,
+                        label = "Максимальный бюджет",
+                        tint = MintAccent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    BudgetInputPill(
+                        targetBudgetRub = state.prompt.targetBudgetRub,
+                        budgetLabel = state.budgetLabel,
+                        onBudgetChanged = { onEvent(Ui.BudgetChanged(it)) },
                     )
                 }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     state.budgets.forEach { (value, label) ->
-                        RecipeChip(label, state.prompt.targetBudgetRub == value) { onEvent(Ui.BudgetChanged(value)) }
+                        BudgetChip(
+                            label = label,
+                            selected = state.prompt.targetBudgetRub == value,
+                            onClick = { onEvent(Ui.BudgetChanged(value)) },
+                        )
                     }
                 }
             }
+
             RecipeSettingsCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SettingTitle("ϟ", "Баланс КБЖУ", Color(0xFF22D3EE), Modifier.weight(1f))
-                    Text("Вписать в остаток", color = mint, fontSize = 10.sp)
-                    Spacer(Modifier.width(7.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SettingTitle(
+                        icon = FitIcons.Lightning,
+                        label = "Баланс КБЖУ",
+                        tint = CyanAccent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "Вписать в остаток",
+                        color = MintAccent,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.width(8.dp))
                     val fitRemaining = state.prompt.fitRemaining
                     Box(
-                        Modifier.size(36.dp, 20.dp).clip(CircleShape)
-                            .background(if (fitRemaining) mint else outline)
+                        modifier = Modifier
+                            .size(width = 36.dp, height = 20.dp)
+                            .clip(CircleShape)
+                            .background(if (fitRemaining) MintAccent else Color(0xFF282D39))
                             .toggleable(fitRemaining, role = Role.Switch) { onEvent(Ui.FitRemainingChanged(it)) }
                             .semantics { contentDescription = "Вписать в остаток" }
                             .padding(2.dp),
                         contentAlignment = if (fitRemaining) Alignment.CenterEnd else Alignment.CenterStart,
                     ) {
-                        Box(Modifier.size(16.dp).background(control, CircleShape))
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .shadow(2.dp, CircleShape)
+                                .background(Color(0xFF020617), CircleShape),
+                        )
                     }
                 }
                 Row(
-                    Modifier.fillMaxWidth().background(control, RoundedCornerShape(12.dp))
-                        .border(1.dp, mint.copy(alpha = .23f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 7.dp, vertical = 9.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ControlSurface, RoundedCornerShape(12.dp))
+                        .border(1.dp, MintAccent.copy(alpha = 0.20f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     state.nutrition.forEachIndexed { index, (label, value) ->
-                        if (index > 0) Box(Modifier.height(20.dp).width(1.dp).background(outline))
+                        if (index > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .height(20.dp)
+                                    .width(1.dp)
+                                    .background(InputOutline),
+                            )
+                        }
                         Column(
-                            Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            Text(label, color = muted, fontSize = 10.sp)
-                            Text(value, color = if (index == 0) mint else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = label,
+                                color = MutedDimText,
+                                fontSize = 10.sp,
+                                lineHeight = 13.sp,
+                            )
+                            Text(
+                                text = value,
+                                color = if (index == 0) MintAccent else Color(0xFFE2E8F0),
+                                fontSize = 12.sp,
+                                lineHeight = 15.sp,
+                                fontWeight = if (index == 0) FontWeight.ExtraBold else FontWeight.Bold,
+                            )
                         }
                     }
                 }
             }
+
             RecipeSettingsCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SettingTitle("✎", "Пожелания и ингредиенты", Color(0xFFFFB020), Modifier.weight(1f))
-                    Text("ИИ учтёт все детали", color = muted, fontSize = 10.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SettingTitle(
+                        icon = FitIcons.Edit,
+                        label = "Пожелания и ингредиенты",
+                        tint = AmberAccent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "ИИ учтёт все детали",
+                        color = MutedDimText,
+                        fontSize = 10.sp,
+                        lineHeight = 13.sp,
+                    )
                 }
                 BasicTextField(
                     value = state.prompt.query,
                     onValueChange = { onEvent(Ui.QueryChanged(it)) },
-                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Color.White, fontSize = 12.sp, lineHeight = 15.sp, letterSpacing = 0.sp),
-                    cursorBrush = SolidColor(mint),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFFE2E8F0),
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                    ),
+                    cursorBrush = SolidColor(MintAccent),
                     minLines = 2,
                     maxLines = 4,
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Пожелания и ингредиенты" },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Пожелания и ингредиенты" },
                     decorationBox = { field ->
-                        Box(Modifier.background(control, RoundedCornerShape(12.dp)).border(1.dp, outline, RoundedCornerShape(12.dp)).padding(10.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(ControlSurface, RoundedCornerShape(12.dp))
+                                .border(1.dp, InputOutline, RoundedCornerShape(12.dp))
+                                .padding(10.dp),
+                        ) {
                             if (state.prompt.query.isEmpty()) {
-                                Text("Сытный утренний приём без лактозы, яйца, тост или авокадо…", color = muted, fontSize = 12.sp)
+                                Text(
+                                    text = "Сытный утренний приём без лактозы, яйца, тост или авокадо...",
+                                    color = MutedDimText,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                )
                             }
                             field()
                         }
                     },
                 )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val preferences = listOf("⚡ До 15 мин", "🌾 Без глютена", "💪 Высокий белок", "🥬 Из простых продуктов")
-                    preferences.forEach { label ->
-                        RecipeChip(label, state.prompt.dietaryPreference == label) { onEvent(Ui.DietaryPreferenceSelected(label)) }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    dietaryTags.forEach { label ->
+                        PreferenceChip(
+                            label = label,
+                            selected = state.prompt.dietaryPreference == label,
+                            onClick = { onEvent(Ui.DietaryPreferenceSelected(label)) },
+                        )
                     }
                 }
             }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 4.dp, bottom = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             val buttonShape = RoundedCornerShape(16.dp)
             Row(
-                Modifier.fillMaxWidth().height(48.dp).clip(buttonShape)
-                    .background(Brush.horizontalGradient(listOf(mint, Color(0xFF00CC79))))
-                    .clickable(role = Role.Button) { onEvent(Ui.GenerateClicked) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = buttonShape,
+                        ambientColor = MintAccent.copy(alpha = 0.35f),
+                        spotColor = MintAccent.copy(alpha = 0.35f),
+                    )
+                    .clip(buttonShape)
+                    .background(Brush.horizontalGradient(listOf(MintAccent, MintButtonEnd)))
+                    .clickable(role = Role.Button) {
+                        focusManager.clearFocus(force = true)
+                        onEvent(Ui.GenerateClicked)
+                    },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(FitIcons.Sparkle, null, Modifier.size(16.dp), tint = control)
-                Spacer(Modifier.width(7.dp))
-                Text("Сгенерировать приём пищи ✨", color = control, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                Icon(
+                    imageVector = FitIcons.Sparkle,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color(0xFF020617),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Сгенерировать приём пищи ✨",
+                    color = Color(0xFF020617),
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                )
             }
             Text(
-                "Отмена", Modifier.align(Alignment.CenterHorizontally)
-                    .clickable(role = Role.Button) { onEvent(Ui.CancelClicked) }.padding(horizontal = 14.dp, vertical = 2.dp),
-                color = muted, fontSize = 12.sp,
+                text = "Отмена",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(role = Role.Button) {
+                        focusManager.clearFocus(force = true)
+                        onEvent(Ui.CancelClicked)
+                    }
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                color = MutedText,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BudgetInputPill(
+    targetBudgetRub: Int,
+    budgetLabel: String,
+    onBudgetChanged: (Int) -> Unit,
+) {
+    var draftDigits by remember(targetBudgetRub) {
+        mutableStateOf(
+            if (targetBudgetRub == AiRecipePrompt.NO_BUDGET_LIMIT) "" else targetBudgetRub.toString(),
+        )
+    }
+    Row(
+        modifier = Modifier
+            .background(BudgetInputSurface, RoundedCornerShape(12.dp))
+            .border(1.dp, InputOutline, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (targetBudgetRub == AiRecipePrompt.NO_BUDGET_LIMIT) {
+            Text(
+                text = budgetLabel,
+                color = MintAccent,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+            )
+        } else {
+            BasicTextField(
+                value = draftDigits,
+                onValueChange = { raw ->
+                    val filtered = raw.filter(Char::isDigit).take(6)
+                    draftDigits = filtered
+                    val parsed = filtered.toIntOrNull()
+                    if (parsed != null && parsed > 0) {
+                        onBudgetChanged(parsed)
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                cursorBrush = SolidColor(MintAccent),
+                textStyle = MaterialTheme.typography.titleSmall.copy(
+                    color = MintAccent,
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.End,
+                ),
+                modifier = Modifier
+                    .widthIn(min = 28.dp, max = 64.dp)
+                    .semantics { contentDescription = "Сумма бюджета" },
+            )
+            Text(
+                text = "₽",
+                color = MintAccent,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
             )
         }
     }
@@ -216,31 +525,112 @@ private fun RecipeSettingsPanel(state: Content.Configuring, onEvent: (Ui) -> Uni
 private fun RecipeSettingsCard(content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape).background(card).border(1.dp, outline, shape).padding(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(CardSurface)
+            .border(1.dp, CardOutline, shape)
+            .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
 }
 
 @Composable
-private fun SettingTitle(icon: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(23.dp).background(color.copy(alpha = .10f), RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
-            Text(icon, color = color, fontSize = 14.sp)
+private fun SettingTitle(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(tint.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = tint,
+            )
         }
-        Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = label,
+            color = Color(0xFFE2E8F0),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
 @Composable
-private fun RecipeChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(7.dp)
+private fun BudgetChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
     Text(
-        label,
-        Modifier.clip(shape).background(if (selected) mint.copy(alpha = .13f) else Color(0xFF1F2430))
-            .border(1.dp, if (selected) mint.copy(alpha = .5f) else outline, shape)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 9.dp, vertical = 5.dp),
-        color = if (selected) mint else Color(0xFFD1D9E6), fontSize = 10.sp,
+        text = label,
+        modifier = Modifier
+            .then(
+                if (selected) {
+                    Modifier.shadow(
+                        elevation = 8.dp,
+                        shape = shape,
+                        ambientColor = MintAccent.copy(alpha = 0.30f),
+                        spotColor = MintAccent.copy(alpha = 0.30f),
+                    )
+                } else {
+                    Modifier
+                },
+            )
+            .clip(shape)
+            .background(if (selected) MintAccent.copy(alpha = 0.15f) else ChipUnselectedSurface)
+            .border(
+                width = 1.dp,
+                color = if (selected) MintAccent.copy(alpha = 0.35f) else CardOutline,
+                shape = shape,
+            )
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        color = if (selected) MintAccent else ChipText,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
     )
 }
 
+@Composable
+private fun PreferenceChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(6.dp)
+    Text(
+        text = label,
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) MintAccent.copy(alpha = 0.14f) else ChipUnselectedSurface)
+            .border(
+                width = 1.dp,
+                color = if (selected) MintAccent.copy(alpha = 0.45f) else CardOutline,
+                shape = shape,
+            )
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        color = if (selected) MintAccent else ChipText,
+        fontSize = 10.sp,
+        lineHeight = 13.sp,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+    )
+}

@@ -1,0 +1,16 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: recipe-traffic-policy
+  namespace: budget-nutritionist
+  labels:
+    app.kubernetes.io/name: recipe-ai-service
+    app.kubernetes.io/part-of: fitassistant
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: GRPCRoute
+    name: recipe-grpc-route
+  timeout:
+    http:
+      requestTimeout: 60s

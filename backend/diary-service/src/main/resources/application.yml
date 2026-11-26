@@ -99,6 +99,3 @@ management:
           include: livenessState
         readiness:
           include: readinessState,db
-йогурт 
-вода
-овсянка

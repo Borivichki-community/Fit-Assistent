@@ -12,8 +12,10 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.android.navigation.AppDestination
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 
 /**
@@ -121,9 +123,11 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun continueStartup() {
-        // Проверка авторизации и переход через 1.2 секунды
+        // Проверка авторизации и прогрев Keystore-хранилища выполняются вне Main-потока
         lifecycleScope.launch {
-            val isAuth = runCatching { authRepository.isAuthenticated() }.getOrDefault(defaultValue = false)
+            val isAuth = withContext(Dispatchers.IO) {
+                runCatching { authRepository.isAuthenticated() }.getOrDefault(defaultValue = false)
+            }
             delay(SPLASH_DURATION_MS)
             navigateToMain(isAuth)
         }
