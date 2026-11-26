@@ -82,9 +82,15 @@ class CoachingAccessService(
         val asStudent = linkRepository.findByStudentId(currentUserId)
         val combined = (asCoach + asStudent).distinctBy { it.id }
 
-        return if (!statusFilter.isNullOrBlank() && statusFilter != "UNSPECIFIED") {
-            val filterUpper = statusFilter.uppercase()
-            combined.filter { it.status.uppercase() == filterUpper }
+        val normalizedFilter =
+            statusFilter
+                ?.trim()
+                ?.uppercase()
+                ?.removePrefix("COACH_LINK_STATUS_")
+                ?.takeIf { it.isNotEmpty() && it != "UNSPECIFIED" && it != "UNRECOGNIZED" }
+
+        return if (normalizedFilter != null) {
+            combined.filter { it.status.uppercase() == normalizedFilter }
         } else {
             combined
         }

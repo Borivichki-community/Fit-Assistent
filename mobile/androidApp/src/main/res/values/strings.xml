@@ -279,6 +279,9 @@
     <string name="coach_students_empty">No invited or active students yet</string>
 
     <string name="student_coaching_title">My Coaches &amp; Access</string>
+    <string name="student_coaching_my_id_label">My Student ID (share with coach)</string>
+    <string name="student_coaching_copy_id">Copy</string>
+    <string name="student_coaching_id_copied">Student ID copied</string>
     <string name="student_coaching_pending_header">Incoming invitations</string>
     <string name="student_coaching_active_header">Active coaches</string>
     <string name="student_coaching_plans_header">Available meal plans</string>

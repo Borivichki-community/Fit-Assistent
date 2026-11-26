@@ -59,9 +59,12 @@ fun CoachStudentMenuScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     TextButton(onClick = onBackClick) {
                         Text(stringResource(R.string.common_back))
                     }
@@ -79,7 +82,10 @@ fun CoachStudentMenuScreen(
                     }
                 }
                 OutlinedButton(onClick = { onEvent(CoachStudentMenuEvent.Ui.OpenMealPlansClicked) }) {
-                    Text(stringResource(R.string.coaching_mode_plans_title))
+                    Text(
+                        text = stringResource(R.string.coaching_mode_plans_title),
+                        maxLines = 2,
+                    )
                 }
             }
 

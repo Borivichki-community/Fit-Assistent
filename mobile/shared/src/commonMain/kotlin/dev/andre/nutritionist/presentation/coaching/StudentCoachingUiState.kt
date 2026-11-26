@@ -20,6 +20,7 @@ data class StudentPlanSummaryUiModel(
 )
 
 data class StudentCoachingUiState(
+    val currentUserId: String = "",
     val planIdInput: String = "",
     val content: Content = Content.Loading,
 ) {

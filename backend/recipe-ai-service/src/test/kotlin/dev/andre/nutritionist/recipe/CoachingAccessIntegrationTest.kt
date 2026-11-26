@@ -124,6 +124,12 @@ class CoachingAccessIntegrationTest : AbstractPostgresIntegrationTest() {
             val checkResp = coachClient.checkCoachAccess(checkReq)
             assertTrue(checkResp.hasAccess)
             assertTrue(checkResp.canViewDiary)
+
+            val listReq =
+                com.budgetntr.proto.recipe.v1.ListCoachLinksRequest
+                    .getDefaultInstance()
+            assertEquals(1, studentClient.listCoachLinks(listReq).linksCount)
+            assertEquals(1, coachClient.listCoachLinks(listReq).linksCount)
         }
 
     @Test

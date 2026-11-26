@@ -10,6 +10,8 @@ metadata:
     app.kubernetes.io/part-of: fitassistant
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: diary-service
@@ -64,6 +66,13 @@ spec:
             limits:
               cpu: 1000m
               memory: 768Mi
+          volumeMounts:
+            - name: recipe-server-ca
+              mountPath: /run/recipe-tls
+              readOnly: true
+            - name: recipe-client-tls
+              mountPath: /run/recipe-client-tls
+              readOnly: true
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -71,7 +80,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 5
             timeoutSeconds: 3
-            failureThreshold: 30
+            failureThreshold: 120
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -88,3 +97,12 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
+      volumes:
+        - name: recipe-server-ca
+          configMap:
+            name: recipe-server-ca
+            defaultMode: 0444
+        - name: recipe-client-tls
+          secret:
+            secretName: recipe-diary-client-tls
+            defaultMode: 0440

@@ -279,6 +279,9 @@
     <string name="coach_students_empty">Пока нет привязанных учеников</string>
 
     <string name="student_coaching_title">Мои тренеры и доступы</string>
+    <string name="student_coaching_my_id_label">Мой ID ученика (передайте тренеру)</string>
+    <string name="student_coaching_copy_id">Копировать</string>
+    <string name="student_coaching_id_copied">ID ученика скопирован</string>
     <string name="student_coaching_pending_header">Входящие приглашения</string>
     <string name="student_coaching_active_header">Активные тренеры</string>
     <string name="student_coaching_plans_header">Доступные меню</string>

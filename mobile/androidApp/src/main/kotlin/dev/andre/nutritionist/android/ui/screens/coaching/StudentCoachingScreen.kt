@@ -1,5 +1,7 @@
 package dev.andre.nutritionist.android.ui.screens.coaching
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,8 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +40,7 @@ import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.Spacing
 import dev.andre.nutritionist.presentation.coaching.StudentCoachingEvent
 import dev.andre.nutritionist.presentation.coaching.StudentCoachingUiState
+import kotlinx.coroutines.launch
 
 @Composable
 fun StudentCoachingScreen(
@@ -44,6 +50,10 @@ fun StudentCoachingScreen(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.student_coaching_id_copied)
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -59,9 +69,12 @@ fun StudentCoachingScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.small),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     TextButton(onClick = onBackClick) {
                         Text(stringResource(R.string.common_back))
                     }
@@ -72,7 +85,53 @@ fun StudentCoachingScreen(
                     )
                 }
                 OutlinedButton(onClick = { onEvent(StudentCoachingEvent.Ui.BrowsePlansClicked) }) {
-                    Text(stringResource(R.string.coaching_mode_plans_title))
+                    Text(
+                        text = stringResource(R.string.coaching_mode_plans_title),
+                        maxLines = 2,
+                    )
+                }
+            }
+
+            if (state.currentUserId.isNotBlank()) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(Spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f).padding(end = Spacing.small),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.student_coaching_my_id_label),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            SelectionContainer {
+                                Text(
+                                    text = state.currentUserId,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(ClipboardManager::class.java)
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("student_id", state.currentUserId))
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(copiedMessage)
+                                }
+                            },
+                        ) {
+                            Text(stringResource(R.string.student_coaching_copy_id))
+                        }
+                    }
                 }
             }
 

@@ -29,6 +29,9 @@ class StudentCoachingFlowTest {
 
         val revokeResult = update.update(initial, StudentCoachingEvent.Ui.RevokeCoachClicked(linkId))
         assertEquals(listOf(StudentCoachingCommand.RespondInvite(linkId, accept = false)), revokeResult.commands)
+
+        val mapped = StudentCoachingUiStateMapper().map(initial)
+        assertEquals("student-1", mapped.currentUserId)
     }
 
     @Test

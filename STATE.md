@@ -5,6 +5,22 @@
 
 Обновлено: 2026-11-27
 
+### E2E-настройка и проверка «Тренер ↔ Клиент» + mTLS дневника в kind (2026-11-27)
+
+- **Активные Skills:** `spring-grpc-service`, `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`.
+- **Межсервисный mTLS (`diary-service` → `recipe-ai-service:9194`):**
+  - В `DiaryClientProperties.RecipeClient`, `DiaryClientConfiguration` и `application.yml` добавлена поддержка клиентского mTLS (`tlsCaCertPath`, `tlsClientCertPath`, `tlsClientKeyPath` / `DIARY_RECIPE_TLS_*`).
+  - В кластере `kind` создан Secret `recipe-diary-client-tls` в `budget-nutritionist` (на базе `recipe-envoy-client-tls`), обновлены `infrastructure/k8s/apps/diary-service/configmap.yaml` (`DIARY_RECIPE_PLAINTEXT: "false"`, `DIARY_RECIPE_DEV_BYPASS: "false"`, пути `/run/recipe-tls/ca.crt` и `/run/recipe-client-tls/tls.{crt,key}`) и `deployment.yaml` (монтирование томов, `strategy: Recreate`, `failureThreshold: 120`).
+- **Исправление фильтрации связей тренера (`recipe-ai-service`):**
+  - В `CoachingAccessService.listCoachLinks` исправлена нормализация `statusFilter` с префиксом `COACH_LINK_STATUS_` и значением `UNSPECIFIED`, из-за чего вызов `ListCoachLinks` с пустым фильтром возвращал пустой список.
+- **Тестовый тренер в Keycloak и UX в `:mobile`:**
+  - В `infrastructure/k8s/infra/03-keycloak.yaml` и живой realm `FitAssistant` добавлен пользователь `coach` (`coach123`, `coach@example.com`, роли `ROLE_USER`, `ROLE_COACH`, `ROLE_PREMIUM`).
+  - В `StudentCoachingUiState` / `StudentCoachingUiStateMapper` / `StudentCoachingScreen` добавлена карточка с `Student ID` (`UserId`) и кнопкой копирования в буфер обмена (`strings.xml`, `values-ru/strings.xml`).
+  - В `StudentCoachingScreen`, `CoachStudentsScreen`, `CoachStudentMenuScreen` добавлен `Modifier.weight(1f)` в заголовок для корректного отображения кнопки перехода к меню без сжатия.
+- **Верификация:**
+  - `DiaryClientConfigurationTest` (5/5), `DiaryNutritionAggregatorTest` (5/5), `DiaryGrpcMapperTest` (6/6), `CoachingAccessServiceTest` (1/1), `ktlintCheck` (`diary-service`, `recipe-ai-service`), `:mobile:shared:allTests` (261/261, 54 suites), `:mobile:androidApp:testDebugUnitTest` (101/101, 16 suites), `:mobile:androidApp:assembleDebug` — `BUILD SUCCESSFUL`.
+  - Живой E2E через Envoy (`127.0.0.1:9090`) и на эмуляторе `emulator-5554`: `InviteStudent` (`coach` → `testuser`) → `RespondCoachInvite` (`accept=true`) → `ListCoachLinks` (`ACTIVE` у обоих аккаунтов) → `DiaryService/GetRange` под `coach` с `target_user_id=8a2a5b83-d159-469c-932c-4e1bd57da677` и экран `CoachStudentMenuScreen` («Student diary (Actual)») успешно отобразили реальные записи дневника клиента.
+
 ### UI-MVP «Тренер ↔ Клиент» и проверка генератора AI-блюда с Gemini в kind (2026-11-27)
 
 - **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роли: `implementer` + `test-reviewer`.

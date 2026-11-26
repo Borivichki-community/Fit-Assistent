@@ -32,6 +32,7 @@ class StudentCoachingUiStateMapper : UiStateMapper<StudentCoachingState, Student
             is StudentCoachingState.Content.Error -> StudentCoachingUiState.Content.Error(c.message)
         }
         return StudentCoachingUiState(
+            currentUserId = state.currentUserId.raw,
             planIdInput = state.planIdInput,
             content = content,
         )
