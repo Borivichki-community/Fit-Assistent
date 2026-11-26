@@ -3,7 +3,37 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-26
+Обновлено: 2026-11-27
+
+### UI-MVP «Тренер ↔ Клиент» и проверка генератора AI-блюда с Gemini в kind (2026-11-27)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роли: `implementer` + `test-reviewer`.
+- **Генератор AI-блюда и кластер `kind`:**
+  - Восстановлен и стабилизирован локальный `kind`-кластер (`postgres-0`, `redis-cache`, `redis-state`, `keycloak`, `catalog-price-service`, `profile-service`, `recipe-ai-service`, `diary-service` в состоянии `1/1 Running`).
+  - В `infrastructure/k8s/infra/03-keycloak.yaml` добавлен аргумент `--import-realm` и импортирован realm `FitAssistant` через Admin API.
+  - В `infrastructure/k8s/apps/diary-service/configmap.yaml` отключены Kafka-зависимости (`DIARY_OUTBOX_ENABLED: "false"`, `DIARY_REGISTRATION_CONSUMER_ENABLED: "false"`), а также создан `infrastructure/k8s/apps/diary-service/security-policy.yaml`.
+  - В `infrastructure/k8s/apps/recipe-ai-service/backend-traffic-policy.yaml` задан `requestTimeout: 60s` для `recipe-grpc-route` (вместо дефолтных 15s Envoy).
+  - Сквозная gRPC-проверка через Envoy (`localhost:9090`) с JWT Keycloak (`testuser`) подтвердила `RecipeAiService/GenerateMealPlan` (`source: "MENU_SOURCE_GENERATED"`, реальная генерация Gemini + цены каталога `catalog-price-service`), `RecipeAiService/SearchRecipes`, `RecipeAiService/SearchMealPlans` и `DiaryService/GetRange`.
+  - В `:mobile:shared` / `:mobile:androidApp` устранена `else`-ветка над `DomainError?` в `AiRecipeUpdate.kt`, экраны `AiRecipeConfiguringContent.kt` / `AiRecipeGeneratingContent.kt` / `AiRecipeScreen.kt` приведены к `@fitapp_ai_1` и `@fitapp_ai_3`.
+- **UI-MVP «Тренер ↔ Клиент»:**
+  - В `:mobile:shared` добавлены KoTEA-модули `coaching` (`CoachStudents*`, `StudentCoaching*`, `CoachStudentMenu*`) и `mealplans` (`MealPlans*`), зарегистрированные в `Koin.kt`, а также unit-тесты на Fakes (`FakeCoachingRepository`, `FakeMealPlanRepository`) без MockK.
+  - В `:mobile:androidApp` добавлены экраны `CoachStudentsScreen`/`Route`, `StudentCoachingScreen`/`Route`, `CoachStudentMenuScreen`/`Route`, `MealPlansAndPublishScreen`/`Route`, точки входа в `ProfileSuccessContent.kt` (с debug-переключателем роли `Client`/`Coach`), маршруты в `AppDestination.kt` / `AppNavHost.kt`, строки в `values/strings.xml` и `values-ru/strings.xml`, UI-тесты `CoachingScreensTest.kt`.
+- **Исправления авторизации, gRPC и стабильности UI на эмуляторе:**
+  - `AuthRepositoryImpl`: исправлен `processAuthResponse` (`currentAuthState.update(authResponse, null)` до `tokenResponse`), добавлен `forceRefresh()` с fallback-сборкой `TokenRequest` из `AuthConfig`, автоматическим сбросом битой сессии (`invalid_grant` / отсутствие `refreshToken`) и авто-редиректом на экран входа через `AppNavHost`.
+  - `UnifiedGrpcClientInterceptor`: принудительный `forceRefresh()` при `UNAUTHENTICATED`, возврат `Status.UNAVAILABLE` при сетевых IO-ошибках Keycloak.
+  - `SplashActivity` и `NutritionistApp`: инициализация `EncryptedPrefsAuthStorage` (Android Keystore) вынесена в `Dispatchers.IO`.
+  - `GrpcCalls`, `AndroidProfileGrpcServiceClient`, `AndroidRecipeGrpcServiceClient`: добавлены дедлайны (`20s` unary, `65s` `GenerateMealPlan`, `90s` `GenerateWeekMenu`).
+  - `AiRecipeGeneratingContent` / `AiRecipeConfiguringContent`: кэширование геометрии и кистей в `drawWithCache`, сброс фокуса/IME при нажатии кнопки генерации.
+  - `AddMealCommandsFlowHandler`: ошибки сервисов не скрываются пустым списком при нулевом результате поиска.
+- **Верификация:**
+  - `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug --offline`: `shared` 261 tests (0 failed, 0 skipped, 54 suites), `androidApp` 101 tests (0 failed, 0 skipped, 16 suites), APK собран и установлен на `emulator-5554`.
+  - **Живая E2E-проверка на эмуляторе `emulator-5554`** (при пробросе `kubectl port-forward --address 0.0.0.0 -n budget-nutritionist svc/keycloak 8080:8080`, вход `testuser` через Keycloak Custom Tabs):
+    - Онбординг и обновление веса в профиле (`82 kg`): `ProfileService/GetProfile` и `UpdateProfile` → `200 via_upstream`.
+    - AI-генерация блюда (`@fitapp_ai_1` → `@fitapp_ai_3` → результат → добавление в завтрак): `GenerateMealPlan`, `CatalogService/GetAveragePrices`, `DiaryService/AddEntry` → `200 via_upstream` (примечание: из-за `SSLHandshakeException` в локальной сети кластера к `generativelanguage.googleapis.com` на втором прогоне сработал fallback-рецепт с реальными ценами каталога).
+    - Меню `+` (`AddMeal`): поиск `"2.5"` вывел реальные продукты каталога (`Йогурт натуральный термостатный 2.5%` и др.) и добавил позицию в дневник (`SearchProducts`, `SearchRecipes`, `AddEntry` → `200 via_upstream`).
+    - «Тренер ↔ Клиент»: переключение роли (`COACH`), `CoachStudentsScreen`, `MealPlansAndPublishScreen` (создание меню `Coach1Day` на 7 дней), `StudentCoachingScreen` (`ListCoachLinks`, `SearchMealPlans`, `SearchRecipes`, `CreateMealPlan` → `200 via_upstream`), 0 ANR в `logcat`.
+  - Статическая проверка Kotlin-файлов (`coaching`, `mealplans`, `airecipe`): без `!!`, без запрещённых импортов в `commonMain`, без MockK/Mockito в `commonTest`.
+  - Внимание для ручной проверки coach-доступа к дневнику: `diary-service` настроен с `DIARY_RECIPE_PLAINTEXT: "true"` к `recipe-ai-service:9194`, где в кластере активен профиль `gateway` (mTLS).
 
 ### Генератор блюда из дневника (2026-11-26)
 

@@ -4,8 +4,13 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
+import dev.andre.nutritionist.domain.model.UserRole
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.auth.AuthNews
 import dev.andre.nutritionist.android.auth.AuthRepository
@@ -33,15 +38,19 @@ fun ProfileRoute(
     onLogoutSuccess: () -> Unit = {},
     isLoggingOut: Boolean = false,
     onDestinationSelected: (AppDestination) -> Unit = {},
+    onOpenCoachModeClick: () -> Unit = {},
+    onOpenStudentModeClick: () -> Unit = {},
+    onOpenMealPlansClick: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     authViewModel: AuthViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val displayName = remember(authRepository) { authRepository.getUserDisplayName() }
     val email = remember(authRepository) { authRepository.getUserEmail() }
-    val userRole = remember(authRepository) { authRepository.getUserRole() }
+    var userRole by remember(authRepository) { mutableStateOf(authRepository.getUserRole()) }
 
     LaunchedEffect(userId, displayName, email, userRole) {
         viewModel.dispatch(
@@ -84,5 +93,18 @@ fun ProfileRoute(
         onCreateProfileClick = onCreateProfileClick,
         onDestinationSelected = onDestinationSelected,
         snackbarHostState = snackbarHostState,
+        onOpenCoachModeClick = onOpenCoachModeClick,
+        onOpenStudentModeClick = onOpenStudentModeClick,
+        onOpenMealPlansClick = onOpenMealPlansClick,
+        onToggleDebugRoleClick = {
+            val nextRole = when (userRole ?: UserRole.CLIENT) {
+                UserRole.COACH -> UserRole.CLIENT
+                UserRole.CLIENT -> UserRole.COACH
+            }
+            scope.launch {
+                authRepository.setUserRole(nextRole)
+                userRole = nextRole
+            }
+        },
     )
 }

@@ -259,4 +259,60 @@
     <string name="add_meal_clear_search">Clear search</string>
     <string name="add_meal_empty_results">Nothing found</string>
     <string name="add_meal_empty_subtitle">Try another query or check your connection</string>
+
+    <!-- Coach <-> Student MVP -->
+    <string name="coaching_section_title">Coaching &amp; Meal Plans</string>
+    <string name="coaching_role_badge_format">Active role: %1$s</string>
+    <string name="coaching_role_coach">Coach</string>
+    <string name="coaching_role_client">Client</string>
+    <string name="coaching_switch_role">Switch role (Debug)</string>
+    <string name="coaching_mode_coach_title">Coach mode (Students &amp; Menus)</string>
+    <string name="coaching_mode_student_title">My coaches &amp; access</string>
+    <string name="coaching_mode_plans_title">Meal plans &amp; public recipes</string>
+
+    <string name="coach_students_title">Students &amp; Invites</string>
+    <string name="coach_students_invite_placeholder">Student ID, login, or email</string>
+    <string name="coach_students_allow_diary">Allow viewing diary</string>
+    <string name="coach_students_invite_btn">Invite student</string>
+    <string name="coach_students_open_diary">Open diary</string>
+    <string name="coach_students_assign_menu">Assign menu</string>
+    <string name="coach_students_empty">No invited or active students yet</string>
+
+    <string name="student_coaching_title">My Coaches &amp; Access</string>
+    <string name="student_coaching_pending_header">Incoming invitations</string>
+    <string name="student_coaching_active_header">Active coaches</string>
+    <string name="student_coaching_plans_header">Available meal plans</string>
+    <string name="student_coaching_accept">Accept</string>
+    <string name="student_coaching_decline">Decline</string>
+    <string name="student_coaching_revoke">Unlink coach</string>
+    <string name="student_coaching_open_menu">Open menu</string>
+    <string name="student_coaching_plan_id_placeholder">Meal plan ID (planId)</string>
+    <string name="student_coaching_allow_diary_checkbox">Allow diary view</string>
+
+    <string name="coach_menu_title">Student Menu &amp; Diary</string>
+    <string name="coach_menu_plan_section">Assigned / selected meal plan</string>
+    <string name="coach_menu_fact_section">Student diary (Actual)</string>
+    <string name="coach_menu_assign_section">Assign meal plan</string>
+    <string name="coach_menu_grant_btn">Grant menu access</string>
+    <string name="coach_menu_revoke_btn">Revoke access</string>
+    <string name="coach_menu_expires_placeholder">Expires in days (optional)</string>
+
+    <string name="meal_plans_title">Meal Plans &amp; Publishing</string>
+    <string name="meal_plans_create_section">Create meal plan</string>
+    <string name="meal_plans_name_placeholder">Meal plan title</string>
+    <string name="meal_plans_desc_placeholder">Description (optional)</string>
+    <string name="meal_plans_price_placeholder">Price (RUB)</string>
+    <string name="meal_plans_day_1">1 day menu</string>
+    <string name="meal_plans_day_7">7 days menu</string>
+    <string name="meal_plans_create_btn">Create plan</string>
+    <string name="meal_plans_publish_btn">Publish to PUBLIC</string>
+    <string name="meal_plans_subscribe_btn">Subscribe / Get access</string>
+    <string name="meal_plans_apply_day_btn">Apply Day 1 to diary</string>
+    <string name="meal_plans_recipes_section">Public &amp; my recipes</string>
+    <string name="meal_plans_quick_recipe_btn">Create sample recipe</string>
+    <string name="meal_plans_fork_btn">Fork recipe</string>
+    <string name="meal_plans_log_diary_btn">Log to diary</string>
+    <string name="meal_plans_search_placeholder">Search plans or recipes</string>
+    <string name="common_back">Back</string>
+    <string name="common_search">Search</string>
 </resources>

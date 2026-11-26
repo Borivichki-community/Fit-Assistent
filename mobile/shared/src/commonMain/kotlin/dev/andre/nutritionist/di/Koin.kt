@@ -43,10 +43,26 @@ import dev.andre.nutritionist.presentation.catalog.CatalogSearchCommandsFlowHand
 import dev.andre.nutritionist.presentation.catalog.CatalogSearchUiStateMapper
 import dev.andre.nutritionist.presentation.catalog.CatalogSearchUpdate
 import dev.andre.nutritionist.presentation.catalog.CatalogSearchViewModel
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuUpdate
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuViewModel
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsUpdate
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsViewModel
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingUpdate
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingViewModel
 import dev.andre.nutritionist.presentation.dashboard.DiaryCommandsFlowHandler
 import dev.andre.nutritionist.presentation.dashboard.DiaryUiStateMapper
 import dev.andre.nutritionist.presentation.dashboard.DiaryUpdate
 import dev.andre.nutritionist.presentation.dashboard.DiaryViewModel
+import dev.andre.nutritionist.presentation.mealplans.MealPlansCommandsFlowHandler
+import dev.andre.nutritionist.presentation.mealplans.MealPlansUiStateMapper
+import dev.andre.nutritionist.presentation.mealplans.MealPlansUpdate
+import dev.andre.nutritionist.presentation.mealplans.MealPlansViewModel
 import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
 import dev.andre.nutritionist.presentation.profile.ProfileUiStateMapper
 import dev.andre.nutritionist.presentation.profile.ProfileUpdate
@@ -191,6 +207,72 @@ val presentationModule: Module = module {
     factory { AddMealUiStateMapper() }
     factory {
         AddMealViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { CoachStudentsUpdate() }
+    factory { CoachStudentsCommandsFlowHandler(coachingRepository = get(), dispatchers = get()) }
+    factory { CoachStudentsUiStateMapper() }
+    factory {
+        CoachStudentsViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { StudentCoachingUpdate() }
+    factory {
+        StudentCoachingCommandsFlowHandler(
+            coachingRepository = get(),
+            mealPlanRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { StudentCoachingUiStateMapper() }
+    factory {
+        StudentCoachingViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { CoachStudentMenuUpdate() }
+    factory {
+        CoachStudentMenuCommandsFlowHandler(
+            coachingRepository = get(),
+            mealPlanRepository = get(),
+            diaryRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { CoachStudentMenuUiStateMapper() }
+    factory {
+        CoachStudentMenuViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { MealPlansUpdate() }
+    factory {
+        MealPlansCommandsFlowHandler(
+            mealPlanRepository = get(),
+            recipeCatalogRepository = get(),
+            coachingRepository = get(),
+            logRecipeToDiaryUseCase = get(),
+            applyMealPlanDayToDiaryUseCase = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { MealPlansUiStateMapper() }
+    factory {
+        MealPlansViewModel(
             update = get(),
             commandsFlowHandler = get(),
             uiStateMapper = get(),

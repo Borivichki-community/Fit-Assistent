@@ -81,6 +81,10 @@ fun ProfileSuccessContent(
     onEvent: (ProfileEvent.Ui) -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
+    onOpenCoachModeClick: () -> Unit = {},
+    onOpenStudentModeClick: () -> Unit = {},
+    onOpenMealPlansClick: () -> Unit = {},
+    onToggleDebugRoleClick: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
     val extendedColors = FitThemeTokens.colors
@@ -311,6 +315,81 @@ fun ProfileSuccessContent(
                     iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                     iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     onClick = onHelpClick,
+                )
+            }
+        }
+
+        // 4.5. Быстрый доступ к разделам «Тренер <-> Клиент» и переключению роли
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Spacing.innerCardRadius),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            border = BorderStroke(1.dp, extendedColors.glassBorderLevel1),
+            shadowElevation = cardShadow,
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val roleLabel = when (profile.userRole) {
+                    UserRole.COACH -> stringResource(R.string.coaching_role_coach)
+                    UserRole.CLIENT, null -> stringResource(R.string.coaching_role_client)
+                }
+                SettingsActionRow(
+                    icon = FitIcons.Coach,
+                    title = stringResource(R.string.coaching_section_title),
+                    subtitle = stringResource(R.string.coaching_role_badge_format, roleLabel),
+                    iconTint = extendedColors.emeraldAccent,
+                    iconContainerColor = extendedColors.emeraldAccent.copy(alpha = 0.14f),
+                    trailingBadge = {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.coaching_switch_role),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    },
+                    onClick = onToggleDebugRoleClick,
+                )
+                HorizontalDivider(
+                    color = extendedColors.glassBorderLevel1,
+                    modifier = Modifier.padding(horizontal = Spacing.medium),
+                )
+                SettingsActionRow(
+                    icon = FitIcons.Coach,
+                    title = stringResource(R.string.coaching_mode_coach_title),
+                    subtitle = null,
+                    iconTint = extendedColors.activityAccent,
+                    iconContainerColor = extendedColors.activityAccent.copy(alpha = 0.14f),
+                    onClick = onOpenCoachModeClick,
+                )
+                HorizontalDivider(
+                    color = extendedColors.glassBorderLevel1,
+                    modifier = Modifier.padding(horizontal = Spacing.medium),
+                )
+                SettingsActionRow(
+                    icon = FitIcons.Profile,
+                    title = stringResource(R.string.coaching_mode_student_title),
+                    subtitle = null,
+                    iconTint = extendedColors.budgetAccent,
+                    iconContainerColor = extendedColors.budgetAccent.copy(alpha = 0.14f),
+                    onClick = onOpenStudentModeClick,
+                )
+                HorizontalDivider(
+                    color = extendedColors.glassBorderLevel1,
+                    modifier = Modifier.padding(horizontal = Spacing.medium),
+                )
+                SettingsActionRow(
+                    icon = FitIcons.Meals,
+                    title = stringResource(R.string.coaching_mode_plans_title),
+                    subtitle = null,
+                    iconTint = extendedColors.planAccent,
+                    iconContainerColor = extendedColors.planAccent.copy(alpha = 0.14f),
+                    onClick = onOpenMealPlansClick,
                 )
             }
         }

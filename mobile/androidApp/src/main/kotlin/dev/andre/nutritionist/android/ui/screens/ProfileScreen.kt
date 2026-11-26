@@ -34,6 +34,10 @@ fun ProfileScreen(
     isOffline: Boolean = false,
     onNotificationsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
+    onOpenCoachModeClick: () -> Unit = {},
+    onOpenStudentModeClick: () -> Unit = {},
+    onOpenMealPlansClick: () -> Unit = {},
+    onToggleDebugRoleClick: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -94,6 +98,10 @@ fun ProfileScreen(
                             onEvent = onEvent,
                             onNotificationsClick = onNotificationsClick,
                             onHelpClick = onHelpClick,
+                            onOpenCoachModeClick = onOpenCoachModeClick,
+                            onOpenStudentModeClick = onOpenStudentModeClick,
+                            onOpenMealPlansClick = onOpenMealPlansClick,
+                            onToggleDebugRoleClick = onToggleDebugRoleClick,
                         )
                     }
                     is ProfileUiState.Content.Form -> {

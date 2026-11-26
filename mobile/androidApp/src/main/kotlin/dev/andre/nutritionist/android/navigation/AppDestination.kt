@@ -14,4 +14,24 @@ sealed class AppDestination(val route: String) {
     data object Recipes : AppDestination("recipes")
     data object Statistics : AppDestination("statistics")
     data object Profile : AppDestination("profile")
+    data object CoachStudents : AppDestination("coach_students")
+    data object StudentCoaching : AppDestination("student_coaching")
+    data class CoachStudentMenu(val studentId: dev.andre.nutritionist.domain.model.UserId) :
+        AppDestination("coach_student_menu/${android.net.Uri.encode(studentId.raw)}") {
+        companion object {
+            const val pattern = "coach_student_menu/{studentId}"
+        }
+    }
+    data class MealPlans(val planId: dev.andre.nutritionist.domain.model.MealPlanTemplateId? = null) :
+        AppDestination(
+            if (planId != null) {
+                "meal_plans?planId=${android.net.Uri.encode(planId.raw)}"
+            } else {
+                "meal_plans"
+            },
+        ) {
+        companion object {
+            const val pattern = "meal_plans?planId={planId}"
+        }
+    }
 }

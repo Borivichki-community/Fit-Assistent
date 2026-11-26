@@ -21,14 +21,23 @@ import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.android.auth.AuthUiState
 import dev.andre.nutritionist.android.auth.AuthViewModel
 import dev.andre.nutritionist.android.ui.components.FullScreenLoading
+import android.net.Uri
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import dev.andre.nutritionist.android.ui.screens.DashboardRoute
 import dev.andre.nutritionist.android.ui.screens.MainScreen
 import dev.andre.nutritionist.android.ui.screens.ProfileRoute
 import dev.andre.nutritionist.android.ui.screens.auth.LoginRoute
 import dev.andre.nutritionist.android.ui.screens.auth.SignUpRoute
+import dev.andre.nutritionist.android.ui.screens.coaching.CoachStudentMenuRoute
+import dev.andre.nutritionist.android.ui.screens.coaching.CoachStudentsRoute
+import dev.andre.nutritionist.android.ui.screens.coaching.MealPlansAndPublishRoute
+import dev.andre.nutritionist.android.ui.screens.coaching.StudentCoachingRoute
 import dev.andre.nutritionist.android.ui.screens.onboarding.RegistrationWizardRoute
 import dev.andre.nutritionist.android.ui.screens.role.RoleSelectionRoute
+import dev.andre.nutritionist.domain.model.MealPlanTemplateId
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileNews
 import dev.andre.nutritionist.presentation.profile.ProfileViewModel
@@ -51,6 +60,21 @@ fun AppNavHost(
         is AppDestination -> startDestination.route
         is String -> startDestination
         else -> startDestination.toString()
+    }
+    val observedAuthState by authRepository.observeAuthState().collectAsStateWithLifecycle(
+        initialValue = authRepository.isAuthenticated(),
+    )
+    var wasAuthenticated by remember { mutableStateOf(observedAuthState) }
+    LaunchedEffect(observedAuthState) {
+        if (wasAuthenticated && !observedAuthState) {
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != AppDestination.Auth.route && currentRoute != AppDestination.SignUp.route) {
+                navController.navigate(AppDestination.Auth.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+        wasAuthenticated = observedAuthState
     }
 
     NavHost(
@@ -205,6 +229,81 @@ fun AppNavHost(
                         launchSingleTop = true
                     }
                 },
+                onOpenCoachModeClick = {
+                    navController.navigate(AppDestination.CoachStudents.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onOpenStudentModeClick = {
+                    navController.navigate(AppDestination.StudentCoaching.route) {
+                        launchSingleTop = true
+                    }
+                },
+                onOpenMealPlansClick = {
+                    navController.navigate(AppDestination.MealPlans().route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(AppDestination.CoachStudents.route) {
+            val currentUserId = authRepository.getUserId() ?: UserId("testuser")
+            CoachStudentsRoute(
+                coachUserId = currentUserId,
+                onBackClick = { navController.popBackStack() },
+                onNavigateToStudentMenu = { studentId ->
+                    navController.navigate(AppDestination.CoachStudentMenu(studentId).route)
+                },
+                onNavigateToMealPlans = {
+                    navController.navigate(AppDestination.MealPlans().route)
+                },
+            )
+        }
+        composable(AppDestination.StudentCoaching.route) {
+            val currentUserId = authRepository.getUserId() ?: UserId("testuser")
+            StudentCoachingRoute(
+                studentUserId = currentUserId,
+                onBackClick = { navController.popBackStack() },
+                onNavigateToMealPlan = { planId ->
+                    navController.navigate(AppDestination.MealPlans(planId).route)
+                },
+            )
+        }
+        composable(
+            route = AppDestination.CoachStudentMenu.pattern,
+            arguments = listOf(navArgument("studentId") { type = NavType.StringType }),
+        ) { entry ->
+            val rawStudentId = requireNotNull(entry.arguments?.getString("studentId")) {
+                "studentId argument is required"
+            }
+            CoachStudentMenuRoute(
+                studentId = UserId(Uri.decode(rawStudentId)),
+                onBackClick = { navController.popBackStack() },
+                onNavigateToMealPlans = {
+                    navController.navigate(AppDestination.MealPlans().route)
+                },
+            )
+        }
+        composable(
+            route = AppDestination.MealPlans.pattern,
+            arguments = listOf(
+                navArgument("planId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            val currentUserId = authRepository.getUserId() ?: UserId("testuser")
+            val isCoach = authRepository.getUserRole() == UserRole.COACH
+            val rawPlanId = entry.arguments?.getString("planId")
+                ?.takeIf { it.isNotBlank() }
+                ?.let(Uri::decode)
+            MealPlansAndPublishRoute(
+                userId = currentUserId,
+                isCoach = isCoach,
+                initialPlanId = rawPlanId?.let(::MealPlanTemplateId),
+                onBackClick = { navController.popBackStack() },
             )
         }
         composable(AppDestination.Recipes.route) {

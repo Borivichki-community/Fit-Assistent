@@ -259,4 +259,60 @@
     <string name="add_meal_clear_search">Очистить поиск</string>
     <string name="add_meal_empty_results">Ничего не найдено</string>
     <string name="add_meal_empty_subtitle">Попробуйте изменить запрос или проверьте подключение</string>
+
+    <!-- Тренер <-> Клиент MVP -->
+    <string name="coaching_section_title">Тренер и меню</string>
+    <string name="coaching_role_badge_format">Текущая роль: %1$s</string>
+    <string name="coaching_role_coach">Тренер</string>
+    <string name="coaching_role_client">Клиент</string>
+    <string name="coaching_switch_role">Переключить роль (Отладка)</string>
+    <string name="coaching_mode_coach_title">Режим тренера (Ученики и меню)</string>
+    <string name="coaching_mode_student_title">Мои тренеры и доступы</string>
+    <string name="coaching_mode_plans_title">Меню и общий доступ</string>
+
+    <string name="coach_students_title">Ученики и приглашения</string>
+    <string name="coach_students_invite_placeholder">ID, логин или email ученика</string>
+    <string name="coach_students_allow_diary">Доступ к дневнику</string>
+    <string name="coach_students_invite_btn">Пригласить ученика</string>
+    <string name="coach_students_open_diary">Открыть дневник</string>
+    <string name="coach_students_assign_menu">Назначить меню</string>
+    <string name="coach_students_empty">Пока нет привязанных учеников</string>
+
+    <string name="student_coaching_title">Мои тренеры и доступы</string>
+    <string name="student_coaching_pending_header">Входящие приглашения</string>
+    <string name="student_coaching_active_header">Активные тренеры</string>
+    <string name="student_coaching_plans_header">Доступные меню</string>
+    <string name="student_coaching_accept">Принять</string>
+    <string name="student_coaching_decline">Отклонить</string>
+    <string name="student_coaching_revoke">Отвязать тренера</string>
+    <string name="student_coaching_open_menu">Открыть меню</string>
+    <string name="student_coaching_plan_id_placeholder">ID меню (planId)</string>
+    <string name="student_coaching_allow_diary_checkbox">Разрешить просмотр дневника</string>
+
+    <string name="coach_menu_title">Меню и дневник ученика</string>
+    <string name="coach_menu_plan_section">План (назначенное меню)</string>
+    <string name="coach_menu_fact_section">Факт (дневник за день)</string>
+    <string name="coach_menu_assign_section">Назначить меню</string>
+    <string name="coach_menu_grant_btn">Выдать доступ к меню</string>
+    <string name="coach_menu_revoke_btn">Отозвать доступ</string>
+    <string name="coach_menu_expires_placeholder">Срок действия в днях (опционально)</string>
+
+    <string name="meal_plans_title">Меню и публикация</string>
+    <string name="meal_plans_create_section">Создать меню</string>
+    <string name="meal_plans_name_placeholder">Название меню</string>
+    <string name="meal_plans_desc_placeholder">Описание (необязательно)</string>
+    <string name="meal_plans_price_placeholder">Цена (₽)</string>
+    <string name="meal_plans_day_1">Меню на день</string>
+    <string name="meal_plans_day_7">Меню на неделю</string>
+    <string name="meal_plans_create_btn">Создать меню</string>
+    <string name="meal_plans_publish_btn">Опубликовать в общий доступ</string>
+    <string name="meal_plans_subscribe_btn">Подписаться / Получить доступ</string>
+    <string name="meal_plans_apply_day_btn">Применить День 1 в дневник</string>
+    <string name="meal_plans_recipes_section">Публичные и мои рецепты</string>
+    <string name="meal_plans_quick_recipe_btn">Создать тестовый рецепт</string>
+    <string name="meal_plans_fork_btn">Добавить к себе (Форк)</string>
+    <string name="meal_plans_log_diary_btn">Записать блюдо в дневник</string>
+    <string name="meal_plans_search_placeholder">Поиск меню и рецептов</string>
+    <string name="common_back">Назад</string>
+    <string name="common_search">Найти</string>
 </resources>
