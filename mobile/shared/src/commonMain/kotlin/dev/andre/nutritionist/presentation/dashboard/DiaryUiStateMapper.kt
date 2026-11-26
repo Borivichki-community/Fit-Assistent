@@ -58,6 +58,7 @@ class DiaryUiStateMapper(
         }
 
         return DiaryUiState(
+            selectedDateEpochMs = effectiveDateEpochMs,
             selectedDateLabel = dateLabel,
             monthYearLabel = monthYearLabel,
             weekNumberLabel = weekNumberLabel,

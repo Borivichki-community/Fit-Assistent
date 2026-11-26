@@ -7,6 +7,7 @@ import dev.andre.nutritionist.presentation.model.DiaryMealSectionUiModel
 import dev.andre.nutritionist.presentation.model.MealRecordUiModel
 
 data class DiaryUiState(
+    val selectedDateEpochMs: Long = 0L,
     val selectedDateLabel: String = "",
     val monthYearLabel: String = "",
     val weekNumberLabel: String = "",

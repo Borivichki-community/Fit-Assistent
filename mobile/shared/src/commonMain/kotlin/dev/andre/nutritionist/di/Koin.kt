@@ -31,6 +31,10 @@ import dev.andre.nutritionist.domain.usecase.ApplyMealPlanDayToDiaryUseCase
 import dev.andre.nutritionist.domain.usecase.GenerateBudgetMenuUseCase
 import dev.andre.nutritionist.domain.usecase.GetNutritionAnalyticsUseCase
 import dev.andre.nutritionist.domain.usecase.LogRecipeToDiaryUseCase
+import dev.andre.nutritionist.presentation.addmeal.AddMealCommandsFlowHandler
+import dev.andre.nutritionist.presentation.addmeal.AddMealUiStateMapper
+import dev.andre.nutritionist.presentation.addmeal.AddMealUpdate
+import dev.andre.nutritionist.presentation.addmeal.AddMealViewModel
 import dev.andre.nutritionist.presentation.airecipe.MenuCommandsFlowHandler
 import dev.andre.nutritionist.presentation.airecipe.MenuUiStateMapper
 import dev.andre.nutritionist.presentation.airecipe.MenuUpdate
@@ -168,6 +172,25 @@ val presentationModule: Module = module {
     }
     factory { DiaryUiStateMapper() }
     factory { DiaryViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
+
+    factory { AddMealUpdate() }
+    factory {
+        AddMealCommandsFlowHandler(
+            catalogRepository = get(),
+            recipeCatalogRepository = get(),
+            diaryRepository = get(),
+            logRecipeToDiaryUseCase = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { AddMealUiStateMapper() }
+    factory {
+        AddMealViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
 }
 
 val sharedModule: Module = module {

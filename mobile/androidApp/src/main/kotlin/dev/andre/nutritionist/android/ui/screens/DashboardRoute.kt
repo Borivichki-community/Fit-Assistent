@@ -4,7 +4,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.andre.nutritionist.android.auth.AuthRepository
@@ -12,6 +14,9 @@ import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.domain.model.MealRecordId
 import dev.andre.nutritionist.domain.model.MealType
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.presentation.addmeal.AddMealEvent
+import dev.andre.nutritionist.presentation.addmeal.AddMealNews
+import dev.andre.nutritionist.presentation.addmeal.AddMealViewModel
 import dev.andre.nutritionist.presentation.dashboard.DiaryEvent
 import dev.andre.nutritionist.presentation.dashboard.DiaryNews
 import dev.andre.nutritionist.presentation.dashboard.DiaryViewModel
@@ -21,8 +26,8 @@ import org.koin.compose.koinInject
 
 /**
  * Stateful Route главного экрана Дневника питания (Dashboard).
- * Подключён к [DiaryViewModel] (KoTEA) для реактивной загрузки записей из Room,
- * расчёта КБЖУ и бюджета по реальному профилю и переключения дней/недель календаря.
+ * Подключён к [DiaryViewModel] и [AddMealViewModel] (KoTEA) для реактивной загрузки записей из Room,
+ * расчёта КБЖУ и бюджета по реальному профилю, переключения дней/недель календаря и выбора блюд (@fitapp_4).
  */
 @Composable
 fun DashboardRoute(
@@ -33,11 +38,13 @@ fun DashboardRoute(
     onMealItemClick: (MealRecordId) -> Unit = {},
     modifier: Modifier = Modifier,
     diaryViewModel: DiaryViewModel = koinViewModel(),
+    addMealViewModel: AddMealViewModel = koinViewModel(),
     authRepository: AuthRepository = koinInject(),
 ) {
     val currentUserId = authRepository.getUserId() ?: UserId("testuser")
     val initialEpochMs = remember { Clock.System.now().toEpochMilliseconds() }
     val snackbarHostState = remember { SnackbarHostState() }
+    var activeMealType by remember { mutableStateOf<MealType?>(null) }
 
     LaunchedEffect(currentUserId) {
         diaryViewModel.dispatch(
@@ -52,6 +59,16 @@ fun DashboardRoute(
         diaryViewModel.news.collect { news ->
             when (news) {
                 is DiaryNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
+            }
+        }
+    }
+
+    LaunchedEffect(addMealViewModel) {
+        addMealViewModel.news.collect { news ->
+            when (news) {
+                AddMealNews.Dismiss -> activeMealType = null
+                is AddMealNews.MealAdded -> activeMealType = null
+                is AddMealNews.ShowSnackbar -> snackbarHostState.showSnackbar(news.message)
             }
         }
     }
@@ -80,7 +97,16 @@ fun DashboardRoute(
         onDeleteRecordClick = { recordId ->
             diaryViewModel.dispatch(DiaryEvent.Ui.DeleteRecord(recordId))
         },
-        onAddMealClick = onAddMealClick,
+        onAddMealClick = { mealType ->
+            activeMealType = mealType
+            addMealViewModel.dispatch(
+                AddMealEvent.Ui.Open(
+                    mealType = mealType,
+                    dateEpochMs = uiState.selectedDateEpochMs,
+                ),
+            )
+            onAddMealClick(mealType)
+        },
         onMealItemClick = onMealItemClick,
         onCompleteProfileClick = onNavigateToRegistration,
         onNavigateToProfile = onNavigateToProfile,
@@ -91,4 +117,12 @@ fun DashboardRoute(
         snackbarHostState = snackbarHostState,
         modifier = modifier,
     )
+
+    if (activeMealType != null) {
+        val addMealUiState by addMealViewModel.state.collectAsStateWithLifecycle()
+        AddMealBottomSheet(
+            uiState = addMealUiState,
+            onEvent = addMealViewModel::dispatch,
+        )
+    }
 }

@@ -224,4 +224,27 @@ class MainScreenTest {
         composeTestRule.onNodeWithText(context.getString(R.string.diary_empty_ai_title)).performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText(context.getString(R.string.diary_empty_snack_title)).performScrollTo().assertIsDisplayed()
     }
+
+    @Test
+    fun `plus buttons on meal slots invoke onAddMealClick with matching MealType`() {
+        val clickedMeals = mutableListOf<MealType>()
+        composeTestRule.setContent {
+            FitAssistantTheme(darkTheme = true) {
+                MainScreen(
+                    state = sampleEpicaUiState(),
+                    onAddMealClick = { clickedMeals.add(it) },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("add_meal_BREAKFAST").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("add_meal_LUNCH").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("add_meal_DINNER").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("add_meal_SNACK").performScrollTo().performClick()
+
+        assertEquals(
+            listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK),
+            clickedMeals,
+        )
+    }
 }

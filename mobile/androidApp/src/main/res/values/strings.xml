@@ -247,4 +247,16 @@
     <string name="diary_delete_meal">Delete dish</string>
     <string name="diary_favorite">Favorite</string>
     <string name="diary_edit">Edit</string>
+
+    <!-- Add Meal Bottom Sheet (fitapp_4) -->
+    <string name="add_meal_search_placeholder">Search products or recipes</string>
+    <string name="add_meal_action_ai">Generate with AI</string>
+    <string name="add_meal_action_photo">Take photo</string>
+    <string name="add_meal_action_assistant">Smart assistant</string>
+    <string name="add_meal_saved_food_title">My saved food</string>
+    <string name="add_meal_saved_food_subtitle">Cookbook, Saved Food</string>
+    <string name="add_meal_close">Close</string>
+    <string name="add_meal_clear_search">Clear search</string>
+    <string name="add_meal_empty_results">Nothing found</string>
+    <string name="add_meal_empty_subtitle">Try another query or check your connection</string>
 </resources>

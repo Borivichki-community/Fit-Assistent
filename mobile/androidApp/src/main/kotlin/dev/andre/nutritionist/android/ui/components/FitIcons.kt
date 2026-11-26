@@ -1172,4 +1172,104 @@ object FitIcons {
             }
         }.build()
     }
+
+    /** Иконка поиска (лупа) */
+    val Search: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitSearch",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2.2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(10.5f, 3f)
+                arcTo(7.5f, 7.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 10.5f, 18f)
+                arcTo(7.5f, 7.5f, 0f, isMoreThanHalf = true, isPositiveArc = true, 10.5f, 3f)
+                close()
+                moveTo(21f, 21f)
+                lineTo(16.05f, 16.05f)
+            }
+        }.build()
+    }
+
+    /** Иконка микрофона («Умный ассистент») */
+    val Mic: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitMic",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(12f, 2f)
+                arcTo(3f, 3f, 0f, isMoreThanHalf = false, isPositiveArc = false, 9f, 5f)
+                lineTo(9f, 11f)
+                arcTo(3f, 3f, 0f, isMoreThanHalf = false, isPositiveArc = false, 15f, 11f)
+                lineTo(15f, 5f)
+                arcTo(3f, 3f, 0f, isMoreThanHalf = false, isPositiveArc = false, 12f, 2f)
+                close()
+            }
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(18f, 11f)
+                arcTo(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = true, 6f, 11f)
+                moveTo(12f, 17f)
+                lineTo(12f, 21f)
+                moveTo(9f, 21f)
+                lineTo(15f, 21f)
+            }
+        }.build()
+    }
+
+    /** Иконка контейнера («Моя сохранённая еда») */
+    val SavedFoodBox: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "FitSavedFoodBox",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            path(
+                stroke = SolidColor(Color.White),
+                strokeLineWidth = 1.9f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            ) {
+                moveTo(5f, 11f)
+                lineTo(19f, 11f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 21f, 13f)
+                lineTo(21f, 19f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 21f)
+                lineTo(5f, 21f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
+                lineTo(3f, 13f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5f, 11f)
+                close()
+                moveTo(5f, 11f)
+                lineTo(5f, 9f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 7f, 7f)
+                lineTo(17f, 7f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 9f)
+                lineTo(19f, 11f)
+                moveTo(7f, 7f)
+                lineTo(7f, 5f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 9f, 3f)
+                lineTo(15f, 3f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 17f, 5f)
+                lineTo(17f, 7f)
+            }
+        }.build()
+    }
 }

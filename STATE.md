@@ -3,7 +3,23 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-25
+Обновлено: 2026-11-26
+
+### Меню добавления приёма пищи (@fitapp_4) с живым поиском по микросервисам (2026-11-26)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Presentation (`:mobile:shared`, KoTEA):**
+  - Добавлен модуль `dev.andre.nutritionist.presentation.addmeal`: `AddMealState` (`Content.Idle` / `Loading` / `Success` / `Empty` / `Error`), `AddMealEvent` (`Ui` / `Internal`), `AddMealCommand` (`Search`, `AddProduct`, `AddRecipe`), `AddMealNews` (`Dismiss`, `MealAdded`, `ShowSnackbar`), `AddMealSearchItemUiModel` (`AddMealItemKind`), `AddMealUiState`, `AddMealItemMapper`, `AddMealUiStateMapper`, `AddMealUpdate`, `AddMealCommandsFlowHandler`, `AddMealViewModel`. Зарегистрировано в `Koin.kt` (`presentationModule`).
+  - `AddMealCommandsFlowHandler` использует `debounce(300)` + `flatMapLatest` и параллельно опрашивает `CatalogRepository.searchProducts(...)` (`catalog-price-service`) и `RecipeCatalogRepository.searchPublicRecipes(...)` (`recipe-ai-service`) с fallback на `observeMyRecipes()` и сохранением частичного успеха; нажатие на результат вызывает `DiaryRepository.addEntry` или `LogRecipeToDiaryUseCase` на выбранную дату календаря `selectedDateEpochMs` (передана в `DiaryUiState` и `DiaryUiStateMapper`).
+- **UI (`:mobile:androidApp`, `@fitapp_4`):**
+  - Добавлен stateless `AddMealBottomSheet.kt` (`AddMealBottomSheet` / `AddMealBottomSheetContent`), иконки `Search`, `Mic`, `SavedFoodBox` в `FitIcons.kt`, строковые ресурсы `add_meal_*` в `values/strings.xml` и `values-ru/strings.xml`.
+  - В `DashboardRoute.kt` подключён `AddMealViewModel`, открытие bottom sheet по кнопкам `+` (`onAddMealClick`) в слотах приёмов пищи и обработка `AddMealNews`. Быстрые кнопки (`Сгенерировать с ИИ`, `Сделать фото`, `Умный ассистент`, `Моя сохранённая еда`) оставлены как UI-заглушки (snackbar).
+- **Стабилизация Part A (`fitapp_1` + Epica seed):**
+  - `CatalogEndToEndIntegrationTest.kt`: восстановление цены/единицы измерения в `try/finally` после теста обновления цены; `DiaryInitialSeeder.kt`: флаг сессии `hasAttemptedSeed` в `seedMutex.withLock`; `DiaryCommandsFlowHandler.kt`: параллельный `profileRepository.getProfile` в `channelFlow`; `DiaryEvent.Ui.Retry` повторяет выбранную дату.
+- **Верификация:**
+  - Пройден полный прогон `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug :backend:catalog-price-service:compileTestKotlin :backend:catalog-price-service:ktlintCheck --offline` (включая `AddMealUpdateTest`, `AddMealCommandsFlowHandlerTest`, `AddMealBottomSheetTest`, `MainScreenTest`, `MealRecordDaoTest`, `DiaryUpdateTest`) + проверка отсутствия `!!`, `else` в sealed/enum `when` и запрещённых импортов в `commonMain`.
+  - Backend integration-тесты (`:backend:catalog-price-service:test`) и ручная проверка на эмуляторе/k8s заблокированы локально (Docker daemon остановлен, `adb` отсутствует, локальный Kubernetes API `127.0.0.1:61445` недоступен).
 
 ### Редизайн Дневника питания (fitapp_1) с реальным расчётом КБЖУ, календарём и товаром «Йогурт Epica» (2026-11-25)
 

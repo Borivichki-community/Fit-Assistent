@@ -247,4 +247,16 @@
     <string name="diary_delete_meal">Удалить блюдо</string>
     <string name="diary_favorite">Избранное</string>
     <string name="diary_edit">Редактировать</string>
+
+    <!-- Шторка добавления блюда (fitapp_4) -->
+    <string name="add_meal_search_placeholder">Поиск продуктов или рецептов</string>
+    <string name="add_meal_action_ai">Сгенерировать с ИИ</string>
+    <string name="add_meal_action_photo">Сделать фото</string>
+    <string name="add_meal_action_assistant">Умный ассистент</string>
+    <string name="add_meal_saved_food_title">Моя сохранённая еда</string>
+    <string name="add_meal_saved_food_subtitle">Кулинарная Книга, Сохраненная Еда</string>
+    <string name="add_meal_close">Закрыть</string>
+    <string name="add_meal_clear_search">Очистить поиск</string>
+    <string name="add_meal_empty_results">Ничего не найдено</string>
+    <string name="add_meal_empty_subtitle">Попробуйте изменить запрос или проверьте подключение</string>
 </resources>
