@@ -4,6 +4,9 @@ import androidx.room.Room
 import app.cash.turbine.test
 import dev.andre.nutritionist.data.local.dao.MealRecordDao
 import dev.andre.nutritionist.data.local.entity.MealRecordEntity
+import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -115,6 +118,74 @@ class MealRecordDaoTest {
 
         dao.deleteById("to-del")
         assertNull(dao.getById("to-del"))
+    }
+
+    @Test
+    fun markAsDeleted_excludesFromFlowAndAppearsInPendingDeletedRecords() = runTest {
+        val dayStart = 1700000000000L
+        val dayEnd = 1700086400000L
+        val entity = createEntity(id = "tomb-1", syncStatus = "SYNCED", timestampEpoch = 1700010000000L)
+        dao.insert(entity)
+
+        dao.getDailyRecordsFlow(dayStart, dayEnd).test {
+            assertEquals(1, awaitItem().size)
+
+            dao.markAsDeleted("tomb-1")
+            assertEquals(0, awaitItem().size)
+
+            val pendingDeleted = dao.getPendingDeletedRecords()
+            assertEquals(1, pendingDeleted.size)
+            assertEquals("tomb-1", pendingDeleted.first().id)
+            assertEquals("DELETED_PENDING", pendingDeleted.first().syncStatus)
+            assertTrue(pendingDeleted.first().isDeleted)
+
+            dao.deletePermanently("tomb-1")
+            assertNull(dao.getById("tomb-1"))
+            assertTrue(dao.getPendingDeletedRecords().isEmpty())
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun roomDiaryInitialSeeder_seedsEpicaYogurtOnceAndDoesNotResurrectAfterTombstone() = runTest {
+        val dispatchers = object : CoroutineDispatchers {
+            override val main: CoroutineDispatcher = Dispatchers.Unconfined
+            override val io: CoroutineDispatcher = Dispatchers.Unconfined
+            override val default: CoroutineDispatcher = Dispatchers.Unconfined
+            override val unconfined: CoroutineDispatcher = Dispatchers.Unconfined
+        }
+        val fixedNowMs = 1_795_636_290_000L
+        val seeder = RoomDiaryInitialSeeder(
+            mealRecordDao = dao,
+            dispatchers = dispatchers,
+            nowProvider = { fixedNowMs },
+        )
+
+        seeder.ensureSeeded()
+        seeder.ensureSeeded() // Повторный вызов идемпотентен
+
+        assertEquals(1, dao.countAllIncludingDeleted())
+        val seeded = dao.getById(RoomDiaryInitialSeeder.EPICA_RECORD_ID)
+        assertNotNull(seeded)
+        assertEquals("Йогурт Epica", seeded?.nameSnapshot)
+        assertEquals("LUNCH", seeded?.mealType)
+        assertEquals("20000000-0000-0000-0000-000000000112", seeded?.sourceId)
+        assertEquals(85.0, seeded?.calories ?: 0.0, 0.001)
+        assertEquals(9500L, seeded?.costAmountMinor)
+
+        // После удаления пользователем повторная инициализация не восстанавливает запись
+        dao.markAsDeleted(RoomDiaryInitialSeeder.EPICA_RECORD_ID)
+        seeder.ensureSeeded()
+
+        assertEquals(1, dao.countAllIncludingDeleted())
+        val activeToday = dao.getDailyRecords(fixedNowMs - 10_000L, fixedNowMs + 10_000L)
+        assertTrue(activeToday.isEmpty())
+
+        // Даже после физического удаления записи в БД в рамках сессии повторный вызов не воскрешает её
+        dao.deletePermanently(RoomDiaryInitialSeeder.EPICA_RECORD_ID)
+        seeder.ensureSeeded()
+        assertEquals(0, dao.countAllIncludingDeleted())
     }
 
     private fun createEntity(

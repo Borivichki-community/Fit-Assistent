@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="008-seed-epica-yogurt-product" author="implementer">
+        <insert tableName="products">
+            <column name="id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="name" value="Йогурт Epica"/>
+            <column name="barcode" value="4607001001124"/>
+            <column name="category" value="DAIRY"/>
+            <column name="calories_per_100g" valueNumeric="65.38"/>
+            <column name="proteins_per_100g" valueNumeric="3.79"/>
+            <column name="fats_per_100g" valueNumeric="0.96"/>
+            <column name="carbs_per_100g" valueNumeric="10.62"/>
+            <column name="version" valueNumeric="0"/>
+            <column name="created_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="009-seed-epica-yogurt-prices" author="implementer">
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000001"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000001"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000002"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000002"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000003"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000003"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000004"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000004"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000005"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000005"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+        <insert tableName="regional_prices">
+            <column name="id" value="30000000-0000-0000-0000-000112000006"/>
+            <column name="product_id" value="20000000-0000-0000-0000-000000000112"/>
+            <column name="region_id" value="10000000-0000-0000-0000-000000000006"/>
+            <column name="price" valueNumeric="95.00"/>
+            <column name="currency" value="RUB"/>
+            <column name="unit" value="UNIT"/>
+            <column name="updated_at" valueDate="2026-01-01T00:00:00"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

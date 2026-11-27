@@ -11,14 +11,25 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import dev.andre.nutritionist.android.R
-import dev.andre.nutritionist.domain.model.ActivityLevel
-import dev.andre.nutritionist.domain.model.Gender
-import dev.andre.nutritionist.domain.model.GoalType
+import dev.andre.nutritionist.android.ui.theme.FitAssistantTheme
+import dev.andre.nutritionist.domain.calculator.DailyNutritionBalanceCalculator
+import dev.andre.nutritionist.domain.model.ConsumedNutrition
+import dev.andre.nutritionist.domain.model.EntrySourceType
+import dev.andre.nutritionist.domain.model.IdempotencyKey
+import dev.andre.nutritionist.domain.model.MealRecord
+import dev.andre.nutritionist.domain.model.MealRecordId
+import dev.andre.nutritionist.domain.model.MealType
+import dev.andre.nutritionist.domain.model.Money
+import dev.andre.nutritionist.domain.model.NutritionFacts
 import dev.andre.nutritionist.domain.model.NutritionGoal
-import dev.andre.nutritionist.domain.model.Profile
-import dev.andre.nutritionist.domain.model.ProfileId
-import dev.andre.nutritionist.domain.model.UserId
-import dev.andre.nutritionist.domain.repository.DiaryRepository
+import dev.andre.nutritionist.domain.model.SyncStatus
+import dev.andre.nutritionist.presentation.dashboard.DiaryState
+import dev.andre.nutritionist.presentation.dashboard.DiaryUiState
+import dev.andre.nutritionist.presentation.dashboard.DiaryUiStateMapper
+import dev.andre.nutritionist.presentation.mappers.DailyNutritionUiMapper.toUiModel
+import dev.andre.nutritionist.presentation.mappers.MealRecordUiMapper.toUiModel
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,39 +39,7 @@ import org.junit.runner.RunWith
 import org.koin.core.context.stopKoin
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-
-import dev.andre.nutritionist.domain.model.MealRecord
-import dev.andre.nutritionist.domain.model.MealRecordId
-import dev.andre.nutritionist.domain.model.SyncStatus
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-
-class FakeDiaryRepository : DiaryRepository {
-    private val records = mutableListOf<MealRecord>()
-    private val recordsFlow = MutableStateFlow<List<MealRecord>>(emptyList())
-
-    override fun observeDailyRecords(fromEpochMs: Long, toEpochMs: Long): Flow<List<MealRecord>> = recordsFlow
-
-    override suspend fun getDailyRecords(fromEpochMs: Long, toEpochMs: Long): Result<List<MealRecord>> =
-        Result.success(records.filter { it.recordedAt.toEpochMilliseconds() in fromEpochMs..toEpochMs })
-
-    override suspend fun addEntry(record: MealRecord): Result<MealRecord> {
-        records.add(record)
-        recordsFlow.value = records.toList()
-        return Result.success(record)
-    }
-
-    override suspend fun deleteEntry(id: MealRecordId): Result<Unit> {
-        records.removeAll { it.id == id }
-        recordsFlow.value = records.toList()
-        return Result.success(Unit)
-    }
-
-    override suspend fun getPendingRecords(): List<MealRecord> =
-        records.filter { it.syncStatus == SyncStatus.PENDING }
-
-    override suspend fun syncPendingRecords(): Result<Int> = Result.success(0)
-}
+import kotlin.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -72,187 +51,200 @@ class MainScreenTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
+    private val satNov7Ms = Instant.parse("2026-11-07T12:00:00Z").toEpochMilliseconds()
+    private val mapper = DiaryUiStateMapper(
+        nowProvider = { satNov7Ms },
+        timeZone = TimeZone.UTC,
+    )
+
     @After
     fun teardown() {
         stopKoin()
     }
 
+    private fun sampleEpicaUiState(
+        showCompleteProfileBanner: Boolean = false,
+        withEpicaRecord: Boolean = true,
+    ): DiaryUiState {
+        val goal = NutritionGoal(
+            targetCalories = 2957,
+            targetProteinsGrams = 170.0,
+            targetFatsGrams = 85.0,
+            targetCarbsGrams = 378.0,
+        )
+        val records = if (withEpicaRecord) {
+            listOf(
+                MealRecord(
+                    id = MealRecordId("seed-epica-lunch-1"),
+                    mealType = MealType.LUNCH,
+                    recordedAt = Instant.fromEpochMilliseconds(satNov7Ms),
+                    sourceType = EntrySourceType.PRODUCT,
+                    sourceId = "20000000-0000-0000-0000-000000000112",
+                    nameSnapshot = "Йогурт Epica",
+                    weightGrams = 130.0,
+                    nutrition = NutritionFacts(calories = 85.0, proteins = 4.93, fats = 1.25, carbs = 13.8),
+                    cost = Money.fromMinor(9500L),
+                    idempotencyKey = IdempotencyKey("seed-epica-lunch-1"),
+                    syncStatus = SyncStatus.SYNCED,
+                ),
+            )
+        } else {
+            emptyList()
+        }
+        val consumed = ConsumedNutrition(
+            calories = records.sumOf { it.nutrition.calories }.toInt(),
+            proteinsGrams = records.sumOf { it.nutrition.proteins },
+            fatsGrams = records.sumOf { it.nutrition.fats },
+            carbsGrams = records.sumOf { it.nutrition.carbs },
+        )
+        val balance = DailyNutritionBalanceCalculator.calculate(goal = goal, consumed = consumed)
+        val totalCost = if (withEpicaRecord) Money.fromMinor(9500L) else Money.ZERO
+        val uiItems = records.map { it.toUiModel(targetCalories = goal.targetCalories, timeZone = TimeZone.UTC) }
+
+        return mapper.map(
+            DiaryState(
+                selectedDateEpochMs = satNov7Ms,
+                items = uiItems,
+                dailySummary = balance.toUiModel(totalCost = totalCost, weeklyBudgetRubles = 5000.0),
+                loggedDatesInWeek = if (withEpicaRecord) setOf(LocalDate(2026, 11, 7)) else emptySet(),
+                showCompleteProfileBanner = showCompleteProfileBanner,
+                content = if (withEpicaRecord) DiaryState.Content.Success else DiaryState.Content.Empty,
+            ),
+        )
+    }
+
     @Test
-    fun `fitApp top bar title is displayed`() {
+    fun `fitApp top bar title and calendar header are displayed`() {
         composeTestRule.setContent {
-            MainScreen()
+            FitAssistantTheme(darkTheme = true) {
+                MainScreen(state = sampleEpicaUiState())
+            }
         }
 
         composeTestRule.onNodeWithText("FitApp").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ноябрь 2026").assertIsDisplayed()
+        composeTestRule.onNodeWithText("НЕДЕЛЯ 45").assertIsDisplayed()
     }
 
     @Test
-    fun `complete profile banner is displayed when showCompleteProfileBanner is true and click invokes callback`() {
-        var completeClicked = false
+    fun `complete profile banner shown when enabled and triggers callback`() {
+        var clicked = false
         composeTestRule.setContent {
-            MainScreen(
-                showCompleteProfileBanner = true,
-                onCompleteProfileClick = { completeClicked = true },
-            )
+            FitAssistantTheme {
+                MainScreen(
+                    state = sampleEpicaUiState(showCompleteProfileBanner = true),
+                    onCompleteProfileClick = { clicked = true },
+                )
+            }
         }
 
-        val bannerTitle = context.getString(R.string.banner_complete_profile_title)
-        val bannerSubtitle = context.getString(R.string.banner_complete_profile_subtitle)
         val bannerButton = context.getString(R.string.banner_complete_profile_button)
-
-        composeTestRule.onNodeWithText(bannerTitle).assertIsDisplayed()
-        composeTestRule.onNodeWithText(bannerSubtitle).assertIsDisplayed()
         composeTestRule.onNodeWithText(bannerButton).performClick()
-
-        assertTrue(completeClicked)
+        assertTrue(clicked)
     }
 
     @Test
-    fun `complete profile banner is not displayed when showCompleteProfileBanner is false`() {
+    fun `kpi bar displays real consumed macros, profile targets, cost and budget`() {
         composeTestRule.setContent {
-            MainScreen(
-                showCompleteProfileBanner = false,
-            )
+            FitAssistantTheme(darkTheme = true) {
+                MainScreen(state = sampleEpicaUiState())
+            }
         }
 
-        val bannerTitle = context.getString(R.string.banner_complete_profile_title)
-        composeTestRule.onNodeWithText(bannerTitle).assertDoesNotExist()
+        composeTestRule.onNodeWithText("1,25").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 85 г").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("13,8").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 378 г").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("4,93").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 170 г").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("3%").performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("85").onFirst().performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("/ 2 957").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Бюджет: ~714 ₽").performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `kpi bar displays nutrition targets and consumed macros from profile`() {
-        val profile = Profile(
-            id = ProfileId("p-test-1"),
-            userId = UserId("u-test-1"),
-            heightCm = 180,
-            weightKg = 75.0,
-            gender = Gender.MALE,
-            activityLevel = ActivityLevel.MODERATE,
-            goalType = GoalType.MAINTAIN,
-            nutritionGoal = NutritionGoal(
-                targetCalories = 2200,
-                targetProteinsGrams = 135.0,
-                targetFatsGrams = 75.0,
-                targetCarbsGrams = 260.0,
-                targetWeightKg = 75.0,
-            ),
-            weeklyBudget = 5000.0,
-            updatedAt = kotlin.time.Instant.fromEpochMilliseconds(0),
-        )
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = profile)
-
+    fun `lunch section renders Epica Yogurt card and delete triggers callback`() {
+        var deletedId: MealRecordId? = null
         composeTestRule.setContent {
-            MainScreen(state = state)
+            FitAssistantTheme(darkTheme = false) {
+                MainScreen(
+                    state = sampleEpicaUiState(),
+                    onDeleteRecordClick = { deletedId = it },
+                )
+            }
         }
 
-        // Проверяем отображение заголовков КБЖУ
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_fats)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_carbs)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.macro_proteins)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithText(context.getString(R.string.macro_calories)).onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Йогурт Epica").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("85 ккал").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("95 ₽").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("3% от суточной нормы").performScrollTo().assertIsDisplayed()
 
-        // Проверяем отображение целевых показателей из профиля
-        composeTestRule.onNodeWithText("/ 2200").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 75 г").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 260 г").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/ 135 г").assertIsDisplayed()
-
-        // Проверяем текущее значение употреблённых калорий
-        composeTestRule.onAllNodesWithText("85").onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("delete_meal_seed-epica-lunch-1").performScrollTo().performClick()
+        assertEquals(MealRecordId("seed-epica-lunch-1"), deletedId)
     }
 
     @Test
-    fun `all four meal sections are displayed in order`() {
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = null)
+    fun `calendar navigation arrows and day selection invoke callbacks`() {
+        var selectedEpoch: Long? = null
+        var prevClicked = false
+        var nextClicked = false
 
         composeTestRule.setContent {
-            MainScreen(state = state)
+            FitAssistantTheme {
+                MainScreen(
+                    state = sampleEpicaUiState(),
+                    onDaySelected = { selectedEpoch = it },
+                    onPreviousWeekClick = { prevClicked = true },
+                    onNextWeekClick = { nextClicked = true },
+                )
+            }
         }
 
-        val breakfast = context.getString(R.string.meal_breakfast)
-        val lunch = context.getString(R.string.meal_lunch)
-        val dinner = context.getString(R.string.meal_dinner)
-        val snack = context.getString(R.string.meal_snack)
+        composeTestRule.onNodeWithTag("calendar_prev_week").performClick()
+        assertTrue(prevClicked)
 
-        composeTestRule.onNodeWithText(breakfast).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(lunch).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(dinner).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(snack).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithTag("calendar_next_week").performClick()
+        assertTrue(nextClicked)
+
+        composeTestRule.onNodeWithTag("calendar_day_2026-11-05").performClick()
+        assertEquals(Instant.parse("2026-11-05T12:00:00Z").toEpochMilliseconds(), selectedEpoch)
     }
 
     @Test
-    fun `dinner section expanded displays added dish with calories and quick actions`() {
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = null, expandedMeals = setOf(MealType.DINNER))
-
+    fun `empty day displays zero metrics and compact slot placeholders`() {
         composeTestRule.setContent {
-            MainScreen(state = state)
+            FitAssistantTheme {
+                MainScreen(state = sampleEpicaUiState(withEpicaRecord = false))
+            }
         }
 
-        composeTestRule.onNodeWithText("Йогурт епика").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("1 порция").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.btn_quick_save_food)).performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText(context.getString(R.string.btn_quick_camera)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("0").onFirst().performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("0%").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.diary_empty_ai_title)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.diary_empty_snack_title)).performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun `clicking plus button on meal section invokes onAddMealClick with corresponding MealType`() {
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = null)
-
-        var addedMealType: MealType? = null
-
+    fun `plus buttons on meal slots invoke onAddMealClick with matching MealType`() {
+        val clickedMeals = mutableListOf<MealType>()
         composeTestRule.setContent {
-            MainScreen(
-                state = state,
-                onAddMealClick = { addedMealType = it },
-            )
+            FitAssistantTheme(darkTheme = true) {
+                MainScreen(
+                    state = sampleEpicaUiState(),
+                    onAddMealClick = { clickedMeals.add(it) },
+                )
+            }
         }
 
         composeTestRule.onNodeWithTag("add_meal_BREAKFAST").performScrollTo().performClick()
-        assertEquals(MealType.BREAKFAST, addedMealType)
-
         composeTestRule.onNodeWithTag("add_meal_LUNCH").performScrollTo().performClick()
-        assertEquals(MealType.LUNCH, addedMealType)
-
         composeTestRule.onNodeWithTag("add_meal_DINNER").performScrollTo().performClick()
-        assertEquals(MealType.DINNER, addedMealType)
-
         composeTestRule.onNodeWithTag("add_meal_SNACK").performScrollTo().performClick()
-        assertEquals(MealType.SNACK, addedMealType)
-    }
 
-    @Test
-    fun `clicking meal item invokes onMealItemClick with item id`() {
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = null, expandedMeals = setOf(MealType.DINNER))
-
-        var clickedId: String? = null
-
-        composeTestRule.setContent {
-            MainScreen(
-                state = state,
-                onMealItemClick = { clickedId = it },
-            )
-        }
-
-        composeTestRule.onNodeWithText("Йогурт епика").performScrollTo().performClick()
-        assertEquals("dinner-epica-1", clickedId)
-    }
-
-    @Test
-    fun `dashboard streak bar displays date and streak format`() {
-        val mapper = DashboardUiStateMapper()
-        val state = mapper.map(profile = null, streakDays = 3)
-
-        composeTestRule.setContent {
-            MainScreen(state = state)
-        }
-
-        composeTestRule.onNodeWithText("Сегодня").assertIsDisplayed()
-        val expectedStreakText = context.getString(R.string.streak_full_format, 3)
-        composeTestRule.onNodeWithText(expectedStreakText).assertIsDisplayed()
+        assertEquals(
+            listOf(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER, MealType.SNACK),
+            clickedMeals,
+        )
     }
 }

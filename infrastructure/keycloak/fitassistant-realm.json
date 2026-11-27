@@ -22,6 +22,10 @@
       {
         "name": "ROLE_PREMIUM",
         "description": "Premium subscriber role"
+      },
+      {
+        "name": "ROLE_COACH",
+        "description": "Coach role for creating meal plans and managing clients"
       }
     ]
   },

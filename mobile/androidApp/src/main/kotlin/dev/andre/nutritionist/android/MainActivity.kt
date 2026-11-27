@@ -28,7 +28,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             FitAssistantTheme {
                 val navController = rememberNavController()
-                val startDestination = if (authRepository.isAuthenticated()) {
+                val targetDestination = intent.getStringExtra(EXTRA_START_DESTINATION)
+                val startDestination = targetDestination ?: if (authRepository.isAuthenticated()) {
                     AppDestination.Dashboard.route
                 } else {
                     AppDestination.Auth.route
@@ -55,5 +56,9 @@ class MainActivity : ComponentActivity() {
         if (data != null && (data.scheme == "com.budgetntr.fitassistant") && (data.host == "oauth2redirect")) {
             authViewModel.dispatch(AuthEvent.Ui.AuthResponseReceived(intent))
         }
+    }
+
+    companion object {
+        const val EXTRA_START_DESTINATION = "extra_start_destination"
     }
 }

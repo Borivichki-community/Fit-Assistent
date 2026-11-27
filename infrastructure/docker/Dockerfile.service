@@ -15,7 +15,7 @@ COPY backend/ backend/
 COPY shared/contracts/ shared/contracts/
 COPY proto/ proto/
 
-RUN chmod +x gradlew
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
 ARG SERVICE_NAME
 
@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
     -PbackendOnly=true \
     -Pkotlin.compiler.execution.strategy=in-process \
     "-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8" \
+    ":backend:${SERVICE_NAME}:clean" \
     ":backend:${SERVICE_NAME}:bootJar" \
     && mkdir -p /out \
     && cp "backend/${SERVICE_NAME}/build/libs/"*.jar /out/app.jar

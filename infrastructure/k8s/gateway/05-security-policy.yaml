@@ -27,3 +27,12 @@ spec:
           # Проброс ролей пользователя в заголовок x-user-roles
           - claim: realm_access.roles
             header: x-user-roles
+      - name: keycloak-emulator
+        issuer: "http://10.0.2.2:8080/realms/FitAssistant"
+        remoteJWKS:
+          uri: "http://keycloak.budget-nutritionist.svc.cluster.local:8080/realms/FitAssistant/protocol/openid-connect/certs"
+        claimToHeaders:
+          - claim: sub
+            header: x-user-id
+          - claim: realm_access.roles
+            header: x-user-roles

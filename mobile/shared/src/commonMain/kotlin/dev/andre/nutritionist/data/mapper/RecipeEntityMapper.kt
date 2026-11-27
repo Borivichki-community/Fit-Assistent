@@ -114,6 +114,7 @@ object RecipeEntityMapper {
         SyncStatus.PENDING -> SyncStatus.PENDING.name
         SyncStatus.SYNCED -> SyncStatus.SYNCED.name
         SyncStatus.FAILED -> SyncStatus.FAILED.name
+        SyncStatus.DELETED_PENDING -> SyncStatus.DELETED_PENDING.name
     }
 
     private fun String.toAuthorType(): RecipeAuthorType =

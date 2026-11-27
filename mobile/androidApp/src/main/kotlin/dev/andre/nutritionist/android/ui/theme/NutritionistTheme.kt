@@ -1,5 +1,6 @@
 package dev.andre.nutritionist.android.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 
 /**
@@ -7,6 +8,6 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 fun NutritionistTheme(
-    darkTheme: Boolean = true,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) = FitAssistantTheme(darkTheme = darkTheme, content = content)

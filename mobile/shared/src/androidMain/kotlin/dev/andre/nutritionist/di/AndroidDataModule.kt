@@ -22,8 +22,10 @@ import dev.andre.nutritionist.data.remote.grpc.auth.AuthCallCredentials
 import dev.andre.nutritionist.data.remote.grpc.interceptor.AuthClientInterceptor
 import dev.andre.nutritionist.data.remote.grpc.interceptor.TraceparentClientInterceptor
 import dev.andre.nutritionist.data.remote.grpc.interceptors.UnifiedGrpcClientInterceptor
+import dev.andre.nutritionist.domain.network.ConnectivityObserver
 import dev.andre.nutritionist.domain.trace.DefaultTraceContextHolder
 import dev.andre.nutritionist.domain.trace.TraceContextHolder
+import dev.andre.nutritionist.network.AndroidConnectivityObserver
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -36,15 +38,17 @@ val androidRemoteDataModule = module {
         UnifiedGrpcClientInterceptor(
             tokenProvider = get(),
             traceContextHolder = get(),
+            dispatchers = get(),
         )
     }
+    single<ConnectivityObserver> { AndroidConnectivityObserver(context = get()) }
     single {
         GrpcClientFactory.createManagedChannel(
             host = "10.0.2.2",
             port = 9090,
             unifiedInterceptor = get(),
         )
-    }
+    } bind io.grpc.Channel::class
     single<ProfileGrpcServiceClient> { AndroidProfileGrpcServiceClient(channel = get()) }
     single { ProfileGrpcRemoteDataSource(client = get(), dispatchers = get()) } bind ProfileRemoteDataSource::class
 
@@ -52,7 +56,13 @@ val androidRemoteDataModule = module {
     single { CatalogGrpcRemoteDataSource(client = get(), dispatchers = get()) } bind CatalogRemoteDataSource::class
 
     single<DiaryGrpcServiceClient> { AndroidDiaryGrpcServiceClient(channel = get()) }
-    single { DiaryGrpcRemoteDataSource(client = get(), dispatchers = get()) } bind DiaryRemoteDataSource::class
+    single {
+        DiaryGrpcRemoteDataSource(
+            client = get(),
+            dispatchers = get(),
+            errorMapper = { GrpcErrorMapper.map(it) },
+        )
+    } bind DiaryRemoteDataSource::class
 
     single<RecipeGrpcServiceClient> { AndroidRecipeGrpcServiceClient(channel = get()) }
     single {

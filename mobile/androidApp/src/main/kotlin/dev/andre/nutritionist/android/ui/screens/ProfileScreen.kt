@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -17,13 +16,11 @@ import dev.andre.nutritionist.android.R
 import dev.andre.nutritionist.android.navigation.AppDestination
 import dev.andre.nutritionist.android.ui.components.ErrorContent
 import dev.andre.nutritionist.android.ui.components.FitBottomNavigationBar
-import dev.andre.nutritionist.android.ui.components.FitTopBar
 import dev.andre.nutritionist.android.ui.components.LoadingContent
 import dev.andre.nutritionist.android.ui.components.OfflineBanner
 import dev.andre.nutritionist.presentation.profile.ProfileEvent
 import dev.andre.nutritionist.presentation.profile.ProfileUiState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     state: ProfileUiState,
@@ -35,6 +32,12 @@ fun ProfileScreen(
     onDestinationSelected: (AppDestination) -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     isOffline: Boolean = false,
+    onNotificationsClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {},
+    onOpenCoachModeClick: () -> Unit = {},
+    onOpenStudentModeClick: () -> Unit = {},
+    onOpenMealPlansClick: () -> Unit = {},
+    onToggleDebugRoleClick: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -52,10 +55,8 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            // Переиспользуемая верхняя плашка FitApp
-            FitTopBar(
-                title = "FitApp",
-                onMenuClick = { /* Открытие бокового меню */ },
+            ProfileHeader(
+                onNotificationsClick = onNotificationsClick,
             )
 
             if (isOffline) {
@@ -89,19 +90,24 @@ fun ProfileScreen(
                     is ProfileUiState.Content.Success -> {
                         ProfileSuccessContent(
                             profile = content.profile,
-                            onEditClick = {},
+                            onEditClick = onCreateProfileClick,
                             onLogoutClick = onLogoutClick,
                             isLoggingOut = isLoggingOut,
                             onFillSurveyClick = onCreateProfileClick,
+                            onMealPlanClick = { onDestinationSelected(AppDestination.Recipes) },
                             onEvent = onEvent,
+                            onNotificationsClick = onNotificationsClick,
+                            onHelpClick = onHelpClick,
+                            onOpenCoachModeClick = onOpenCoachModeClick,
+                            onOpenStudentModeClick = onOpenStudentModeClick,
+                            onOpenMealPlansClick = onOpenMealPlansClick,
+                            onToggleDebugRoleClick = onToggleDebugRoleClick,
                         )
                     }
                     is ProfileUiState.Content.Form -> {
-                        // Режим редактирования/формы
                         LoadingContent()
                     }
                     is ProfileUiState.Content.ValidationError -> {
-                        // Режим отображения ошибок валидации
                         LoadingContent()
                     }
                 }

@@ -69,6 +69,7 @@ data class MealNutritionSummaryProto(
 data class GetDailyEntriesRequest(
     val date: String = "",
     val timeZone: String = "UTC",
+    val targetUserId: String? = null,
 )
 
 data class GetDailyEntriesResponse(
@@ -83,4 +84,15 @@ data class DeleteMealRequest(
 
 data class DeleteMealResponse(
     val success: Boolean = true,
+)
+
+data class GetRangeRequest(
+    val startDate: String = "",
+    val endDate: String = "",
+    val timeZone: String = "UTC",
+    val targetUserId: String? = null,
+)
+
+data class GetRangeResponse(
+    val entries: List<DiaryEntryItemProto> = emptyList(),
 )

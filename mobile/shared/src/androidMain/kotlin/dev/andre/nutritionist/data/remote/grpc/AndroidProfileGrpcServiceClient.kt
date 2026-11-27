@@ -19,6 +19,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -65,7 +66,12 @@ private suspend fun <Req, Resp> ManagedChannel.unaryCall(
     request: Req,
     callOptions: CallOptions = CallOptions.DEFAULT,
 ): Resp = suspendCancellableCoroutine { continuation ->
-    val call = newCall(method, callOptions)
+    val effectiveOptions = if (callOptions.deadline == null) {
+        callOptions.withDeadlineAfter(20L, TimeUnit.SECONDS)
+    } else {
+        callOptions
+    }
+    val call = newCall(method, effectiveOptions)
     continuation.invokeOnCancellation {
         call.cancel("Coroutine cancelled", it)
     }

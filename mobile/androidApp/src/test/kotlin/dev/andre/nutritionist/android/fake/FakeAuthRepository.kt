@@ -5,6 +5,7 @@ import dev.andre.nutritionist.android.auth.AuthIntentProvider
 import dev.andre.nutritionist.android.auth.AuthRepository
 import dev.andre.nutritionist.domain.model.AccessToken
 import dev.andre.nutritionist.domain.model.UserId
+import dev.andre.nutritionist.domain.model.UserRole
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +18,13 @@ class FakeAuthRepository : AuthRepository {
     private val _state = MutableStateFlow(false)
     var currentToken: String? = null
     var currentUserId: UserId? = UserId("fake-user-001")
+    var currentUserRole: UserRole? = null
     var processResultToReturn: Result<Unit> = Result.success(Unit)
     var logoutResultToReturn: Result<Unit> = Result.success(Unit)
 
     var processAuthResponseCallCount: Int = 0
     var logoutCallCount: Int = 0
+    var setUserRoleCallCount: Int = 0
 
     override fun observeAuthState(): Flow<Boolean> = _state.asStateFlow()
 
@@ -32,8 +35,18 @@ class FakeAuthRepository : AuthRepository {
     override fun getUserId(): UserId? = currentUserId
 
     var userDisplayNameToReturn: String? = null
+    var userEmailToReturn: String? = null
 
     override fun getUserDisplayName(): String? = userDisplayNameToReturn
+
+    override fun getUserEmail(): String? = userEmailToReturn
+
+    override fun getUserRole(): UserRole? = currentUserRole
+
+    override suspend fun setUserRole(role: UserRole) {
+        setUserRoleCallCount++
+        currentUserRole = role
+    }
 
     override fun isAuthenticated(): Boolean = _state.value
 

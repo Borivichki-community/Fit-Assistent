@@ -9,6 +9,8 @@ import com.budgetntr.proto.diary.v1.DiaryEntryItemProto
 import com.budgetntr.proto.diary.v1.EntrySourceTypeProto
 import com.budgetntr.proto.diary.v1.GetDailyEntriesRequest
 import com.budgetntr.proto.diary.v1.GetDailyEntriesResponse
+import com.budgetntr.proto.diary.v1.GetRangeRequest
+import com.budgetntr.proto.diary.v1.GetRangeResponse
 import com.budgetntr.proto.diary.v1.MealNutritionSummaryProto
 import com.budgetntr.proto.diary.v1.MoneyProto
 import com.budgetntr.proto.diary.v1.NutritionSummaryProto
@@ -41,6 +43,10 @@ class AndroidDiaryGrpcServiceClient(
         return channel.unaryCall(getDailyEntriesMethod, request)
     }
 
+    override suspend fun getRange(request: GetRangeRequest): GetRangeResponse {
+        return channel.unaryCall(getRangeMethod, request)
+    }
+
     override suspend fun deleteMeal(request: DeleteMealRequest): DeleteMealResponse {
         return channel.unaryCall(deleteMealMethod, request)
     }
@@ -62,6 +68,14 @@ class AndroidDiaryGrpcServiceClient(
                 .setFullMethodName(MethodDescriptor.generateFullMethodName(SERVICE_NAME, "GetDailyEntries"))
                 .setRequestMarshaller(GetDailyEntriesRequestMarshaller)
                 .setResponseMarshaller(GetDailyEntriesResponseMarshaller)
+                .build()
+
+        val getRangeMethod: MethodDescriptor<GetRangeRequest, GetRangeResponse> =
+            MethodDescriptor.newBuilder<GetRangeRequest, GetRangeResponse>()
+                .setType(MethodDescriptor.MethodType.UNARY)
+                .setFullMethodName(MethodDescriptor.generateFullMethodName(SERVICE_NAME, "GetRange"))
+                .setRequestMarshaller(GetRangeRequestMarshaller)
+                .setResponseMarshaller(GetRangeResponseMarshaller)
                 .build()
 
         val deleteMealMethod: MethodDescriptor<DeleteMealRequest, DeleteMealResponse> =
@@ -258,6 +272,7 @@ internal object GetDailyEntriesRequestMarshaller : MethodDescriptor.Marshaller<G
         val cos = CodedOutputStream.newInstance(baos)
         if (value.date.isNotEmpty()) cos.writeString(1, value.date)
         if (value.timeZone.isNotEmpty()) cos.writeString(2, value.timeZone)
+        value.targetUserId?.takeIf { it.isNotBlank() }?.let { cos.writeString(10, it) }
         cos.flush()
         return ByteArrayInputStream(baos.toByteArray())
     }
@@ -266,16 +281,82 @@ internal object GetDailyEntriesRequestMarshaller : MethodDescriptor.Marshaller<G
         val cis = CodedInputStream.newInstance(stream)
         var date = ""
         var timeZone = "UTC"
+        var targetUserId: String? = null
         while (true) {
             val tag = cis.readTag()
             if (tag == 0) break
             when (tag) {
                 (1 shl 3) or 2 -> date = cis.readString()
                 (2 shl 3) or 2 -> timeZone = cis.readString()
+                (10 shl 3) or 2 -> targetUserId = cis.readString()
                 else -> cis.skipField(tag)
             }
         }
-        return GetDailyEntriesRequest(date = date, timeZone = timeZone)
+        return GetDailyEntriesRequest(date = date, timeZone = timeZone, targetUserId = targetUserId)
+    }
+}
+
+internal object GetRangeRequestMarshaller : MethodDescriptor.Marshaller<GetRangeRequest> {
+    override fun stream(value: GetRangeRequest): InputStream {
+        val baos = ByteArrayOutputStream()
+        val cos = CodedOutputStream.newInstance(baos)
+        if (value.startDate.isNotEmpty()) cos.writeString(1, value.startDate)
+        if (value.endDate.isNotEmpty()) cos.writeString(2, value.endDate)
+        if (value.timeZone.isNotEmpty()) cos.writeString(3, value.timeZone)
+        value.targetUserId?.takeIf { it.isNotBlank() }?.let { cos.writeString(10, it) }
+        cos.flush()
+        return ByteArrayInputStream(baos.toByteArray())
+    }
+
+    override fun parse(stream: InputStream): GetRangeRequest {
+        val cis = CodedInputStream.newInstance(stream)
+        var startDate = ""
+        var endDate = ""
+        var timeZone = "UTC"
+        var targetUserId: String? = null
+        while (true) {
+            val tag = cis.readTag()
+            if (tag == 0) break
+            when (tag) {
+                (1 shl 3) or 2 -> startDate = cis.readString()
+                (2 shl 3) or 2 -> endDate = cis.readString()
+                (3 shl 3) or 2 -> timeZone = cis.readString()
+                (10 shl 3) or 2 -> targetUserId = cis.readString()
+                else -> cis.skipField(tag)
+            }
+        }
+        return GetRangeRequest(
+            startDate = startDate,
+            endDate = endDate,
+            timeZone = timeZone,
+            targetUserId = targetUserId,
+        )
+    }
+}
+
+internal object GetRangeResponseMarshaller : MethodDescriptor.Marshaller<GetRangeResponse> {
+    override fun stream(value: GetRangeResponse): InputStream {
+        val baos = ByteArrayOutputStream()
+        val cos = CodedOutputStream.newInstance(baos)
+        for (entry in value.entries) {
+            cos.writeByteArray(1, DiaryItemMarshallerHelper.toByteArray(entry))
+        }
+        cos.flush()
+        return ByteArrayInputStream(baos.toByteArray())
+    }
+
+    override fun parse(stream: InputStream): GetRangeResponse {
+        val cis = CodedInputStream.newInstance(stream)
+        val entries = mutableListOf<DiaryEntryItemProto>()
+        while (true) {
+            val tag = cis.readTag()
+            if (tag == 0) break
+            when (tag) {
+                (1 shl 3) or 2 -> entries.add(DiaryItemMarshallerHelper.fromByteArray(cis.readByteArray()))
+                else -> cis.skipField(tag)
+            }
+        }
+        return GetRangeResponse(entries = entries)
     }
 }
 

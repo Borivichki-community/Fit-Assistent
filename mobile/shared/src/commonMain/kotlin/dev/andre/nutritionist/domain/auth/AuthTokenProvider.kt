@@ -4,4 +4,5 @@ interface AuthTokenProvider {
     fun getAccessToken(): String?
     fun isAuthenticated(): Boolean
     suspend fun refreshIfNeeded(): Result<String>
+    suspend fun forceRefresh(): Result<String> = refreshIfNeeded()
 }

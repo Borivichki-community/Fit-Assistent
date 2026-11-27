@@ -45,14 +45,26 @@ class EncryptedPrefsAuthStorage(
             .apply()
     }
 
+    override fun getUserRoleSync(): String? {
+        return sharedPreferences.getString(KEY_USER_ROLE, null)
+    }
+
+    override suspend fun saveUserRole(roleName: String): Unit = withContext(dispatchers.io) {
+        sharedPreferences.edit()
+            .putString(KEY_USER_ROLE, roleName)
+            .apply()
+    }
+
     override suspend fun clear(): Unit = withContext(dispatchers.io) {
         sharedPreferences.edit()
             .remove(KEY_AUTH_STATE_JSON)
+            .remove(KEY_USER_ROLE)
             .apply()
     }
 
     companion object {
         const val DEFAULT_PREF_NAME: String = "auth_encrypted_prefs"
         const val KEY_AUTH_STATE_JSON: String = "key_auth_state_json"
+        const val KEY_USER_ROLE: String = "key_user_role"
     }
 }

@@ -11,13 +11,22 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import java.util.concurrent.TimeUnit
+
+private const val DEFAULT_UNARY_DEADLINE_SECONDS = 20L
+private const val DEFAULT_STREAM_DEADLINE_SECONDS = 90L
 
 suspend fun <Req, Resp> Channel.unaryCall(
     method: MethodDescriptor<Req, Resp>,
     request: Req,
     callOptions: CallOptions = CallOptions.DEFAULT,
 ): Resp = suspendCancellableCoroutine { continuation ->
-    val call = newCall(method, callOptions)
+    val effectiveOptions = if (callOptions.deadline == null) {
+        callOptions.withDeadlineAfter(DEFAULT_UNARY_DEADLINE_SECONDS, TimeUnit.SECONDS)
+    } else {
+        callOptions
+    }
+    val call = newCall(method, effectiveOptions)
     continuation.invokeOnCancellation {
         call.cancel("Coroutine cancelled", it)
     }
@@ -39,7 +48,12 @@ fun <Req, Resp> Channel.serverStreamingCall(
     request: Req,
     callOptions: CallOptions = CallOptions.DEFAULT,
 ): Flow<Resp> = callbackFlow {
-    val call = newCall(method, callOptions)
+    val effectiveOptions = if (callOptions.deadline == null) {
+        callOptions.withDeadlineAfter(DEFAULT_STREAM_DEADLINE_SECONDS, TimeUnit.SECONDS)
+    } else {
+        callOptions
+    }
+    val call = newCall(method, effectiveOptions)
     ClientCalls.asyncServerStreamingCall(call, request, object : StreamObserver<Resp> {
         override fun onNext(value: Resp) {
             trySend(value)

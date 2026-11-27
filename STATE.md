@@ -3,7 +3,243 @@
 > Этот файл читается агентом **перед началом любой задачи**.
 > Обновляется после каждого завершённого этапа.
 
-Обновлено: 2026-11-25
+Обновлено: 2026-11-27
+
+### E2E-настройка и проверка «Тренер ↔ Клиент» + mTLS дневника в kind (2026-11-27)
+
+- **Активные Skills:** `spring-grpc-service`, `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`.
+- **Межсервисный mTLS (`diary-service` → `recipe-ai-service:9194`):**
+  - В `DiaryClientProperties.RecipeClient`, `DiaryClientConfiguration` и `application.yml` добавлена поддержка клиентского mTLS (`tlsCaCertPath`, `tlsClientCertPath`, `tlsClientKeyPath` / `DIARY_RECIPE_TLS_*`).
+  - В кластере `kind` создан Secret `recipe-diary-client-tls` в `budget-nutritionist` (на базе `recipe-envoy-client-tls`), обновлены `infrastructure/k8s/apps/diary-service/configmap.yaml` (`DIARY_RECIPE_PLAINTEXT: "false"`, `DIARY_RECIPE_DEV_BYPASS: "false"`, пути `/run/recipe-tls/ca.crt` и `/run/recipe-client-tls/tls.{crt,key}`) и `deployment.yaml` (монтирование томов, `strategy: Recreate`, `failureThreshold: 120`).
+- **Исправление фильтрации связей тренера (`recipe-ai-service`):**
+  - В `CoachingAccessService.listCoachLinks` исправлена нормализация `statusFilter` с префиксом `COACH_LINK_STATUS_` и значением `UNSPECIFIED`, из-за чего вызов `ListCoachLinks` с пустым фильтром возвращал пустой список.
+- **Тестовый тренер в Keycloak и UX в `:mobile`:**
+  - В `infrastructure/k8s/infra/03-keycloak.yaml` и живой realm `FitAssistant` добавлен пользователь `coach` (`coach123`, `coach@example.com`, роли `ROLE_USER`, `ROLE_COACH`, `ROLE_PREMIUM`).
+  - В `StudentCoachingUiState` / `StudentCoachingUiStateMapper` / `StudentCoachingScreen` добавлена карточка с `Student ID` (`UserId`) и кнопкой копирования в буфер обмена (`strings.xml`, `values-ru/strings.xml`).
+  - В `StudentCoachingScreen`, `CoachStudentsScreen`, `CoachStudentMenuScreen` добавлен `Modifier.weight(1f)` в заголовок для корректного отображения кнопки перехода к меню без сжатия.
+- **Верификация:**
+  - `DiaryClientConfigurationTest` (5/5), `DiaryNutritionAggregatorTest` (5/5), `DiaryGrpcMapperTest` (6/6), `CoachingAccessServiceTest` (1/1), `ktlintCheck` (`diary-service`, `recipe-ai-service`), `:mobile:shared:allTests` (261/261, 54 suites), `:mobile:androidApp:testDebugUnitTest` (101/101, 16 suites), `:mobile:androidApp:assembleDebug` — `BUILD SUCCESSFUL`.
+  - Живой E2E через Envoy (`127.0.0.1:9090`) и на эмуляторе `emulator-5554`: `InviteStudent` (`coach` → `testuser`) → `RespondCoachInvite` (`accept=true`) → `ListCoachLinks` (`ACTIVE` у обоих аккаунтов) → `DiaryService/GetRange` под `coach` с `target_user_id=8a2a5b83-d159-469c-932c-4e1bd57da677` и экран `CoachStudentMenuScreen` («Student diary (Actual)») успешно отобразили реальные записи дневника клиента.
+
+### UI-MVP «Тренер ↔ Клиент» и проверка генератора AI-блюда с Gemini в kind (2026-11-27)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роли: `implementer` + `test-reviewer`.
+- **Генератор AI-блюда и кластер `kind`:**
+  - Восстановлен и стабилизирован локальный `kind`-кластер (`postgres-0`, `redis-cache`, `redis-state`, `keycloak`, `catalog-price-service`, `profile-service`, `recipe-ai-service`, `diary-service` в состоянии `1/1 Running`).
+  - В `infrastructure/k8s/infra/03-keycloak.yaml` добавлен аргумент `--import-realm` и импортирован realm `FitAssistant` через Admin API.
+  - В `infrastructure/k8s/apps/diary-service/configmap.yaml` отключены Kafka-зависимости (`DIARY_OUTBOX_ENABLED: "false"`, `DIARY_REGISTRATION_CONSUMER_ENABLED: "false"`), а также создан `infrastructure/k8s/apps/diary-service/security-policy.yaml`.
+  - В `infrastructure/k8s/apps/recipe-ai-service/backend-traffic-policy.yaml` задан `requestTimeout: 60s` для `recipe-grpc-route` (вместо дефолтных 15s Envoy).
+  - Сквозная gRPC-проверка через Envoy (`localhost:9090`) с JWT Keycloak (`testuser`) подтвердила `RecipeAiService/GenerateMealPlan` (`source: "MENU_SOURCE_GENERATED"`, реальная генерация Gemini + цены каталога `catalog-price-service`), `RecipeAiService/SearchRecipes`, `RecipeAiService/SearchMealPlans` и `DiaryService/GetRange`.
+  - В `:mobile:shared` / `:mobile:androidApp` устранена `else`-ветка над `DomainError?` в `AiRecipeUpdate.kt`, экраны `AiRecipeConfiguringContent.kt` / `AiRecipeGeneratingContent.kt` / `AiRecipeScreen.kt` приведены к `@fitapp_ai_1` и `@fitapp_ai_3`.
+- **UI-MVP «Тренер ↔ Клиент»:**
+  - В `:mobile:shared` добавлены KoTEA-модули `coaching` (`CoachStudents*`, `StudentCoaching*`, `CoachStudentMenu*`) и `mealplans` (`MealPlans*`), зарегистрированные в `Koin.kt`, а также unit-тесты на Fakes (`FakeCoachingRepository`, `FakeMealPlanRepository`) без MockK.
+  - В `:mobile:androidApp` добавлены экраны `CoachStudentsScreen`/`Route`, `StudentCoachingScreen`/`Route`, `CoachStudentMenuScreen`/`Route`, `MealPlansAndPublishScreen`/`Route`, точки входа в `ProfileSuccessContent.kt` (с debug-переключателем роли `Client`/`Coach`), маршруты в `AppDestination.kt` / `AppNavHost.kt`, строки в `values/strings.xml` и `values-ru/strings.xml`, UI-тесты `CoachingScreensTest.kt`.
+- **Исправления авторизации, gRPC и стабильности UI на эмуляторе:**
+  - `AuthRepositoryImpl`: исправлен `processAuthResponse` (`currentAuthState.update(authResponse, null)` до `tokenResponse`), добавлен `forceRefresh()` с fallback-сборкой `TokenRequest` из `AuthConfig`, автоматическим сбросом битой сессии (`invalid_grant` / отсутствие `refreshToken`) и авто-редиректом на экран входа через `AppNavHost`.
+  - `UnifiedGrpcClientInterceptor`: принудительный `forceRefresh()` при `UNAUTHENTICATED`, возврат `Status.UNAVAILABLE` при сетевых IO-ошибках Keycloak.
+  - `SplashActivity` и `NutritionistApp`: инициализация `EncryptedPrefsAuthStorage` (Android Keystore) вынесена в `Dispatchers.IO`.
+  - `GrpcCalls`, `AndroidProfileGrpcServiceClient`, `AndroidRecipeGrpcServiceClient`: добавлены дедлайны (`20s` unary, `65s` `GenerateMealPlan`, `90s` `GenerateWeekMenu`).
+  - `AiRecipeGeneratingContent` / `AiRecipeConfiguringContent`: кэширование геометрии и кистей в `drawWithCache`, сброс фокуса/IME при нажатии кнопки генерации.
+  - `AddMealCommandsFlowHandler`: ошибки сервисов не скрываются пустым списком при нулевом результате поиска.
+- **Верификация:**
+  - `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug --offline`: `shared` 261 tests (0 failed, 0 skipped, 54 suites), `androidApp` 101 tests (0 failed, 0 skipped, 16 suites), APK собран и установлен на `emulator-5554`.
+  - **Живая E2E-проверка на эмуляторе `emulator-5554`** (при пробросе `kubectl port-forward --address 0.0.0.0 -n budget-nutritionist svc/keycloak 8080:8080`, вход `testuser` через Keycloak Custom Tabs):
+    - Онбординг и обновление веса в профиле (`82 kg`): `ProfileService/GetProfile` и `UpdateProfile` → `200 via_upstream`.
+    - AI-генерация блюда (`@fitapp_ai_1` → `@fitapp_ai_3` → результат → добавление в завтрак): `GenerateMealPlan`, `CatalogService/GetAveragePrices`, `DiaryService/AddEntry` → `200 via_upstream` (примечание: из-за `SSLHandshakeException` в локальной сети кластера к `generativelanguage.googleapis.com` на втором прогоне сработал fallback-рецепт с реальными ценами каталога).
+    - Меню `+` (`AddMeal`): поиск `"2.5"` вывел реальные продукты каталога (`Йогурт натуральный термостатный 2.5%` и др.) и добавил позицию в дневник (`SearchProducts`, `SearchRecipes`, `AddEntry` → `200 via_upstream`).
+    - «Тренер ↔ Клиент»: переключение роли (`COACH`), `CoachStudentsScreen`, `MealPlansAndPublishScreen` (создание меню `Coach1Day` на 7 дней), `StudentCoachingScreen` (`ListCoachLinks`, `SearchMealPlans`, `SearchRecipes`, `CreateMealPlan` → `200 via_upstream`), 0 ANR в `logcat`.
+  - Статическая проверка Kotlin-файлов (`coaching`, `mealplans`, `airecipe`): без `!!`, без запрещённых импортов в `commonMain`, без MockK/Mockito в `commonTest`.
+  - Внимание для ручной проверки coach-доступа к дневнику: `diary-service` настроен с `DIARY_RECIPE_PLAINTEXT: "true"` к `recipe-ai-service:9194`, где в кластере активен профиль `gateway` (mTLS).
+
+### Генератор блюда из дневника (2026-11-26)
+
+- Skills `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Для диагностики сборки применён `diagnose-build-failure`.
+- Выбор слота и даты открывает генератор. KoTEA запускает GenerateBudgetMenuUseCase и сохраняет порцию через LogRecipeToDiaryUseCase. Карточка отображает ответ сервиса и доступные цены каталога.
+- Выполнены `:mobile:shared:testAndroidHostTest`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug`. Pod recipe-ai-service готов. Ручной сценарий на устройстве с реальным LLM и последующей синхронизацией не проверен.
+
+### Сохранение правок профиля (2026-11-26)
+
+- Skills `android-compose-feature` и `kmp-shared-feature`. Пока сервер пересчитывает КБЖУ, карточка показывает прогресс и подтверждённые значения. После сбоя можно повторить отправку черновика.
+- Debug APK собран, Android host-тесты `*Profile*` прошли. Ручная проверка на эмуляторе не выполнялась.
+
+### Исправление создания клиента дневника (2026-11-26)
+
+- Активный Skill — `kmp-shared-feature`.
+- В Android-модуле Koin существующий ManagedChannel привязан также к io.grpc.Channel для gRPC-клиентов.
+- `:mobile:androidApp:assembleDebug` прошла. Открытие дневника на эмуляторе не проверялось.
+
+### Перезапуск kind после обновления Android (2026-11-26)
+
+- **Активный Skill:** `testing-and-verification`. Роль: `test-reviewer`.
+- Существующий узел kind перезапущен. JVM-сервисы, которые не проходили startup probe при одновременном старте, подняты последовательно. Реплики всех сервисов восстановлены.
+- Проверено: 10 из 10 подов готовы, Gateway `Programmed=True`, `localhost:9090` возвращает gRPC `UNAUTHENTICATED` без JWT, OIDC discovery Keycloak на `localhost:8080` отвечает через восстановленный `port-forward`. UID `postgres-0` совпадает с исходным, Docker-том `fitassistant-verification_postgres_data` сохранён.
+
+### Перезапуск kind и проверка входа тестового пользователя (2026-11-26)
+
+- **Активные Skills:** `spring-grpc-service`, `testing-and-verification`. Роли: `implementer`, `test-reviewer`.
+- Восстановлены `spring.starter.web` и порт HTTP `8083` в исходниках дневника. Перезапущен существующий узел kind без пересоздания кластера. После старта все 10 подов готовы, дневник возвращает `UP`. UID пода `postgres-0` сохранился, Docker-том `fitassistant-verification_postgres_data` на месте.
+- После восстановления `port-forward` эмулятор получил HTTP 200 от OIDC discovery на `10.0.2.2:8080`. Keycloak выдал JWT штатному `testuser` с issuer эмулятора. Чтение профиля через Envoy с этим токеном вернуло gRPC `NOT_FOUND`. Dashboard показывает предложение заполнить профиль при любой ошибке его загрузки. Пользовательский вход через Android Custom Tabs и исходный экран `Network error` не воспроизводились.
+
+### Локальное развёртывание Kubernetes на macOS arm64 (2026-11-26)
+
+- **Активные Skills:** `testing-and-verification`, `diagnose-build-failure`, `spring-grpc-service`. Роли: `implementer`, `test-reviewer`.
+- Envoy Gateway 1.2.4 установлен в kind через OCI. Сборка контейнеров выявила несколько JAR в `build/libs`; в `Dockerfile.service` добавлена очистка внутри сборочного этапа перед `bootJar`.
+- Дневник получил HTTP Actuator через `libs.spring.starter.web` и локальный порт `8083` по умолчанию. Образы `profile-service`, `catalog-price-service`, `diary-service` и `recipe-ai-service` собраны для `linux/arm64` и загружены в kind.
+- В кластер `kind-fitassistant-cluster` применены манифесты проекта. Kafka и Schema Registry добавлены в namespace `budget-nutritionist` с образами из Docker Compose. Только в работающем кластере настроены `enableServiceLinks: false` у Schema Registry, ссылки на `postgres-secret` у каталога и дневника, адреса Kafka и Schema Registry у профиля и каталога и тип `NodePort` у EnvoyProxy. Realm `FitAssistant` импортирован через `kcadm`.
+- Проверено: все 10 подов в `budget-nutritionist` готовы, четыре HTTP readiness-пробы возвращают `UP`, все четыре gRPC-маршрута приняты, Gateway `Programmed=True`, запрос к `localhost:9090` без JWT возвращает `UNAUTHENTICATED`. OIDC realm доступен с Mac на `localhost:8080` через запущенный `kubectl port-forward`. Все три shell-скрипта проходят `bash -n` на macOS.
+- Docker-том `fitassistant-verification_postgres_data` сохранён. Наличие `PG_VERSION` и `global/pg_control` проверено при подключении тома только для чтения. PostgreSQL в Kubernetes использует отдельный `emptyDir`. Проверка Android E2E и генерации через Gemini не выполнялась.
+Обновлено: 2026-11-26
+
+### Меню добавления приёма пищи (@fitapp_4) с живым поиском по микросервисам (2026-11-26)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Presentation (`:mobile:shared`, KoTEA):**
+  - Добавлен модуль `dev.andre.nutritionist.presentation.addmeal`: `AddMealState` (`Content.Idle` / `Loading` / `Success` / `Empty` / `Error`), `AddMealEvent` (`Ui` / `Internal`), `AddMealCommand` (`Search`, `AddProduct`, `AddRecipe`), `AddMealNews` (`Dismiss`, `MealAdded`, `ShowSnackbar`), `AddMealSearchItemUiModel` (`AddMealItemKind`), `AddMealUiState`, `AddMealItemMapper`, `AddMealUiStateMapper`, `AddMealUpdate`, `AddMealCommandsFlowHandler`, `AddMealViewModel`. Зарегистрировано в `Koin.kt` (`presentationModule`).
+  - `AddMealCommandsFlowHandler` использует `debounce(300)` + `flatMapLatest` и параллельно опрашивает `CatalogRepository.searchProducts(...)` (`catalog-price-service`) и `RecipeCatalogRepository.searchPublicRecipes(...)` (`recipe-ai-service`) с fallback на `observeMyRecipes()` и сохранением частичного успеха; нажатие на результат вызывает `DiaryRepository.addEntry` или `LogRecipeToDiaryUseCase` на выбранную дату календаря `selectedDateEpochMs` (передана в `DiaryUiState` и `DiaryUiStateMapper`).
+- **UI (`:mobile:androidApp`, `@fitapp_4`):**
+  - Добавлен stateless `AddMealBottomSheet.kt` (`AddMealBottomSheet` / `AddMealBottomSheetContent`), иконки `Search`, `Mic`, `SavedFoodBox` в `FitIcons.kt`, строковые ресурсы `add_meal_*` в `values/strings.xml` и `values-ru/strings.xml`.
+  - В `DashboardRoute.kt` подключён `AddMealViewModel`, открытие bottom sheet по кнопкам `+` (`onAddMealClick`) в слотах приёмов пищи и обработка `AddMealNews`. Быстрые кнопки (`Сгенерировать с ИИ`, `Сделать фото`, `Умный ассистент`, `Моя сохранённая еда`) оставлены как UI-заглушки (snackbar).
+- **Стабилизация Part A (`fitapp_1` + Epica seed):**
+  - `CatalogEndToEndIntegrationTest.kt`: восстановление цены/единицы измерения в `try/finally` после теста обновления цены; `DiaryInitialSeeder.kt`: флаг сессии `hasAttemptedSeed` в `seedMutex.withLock`; `DiaryCommandsFlowHandler.kt`: параллельный `profileRepository.getProfile` в `channelFlow`; `DiaryEvent.Ui.Retry` повторяет выбранную дату.
+- **Верификация:**
+  - Пройден полный прогон `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug :backend:catalog-price-service:compileTestKotlin :backend:catalog-price-service:ktlintCheck --offline` (включая `AddMealUpdateTest`, `AddMealCommandsFlowHandlerTest`, `AddMealBottomSheetTest`, `MainScreenTest`, `MealRecordDaoTest`, `DiaryUpdateTest`) + проверка отсутствия `!!`, `else` в sealed/enum `when` и запрещённых импортов в `commonMain`.
+  - Backend integration-тесты (`:backend:catalog-price-service:test`) и ручная проверка на эмуляторе/k8s заблокированы локально (Docker daemon остановлен, `adb` отсутствует, локальный Kubernetes API `127.0.0.1:61445` недоступен).
+
+### Редизайн Дневника питания (fitapp_1) с реальным расчётом КБЖУ, календарём и товаром «Йогурт Epica» (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Шаг 1 — Реальный товар «Йогурт Epica» в БД:**
+  - `backend/catalog-price-service`: добавлен новый Liquibase-changeset `v1/003-seed-epica-yogurt.xml` (подключён в `db.changelog-master.xml`) с продуктом `20000000-0000-0000-0000-000000000112` («Йогурт Epica», `DAIRY`, `65.38 ккал / 3.79 Б / 0.96 Ж / 10.62 У` на 100 г) и региональными ценами `95.00 RUB / UNIT` (без правки существующих миграций `001`/`002`).
+  - `:mobile:shared`: добавлен `RoomDiaryInitialSeeder` (`DiaryInitialSeeder.kt`, `MealRecordDao.countAllIncludingDeleted()`), идемпотентно создающий реальную запись `MealRecord` (`seed-epica-lunch-1`, `LUNCH`, `130 г`, `85 ккал`, `95 ₽`) на текущий день при первом открытии дневника, с защитой от воскрешения после удаления.
+- **Шаг 2 — Реальные расчёты КБЖУ, бюджета и календаря в KoTEA (`:mobile:shared`):**
+  - `UserIdProvider` + биндинг в `Koin.kt` / `AndroidModule.kt`: `DiaryCommandsFlowHandler` реактивно комбинирует `diaryRepository.observeDailyRecords(weekStart, weekEnd)` и `profileRepository.observeProfile(userId)` (с фоновой подгрузкой `profileRepository.getProfile(userId)`), вычисляя `DailyNutritionBalance`, общую стоимость блюд (`NutritionCalculator.sumMealCost`) и дневной бюджет (`weeklyBudget / 7.0`).
+  - Расширены `DateFormatter` (`weekDaysForDate`, `formatMonthYear`, `formatIsoWeekLabel`, `shiftDaysEpochMs`, `weekRangeEpochMs`), `NutritionFormatter` (`formatCaloriesNumber`, `formatMacroValue`), `DailyNutritionUiMapper`, `MealRecordUiMapper` (`dailyBalanceShareLabel`), `DiaryState`, `DiaryEvent` (`DateSelected`, `PreviousWeekClicked`, `NextWeekClicked`, `Retry`, `ToggleMealSection`), `DiaryUpdate` и `DiaryUiStateMapper` (4 слота приёмов пищи, удаление захардкоженного `defaultSampleDiary`).
+- **Шаги 3–4 — Редизайн UI под `fitapp_1` (Dark *Aether Zero-G Luxury* & Light *Precision Mint & Slate Wellness*):**
+  - Обновлены `FitTopBar`, `DashboardWeekStreakBar`, `PlanChip`, `DashboardNutritionKpiBar`, `MealSectionCard`, `MealItemRow`, `MainScreen`, `FitIcons`, `Color.kt`, `FitAssistantTheme.kt`, `values/strings.xml`, `values-ru/strings.xml`.
+  - Подключён только календарь (выбор дня, переключение недель `<` / `>`, сворачивание слотов, удаление записи); остальные действия оставлены как UI-заглушки через коллбэки.
+- **Шаг 5 — Интеграция `DashboardRoute` и верификация:**
+  - `DashboardRoute` переведён на `DiaryViewModel` (`koinViewModel()`) и `AuthRepository`; удалены устаревшие `DashboardUiState.kt` и `DashboardUiStateMapper.kt`.
+  - Обновлены и добавлены тесты: `CatalogSeedDataIntegrationTest`, `MealRecordDaoTest`, `FormattersTest`, `DiaryUpdateTest`, `DiaryUiStateMapperTest`, `CommandsFlowHandlerTest`, `MainScreenTest`, `SyncDiaryWorkerTest`.
+
+### Маршрутизация роли `COACH` на онбординг, JWT-провайдер эмулятора в Gateway и E2E-проверка в кластере (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite` (коммит кода и Gateway-конфига: `486f360`).
+- **Изменения в коде и конфигурации:**
+  - `mobile/androidApp/src/main/kotlin/dev/andre/nutritionist/android/ui/screens/role/RoleSelectionRoute.kt`: выбор `UserRole.COACH` («Тренер») теперь ведёт на `onNavigateToOnboarding()` (раньше вёл сразу на `Dashboard` в обход `RegistrationWizardScreen`, из-за чего профиль тренера и цель КБЖУ на `profile-service` не создавались).
+  - `infrastructure/k8s/gateway/05-security-policy.yaml`: добавлен второй JWT-провайдер `keycloak-emulator` с `issuer: "http://10.0.2.2:8080/realms/FitAssistant"` (наряду с `localhost:8080`) для работы OAuth/gRPC с Android-эмулятора через Envoy Gateway (`SecurityPolicy` принят контроллером, `Accepted = True`).
+- **E2E-проверка в `kind`-кластере и на эмуляторе `emulator-5554` (пройдена полностью):**
+  - Развёрнуты Gateway API v1.2.0 CRDs, Envoy Gateway v1.2.4, PostgreSQL 17, Redis State/Cache, Keycloak 26 (импортирован realm `FitAssistant` с ролью `ROLE_COACH`), `profile-service`, `GRPCRoute` и `SecurityPolicy`.
+  - В приложении выполнена регистрация нового пользователя `coach_e2e_1` (`coach.e2e@fitapp.io`, `Alex Coach`) через Keycloak OAuth 2.1 PKCE, выбор роли **Coach** (`UserRole.COACH`) на `RoleSelectionScreen` и прохождение 4 шагов `RegistrationWizardScreen` (`180 см`, `80 кг`, `30 лет`, `Male`, `Moderate`, `5000 ₽`, `Weight loss`).
+  - На экране **Profile** подтверждены бейдж `COACH`, соответствие макету `fitapp_8` (заголовок, identity-карточка, сетка 2×2, блок `DAILY NUTRITION TARGETS`, пункты настроек и нижняя навигация) и первичная цель: целевой вес `72 кг`, `2 294 ккал` (`160 г` Б / `80 г` Ж / `233,5 г` У).
+  - Выполнены два изменения параметров профиля с проверкой пересчёта через Envoy Gateway → `profile-service` → PostgreSQL (`profile_db.profiles`, `version = 2`):
+    1. Смена цели `Weight loss` → `Muscle gain` (`Набор массы`): целевой вес `88 кг`, `3 133 ккал` (`160 г` Б / `87 г` Ж / `427,4 г` У).
+    2. Смена веса `80 кг` → `90 кг`: целевой вес `99 кг`, `3 307 ккал` (`180 г` Б / `91,9 г` Ж / `440,1 г` У).
+  - **Тесты и сборка:** `.\gradlew.bat :mobile:shared:allTests :mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug --offline` — **BUILD SUCCESSFUL**. (Побочное наблюдение: `catalog-price-service` в кластере находится в `CrashLoopBackOff`, на E2E-флоу профиля не влияет.)
+
+### Полировка экрана Профиля под `fitapp_8`, роль `ROLE_COACH` в Keycloak и пересчёт КБЖУ при редактировании (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Роль `ROLE_COACH` в Keycloak и мобильном Auth-слое:**
+  - В `infrastructure/keycloak/fitassistant-realm.json` и `infrastructure/k8s/infra/03-keycloak.yaml` добавлена realm-роль `ROLE_COACH` (согласована с `DiaryAuthContext.ROLE_COACH` в `diary-service` и `AuthContext.ROLE_COACH` в `recipe-ai-service`).
+  - В `AuthRepositoryImpl` добавлено резервное извлечение `ROLE_COACH` из JWT `realm_access.roles` (без перезаписи явно выбранной роли в `AuthStorage`), добавлен тест в `AuthRepositoryImplTest`.
+- **Блок 2 — Пересчёт цели по КБЖУ при изменении параметров профиля:**
+  - Исправлен баг в `ProfileUpdate.kt`: при `ChangeWeight`, `ChangeActivity` и `ChangeGoal` сбрасывается `nutritionGoal = NutritionGoal.EMPTY`, чтобы `profile-service` (`ProfileService.resolveNutritionGoal` + `NutritionGoalCalculator`) заново рассчитывал суточные калории, БЖУ и целевой вес (при `ChangeBudget` текущая цель КБЖУ сохраняется).
+  - В `ProfileRepositoryImpl.updateProfile` добавлена защита локального кэша Room: при ожидании серверного пересчёта (`targetCalories <= 0`) оптимистичный кэш и offline-fallback сохраняют предыдущую валидную цель КБЖУ, не затирая UI нулями.
+  - Расширены `ProfileUpdateTest` и `ProfileRepositoryImplTest`.
+- **Блок 3 — Визуальное соответствие Профиля референсу `fitapp_8` (Dark & Light темы, без фейковых заглушек):**
+  - В `Color.kt` и `FitAssistantTheme.kt` (`FitExtendedColors`) добавлены адаптивные токены `emeraldAccent`, `infoAccent`, `activityAccent`, `budgetAccent`, `planAccent` для обеих тем.
+  - В `FitIcons.kt` добавлены иконки `WeightScale`, `Lightning`, `Target`, `Wallet`.
+  - В `ProfileUiStateMapper.kt` добавлены чистые поля: `weightValueLabel`, `activityShortLabel`, `activitySubtitle`, `goalShortLabel`, `dailyBudgetValueLabel`, `weeklyBudgetApproxLabel`, `planSummaryLabel`.
+  - Обновлены `ProfileHeader.kt` (изумрудный индикатор на уведомлениях), `ProfileIdentityCard.kt`, `ProfileDailyKbjuCard.kt`, `MetricCard.kt`, `SettingsActionRow.kt` (цветные контейнеры иконок + бейдж `Вкл`), `ProfileSuccessContent.kt` (сетка 2×2 как на макете `fitapp_8`, пункт «План питания и цели» с реальным планом), `ProfileScreen.kt`, `BottomNavItem.kt` и `FitBottomNavigationBar.kt` (подписи вкладок и активная оптическая точка), а также `values/strings.xml` и `values-ru/strings.xml`.
+  - Обновлены и расширены `ProfileUiStateMapperTest` и `ProfileRedesignTest`.
+- **Верификация и ограничения окружения:**
+  - `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug`, `ktlintCheck` (`:backend:*`, `:shared:contracts`) — **BUILD SUCCESSFUL**.
+  - ⚠️ Развёртывание Docker/kind-кластера и сквозная проверка UI-онбординга на эмуляторе `Pixel_4a` заблокированы: служба `Docker Desktop Service (com.docker.service)` остановлена и не может быть запущена из непривилегированной сессии агента (`dockerDesktopLinuxEngine` недоступен, `adb devices` пуст).
+
+### Темы Aether Zero-G / Precision Mint, экран выбора роли и редизайн Профиля (`fitapp_8`) (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `kmp-shared-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite` (коммиты: `b1f89d6`, `708b119`, `d74d660`, `4dd7215`).
+- **Блок 1 — Очистка debug-артефактов и дубля иконки:**
+  - Удалены устаревшие debug-экраны `ServiceCheckActivity` (`mobile/androidApp/src/debug/`, 18 файлов) и `ServiceCheckUpdateTest.kt`, а также неиспользуемый `protobuf`/`grpc` debug-конфиг в `mobile/androidApp/build.gradle.kts`.
+- **Блок 2 — Адаптивные темы Material 3 (Dark *Aether Zero-G Luxury* & Light *Precision Mint & Slate Wellness*):**
+  - Обновлены `Color.kt`, `FitAssistantTheme.kt` (`DarkColorScheme`, `LightColorScheme`, `FitExtendedColors` / `FitThemeTokens` с `glassBorderLevel1`/`2`, автопереключение по `isSystemInDarkTheme()`) и `NutritionistTheme.kt`.
+  - Адаптированы `BottomNavItem.kt`, `FitBottomNavigationBar.kt`, `MetricCard.kt`, `SettingsActionRow.kt` под обе темы без жёстко заданных hex-цветов в экранах.
+- **Блок 3 — Экран выбора роли («Пользователь» / «Тренер»):**
+  - В `:mobile:shared` добавлен `UserRole` (`CLIENT`, `COACH`); в `AuthStorage` / `EncryptedPrefsAuthStorage` / `AuthRepository` / `AuthRepositoryImpl` добавлено безопасное хранение роли (`getUserRole`, `setUserRole`, очистка при `logout`/`clear`).
+  - Реализованы `RoleOptionCard.kt`, stateless `RoleSelectionScreen.kt` (ровно 2 кликабельные карточки) и `RoleSelectionRoute.kt`; в `AppNavHost.kt` выстроен маршрут `SignUp` → `RoleSelection` → `Registration` (`CLIENT`) / `Dashboard` (`COACH`).
+- **Блок 4 — Редизайн Профиля (`fitapp_8`) без фейковых заглушек:**
+  - Расширены `AuthRepository` (`getUserEmail()` из JWT claims без fallback-заглушек), `ProfileEvent`, `ProfileState`, `ProfileUpdate` и `ProfileUiStateMapper` (`email`, `userRole`, `dailyBudgetLabel` через `MoneyFormatter`, `caloriesGoalFormatted` / макросы через `NutritionFormatter`).
+  - Разделены и обновлены `ProfileRoute.kt`, `ProfileHeader.kt`, `ProfileScreen.kt`, `ProfileIdentityCard.kt`, `ProfileDailyKbjuCard.kt` и `ProfileSuccessContent.kt` с сохранением всех диалогов редактирования (`EditWeightDialog`, `EditActivityDialog`, `EditGoalDialog`, `EditBudgetDialog`) и двуязычной локализации (`values` + `values-ru`).
+- **Тестирование и верификация:**
+  - Добавлены `RoleSelectionScreenTest`, `ProfileRedesignTest`, расширены `AuthRepositoryImplTest` и `ProfileUiStateMapperTest`.
+  - `:mobile:shared:allTests`, `:mobile:androidApp:testDebugUnitTest`, `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
+
+### Контракты Diary GetRange, Coach targetUserId, Offline Delete Tombstone, gRPC Auth Refresh, ConnectivityObserver и GetNutritionAnalyticsUseCase (2026-11-25)
+
+- **Активные Skills:** `kmp-shared-feature`, `spring-grpc-service`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Дневник (`GetRange`, `targetUserId` для тренера и Offline Soft-Delete Tombstone):**
+  - Proto/DTO/gRPC (`DiaryProto.kt`, `DiaryDtoMapper.kt`, `DiaryRemoteDataSource.kt`, `DiaryGrpcRemoteDataSource.kt`, `AndroidDiaryGrpcServiceClient.kt`): добавлены `GetRangeRequest` / `GetRangeResponse`, `targetUserId: String?` (proto field `10`) в `GetDailyEntriesRequest` и `GetRangeRequest`, round-trip маршаллеры `GetRangeRequestMarshaller` и `GetRangeResponseMarshaller`, `errorMapper` (`GrpcErrorMapper`) в `DiaryGrpcRemoteDataSource`.
+  - Room KMP v5 (`AppDatabase.kt`, `DatabaseMigrations.kt`, `AndroidDatabaseBuilder.kt`, `schemas/.../5.json`): добавлен столбец `is_deleted INTEGER NOT NULL DEFAULT 0` в `MealRecordEntity`, статус `SyncStatus.DELETED_PENDING`, миграция `MIGRATION_4_5`.
+  - DAO & Repository (`MealRecordDao.kt`, `DiaryRepository.kt`, `DiaryRepositoryImpl.kt`, `SyncDiaryWorker.kt`): `markAsDeleted`, `getPendingDeletedRecords`, `deletePermanently`, исключение `is_deleted = 1` из UI-запросов, `getRange` (режим тренера с `targetUserId` напрямую через gRPC без смешивания с локальной Room; свой диапазон с объединением `PENDING` и сокрытием `DELETED_PENDING`), tombstone-удаление и двусторонняя синхронизация `PENDING` + `DELETED_PENDING` в `syncPendingRecords()` и `SyncDiaryWorker`.
+- **Блок 2 — Автоматический Refresh токена при `Status.UNAUTHENTICATED` (`UnifiedGrpcClientInterceptor.kt`):**
+  - Внедрена обёртка `RetryingClientCall`: при `Status.UNAUTHENTICATED` запрашивает `AuthTokenProvider.refreshIfNeeded()` под `Mutex` (с double-check относительно неудавшегося токена, чтобы параллельные RPC делали только один refresh) и повторяет вызов ровно 1 раз с сохранением исходного `idempotency-key` и заголовков; при провале refresh или повторной ошибке прокидывает `UNAUTHENTICATED` (маппится в `DomainError.Unauthorized`).
+- **Блок 3 — Реактивный `ConnectivityObserver`:**
+  - Интерфейс `ConnectivityObserver` (`val isConnected: StateFlow<Boolean>`) в `commonMain`, реализация `AndroidConnectivityObserver` (`ConnectivityManager.NetworkCallback`) в `androidMain`, разрешение `ACCESS_NETWORK_STATE` в манифестах и биндинг в `AndroidDataModule.kt`.
+- **Блок 4 — `GetNutritionAnalyticsUseCase` (`NutritionAnalytics.kt`, `GetNutritionAnalyticsUseCase.kt`, `Koin.kt`):**
+  - Добавлены модели `PeriodAnalytics`, `DailyNutritionPoint` и UseCase расчёта КБЖУ, соблюдения норм, трат бюджета и дневной разбивки за период (включая `targetUserId` для тренера), зарегистрирован в `domainModule`.
+- **Тестирование и верификация (без MockK, только Fakes):**
+  - Новые тесты: `DiaryTombstoneSyncTest` (5 тестов), `GetNutritionAnalyticsUseCaseTest` (4 теста), `AuthTokenRefreshInterceptorTest` (4 теста), `DiaryGetRangeGrpcTest` (4 теста).
+  - Обновлены и расширены: `FakeMealRecordDao`, `FakeDiaryRemoteDataSource`, `FakeDiaryRepository`, `SyncDiaryWorkerTest`, `MealRecordDaoTest`, `AppDatabaseMigrationTest` (`4 -> 5` и `3 -> 5`), `RecipeDatabaseMigrationTest`, `MainScreenTest`.
+  - `:mobile:shared:testAndroidHostTest :mobile:shared:assemble` (234 passed, 0 failed) и `:mobile:androidApp:testDebugUnitTest :mobile:androidApp:assembleDebug` (80 passed, 0 failed) — **BUILD SUCCESSFUL**.
+
+### Адаптивная иконка приложения и динамический Splash-экран (День / Ночь) (2026-11-25)
+
+- **Активные Skills:** `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-88-syncworker-favorite`.
+- **Блок 1 — Новая адаптивная иконка приложения (Adaptive Icon):**
+  - `mobile/androidApp/src/main/res/drawable/ic_launcher_background.xml`: векторный градиент в стиле Aether Emerald (#00F5A0 / #00C875 -> #005232 / #003921).
+  - `mobile/androidApp/src/main/res/drawable/ic_launcher_foreground.xml` (и `drawable-v24/`): центральный векторный логотип — круговой циферблат с делениями нутриентов, внутренний белый диск, нижняя серповидная дуга телеметрии, росток с двумя листьями (контур `#102A1E`, заливки `#D5FCE6` и `#00C875`, блик `#FFFFFF`) и постамент, подогнанный под 72dp безопасную зону adaptive icon.
+  - `mobile/androidApp/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml`: обновлены ссылки на `@drawable/ic_launcher_background` и `@drawable/ic_launcher_foreground`.
+  - Растровые ассеты: сгенерированы сглаженные `ic_launcher.png`, `ic_launcher_round.png` и `ic_launcher_foreground.png` для всех плотностей (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi), обновлен `ic_launcher-playstore.png` (512x512), удалены устаревшие `.webp` ассеты.
+- **Блок 2 — Адаптивный Splash-экран (День / Ночь):**
+  - Токены цветов: созданы `res/values/colors.xml` (светлая тема: `splash_bg` #FFFFFF, `splash_title` #0F172A, `splash_subtitle` #64748B, `splash_progress_track` #E2E8F0, `splash_progress_indicator` #00C875) и `res/values-night/colors.xml` (тёмная тема: `splash_bg` #0B0E14, `splash_title` #F4F7FA, `splash_subtitle` #8C96A8, `splash_progress_track` #1E293B, `splash_progress_indicator` #00F5A0).
+  - Тема `Theme.FitAssistant.Splash` в `res/values/themes.xml` (на базе `Theme.Material3.DayNight.NoActionBar`), зарегистрирована в `AndroidManifest.xml`.
+  - Векторный логотип `res/drawable/ic_splash_logo.xml` (180dp x 180dp) с орбитальными линиями ретикла и перекрестьями телеметрии.
+  - Строковые ресурсы: добавлены `splash_title` ("Fit Assistant") и локализованные `splash_subtitle` ("Точный КБЖУ · Умный бюджет" / "Precise Nutrition · Smart Budget").
+  - Вёрстка `res/layout/activity_splash.xml`: фон `@color/splash_bg`, логотип `ivSplashLogo`, заголовок `tvSplashTitle` (`sans-serif-black`, 32sp), подзаголовок `tvSplashSubtitle` (`sans-serif`, 16sp) и `LinearProgressIndicator` (180dp, высота 4dp, скругление 2dp, бесконечная плавная анимация).
+  - Логика в `SplashActivity.kt`: плавная анимация появления (Alpha 0 -> 1 и Scale 0.95 -> 1.0 за 600 мс с `DecelerateInterpolator`), асинхронная проверка `authRepository.isAuthenticated()`, через 1.2 с бесшовный переход с fade-анимацией в `MainActivity` (`Dashboard` при авторизации, иначе `Auth/Login`) и `finish()`.
+- **Тестирование и верификация:**
+  - Обновлён `SplashActivityTest.kt` на базе Robolectric (проверка компонентов вёрстки, текстов и перехода в `MainActivity` с завершением `SplashActivity`).
+  - Успешный запуск `:mobile:androidApp:assembleDebug` и `:mobile:androidApp:testDebugUnitTest` (79 passed, 0 failed).
+
+- **Активные Skills:** `kmp-shared-feature`, `android-compose-feature`, `testing-and-verification`. Роль: `implementer` + `test-reviewer`.
+- **Ветка:** `feature/KAN-16-Coach-premissions-recipebd`.
+- **Блок 1 [T-070] — Фоновая синхронизация дневника (`SyncScheduler` + `SyncDiaryWorker`):**
+  - `:mobile:shared`: создан интерфейс `SyncScheduler` (`dev.andre.nutritionist.domain.sync`); внедрён как опциональная зависимость в `DiaryRepositoryImpl` (при сбое сети и сохранении записи со статусом `PENDING` вызывается `syncScheduler?.scheduleDiarySync()`).
+  - `:mobile:androidApp`: реализованы `SyncDiaryWorker` (`CoroutineWorker`, `KoinComponent`, `MAX_RETRIES = 5`, `BackoffPolicy.EXPONENTIAL` 10 сек, `NetworkType.CONNECTED`, перевод `PENDING -> SYNCED` или `FAILED` после исчерпания попыток с сохранением `idempotencyKey`) и `WorkManagerSyncScheduler` (`enqueueUniqueWork(..., ExistingWorkPolicy.KEEP)`), зарегистрированы в `workModule` (`AndroidModule.kt`).
+- **Блок 2 [T-071] — Избранные продукты и сохранённые рецепты в Room KMP (миграция v3 → v4):**
+  - *Примечание по версионированию:* схема v3 была занята ранее в `T-078` (`local_recipes`, `local_meal_plans`), поэтому `AppDatabase` переведён на `version = 4` с сохранением `3.json` и `MIGRATION_2_3`, добавлена явная миграция `MIGRATION_3_4` (`DatabaseMigrations.kt`, подключена в `AndroidDatabaseBuilder.kt` без `fallbackToDestructiveMigration()`), экспортирована схема `mobile/shared/schemas/dev.andre.nutritionist.data.local.AppDatabase/4.json`.
+  - Созданы `FavoriteProductEntity`, `SavedRecipeEntity`, `FavoriteProductDao`, `SavedRecipeDao`, мапперы `FavoriteProductEntityMapper` и `SavedRecipeEntityMapper` (чистый KMP JSON сериализатор/парсер для `ingredients_json` без `java.*`).
+  - Расширены `CatalogRepository`/`CatalogRepositoryImpl` (`toggleFavoriteProduct`, `observeFavoriteProducts`) и `RecipeRepository`/`RecipeRepositoryImpl` (`saveRecipe`, `deleteSavedRecipe`, `observeSavedRecipes`).
+- **Блок 3 [T-072] — Презентационный MVI-слой KoTEA в `:mobile:shared` (без правок UI):**
+  - `presentation/catalog/`: `CatalogSearchState`, `CatalogSearchEvent`, `CatalogSearchCommand`, `CatalogSearchNews`, `CatalogSearchUpdate`, `CatalogSearchCommandsFlowHandler` (`debounce(300ms)` + `distinctUntilChanged()` + пагинация и избранное на раздельном потоке), `CatalogSearchUiState`, `CatalogSearchUiStateMapper`, `CatalogSearchViewModel`.
+  - `presentation/airecipe/`: `MenuState`, `MenuEvent`, `MenuCommand`, `MenuNews`, `MenuUpdate`, `MenuCommandsFlowHandler` (отмена предыдущего расчёта через `collectLatest` + `GenerateBudgetMenuUseCase`), `MenuUiState`, `MenuUiStateMapper`, `MenuViewModel`.
+  - `presentation/dashboard/`: `DiaryState`, `DiaryEvent`, `DiaryCommand`, `DiaryNews`, `DiaryUpdate`, `DiaryCommandsFlowHandler` (реактивное наблюдение Room `observeDailyRecords` + пересчёт баланса КБЖУ через `DailyNutritionBalanceCalculator`), `DiaryUiState`, `DiaryUiStateMapper`, `DiaryViewModel`.
+  - Все UseCase, DAO, репозитории и ViewModel зарегистрированы в `Koin.kt`.
+- **Блок 4 [T-073] — Чистые KMP-форматтеры, UI-модели и мапперы:**
+  - Созданы `MoneyFormatter`, `NutritionFormatter`, `DateFormatter` (на `kotlinx-datetime` и `kotlin.time.Instant`, без `java.*` и `String.format`).
+  - Созданы UI-модели (`ProductUiModel`, `MealRecordUiModel`, `MealPlanUiModel`, `DailyNutritionUiModel`) и мапперы (`ProductUiMapper`, `MealRecordUiMapper`, `MealPlanUiMapper`, `DailyNutritionUiMapper`).
+- **Тестирование и верификация (без MockK, только Fakes):**
+  - `commonTest`: `FormattersTest`, `CatalogSearchUpdateTest`, `MenuUpdateTest`, `DiaryUpdateTest`, `CommandsFlowHandlerTest` (Turbine: debounce 300ms, `collectLatest`, реактивный дневник), `FavoritesAndSavedRecipesRepositoryTest`, расширен `DiaryRepositoryImplTest` (`FakeSyncScheduler`).
+  - `androidHostTest`: `AppDatabaseMigrationTest` (проверка `3 -> 4` и `2 -> 4`, CRUD `FavoriteProductDao`/`SavedRecipeDao`).
+  - `androidApp/test`: `SyncDiaryWorkerTest` (WorkRequest constraints/backoff, пустая очередь, успех `SYNCED`, retry < 5, `FAILED` >= 5).
+  - `:mobile:shared:allTests` (215 passed, 0 failed, 0 skipped), `:mobile:androidApp:testDebugUnitTest` (79 passed, 0 failed, 0 skipped), `:mobile:androidApp:assembleDebug` — **BUILD SUCCESSFUL**.
 
 ### Fix CI — Устранение гонки в `LocalRecipeDaoTest` и дедупликация `observeMyRecipes` (2026-11-25)
 

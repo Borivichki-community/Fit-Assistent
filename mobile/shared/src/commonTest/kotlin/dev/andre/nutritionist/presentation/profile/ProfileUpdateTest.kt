@@ -195,7 +195,7 @@ class ProfileUpdateTest {
     }
 
     @Test
-    fun `ChangeWeight event produces UpdateProfile command with mutated weightKg and sets isSaving true`() {
+    fun `ChangeWeight event produces UpdateProfile command with mutated weightKg, empty nutritionGoal and sets isSaving true`() {
         val state = ProfileState(content = ProfileState.Content.Success(testProfile))
 
         val next = update.update(state, ProfileEvent.Ui.ChangeWeight(80.5))
@@ -205,10 +205,11 @@ class ProfileUpdateTest {
         val command = next.commands.first() as ProfileCommand.UpdateProfile
         assertEquals(80.5, command.profile.weightKg)
         assertEquals(testProfile.activityLevel, command.profile.activityLevel)
+        assertEquals(NutritionGoal.EMPTY, command.profile.nutritionGoal)
     }
 
     @Test
-    fun `ChangeActivity event produces UpdateProfile command with mutated activityLevel and sets isSaving true`() {
+    fun `ChangeActivity event produces UpdateProfile command with mutated activityLevel, empty nutritionGoal and sets isSaving true`() {
         val state = ProfileState(content = ProfileState.Content.Success(testProfile))
 
         val next = update.update(state, ProfileEvent.Ui.ChangeActivity(ActivityLevel.VERY_ACTIVE))
@@ -218,10 +219,11 @@ class ProfileUpdateTest {
         val command = next.commands.first() as ProfileCommand.UpdateProfile
         assertEquals(ActivityLevel.VERY_ACTIVE, command.profile.activityLevel)
         assertEquals(testProfile.weightKg, command.profile.weightKg)
+        assertEquals(NutritionGoal.EMPTY, command.profile.nutritionGoal)
     }
 
     @Test
-    fun `ChangeGoal event produces UpdateProfile command with mutated goalType and sets isSaving true`() {
+    fun `ChangeGoal event produces UpdateProfile command with mutated goalType, empty nutritionGoal and sets isSaving true`() {
         val state = ProfileState(content = ProfileState.Content.Success(testProfile))
 
         val next = update.update(state, ProfileEvent.Ui.ChangeGoal(GoalType.GAIN_WEIGHT))
@@ -230,10 +232,11 @@ class ProfileUpdateTest {
         assertEquals(1, next.commands.size)
         val command = next.commands.first() as ProfileCommand.UpdateProfile
         assertEquals(GoalType.GAIN_WEIGHT, command.profile.goalType)
+        assertEquals(NutritionGoal.EMPTY, command.profile.nutritionGoal)
     }
 
     @Test
-    fun `ChangeBudget event produces UpdateProfile command with mutated weeklyBudget and sets isSaving true`() {
+    fun `ChangeBudget event produces UpdateProfile command with mutated weeklyBudget and preserves nutritionGoal`() {
         val state = ProfileState(content = ProfileState.Content.Success(testProfile))
 
         val next = update.update(state, ProfileEvent.Ui.ChangeBudget(7500.0))
@@ -242,6 +245,7 @@ class ProfileUpdateTest {
         assertEquals(1, next.commands.size)
         val command = next.commands.first() as ProfileCommand.UpdateProfile
         assertEquals(7500.0, command.profile.weeklyBudget)
+        assertEquals(testProfile.nutritionGoal, command.profile.nutritionGoal)
     }
 }
 

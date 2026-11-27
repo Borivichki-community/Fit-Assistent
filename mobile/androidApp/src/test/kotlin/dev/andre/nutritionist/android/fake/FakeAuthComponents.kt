@@ -9,9 +9,13 @@ import net.openid.appauth.TokenResponse
  * Ручной Fake для безопасного хранилища [AuthStorage].
  * Хранит сериализованный AuthState в памяти, исключая зависимости от Android Keystore.
  */
-class FakeAuthStorage(initialJson: String? = null) : AuthStorage {
+class FakeAuthStorage(
+    initialJson: String? = null,
+    initialRole: String? = null,
+) : AuthStorage {
 
     var savedJson: String? = initialJson
+    var savedRole: String? = initialRole
     var saveCallCount: Int = 0
     var clearCallCount: Int = 0
 
@@ -24,8 +28,15 @@ class FakeAuthStorage(initialJson: String? = null) : AuthStorage {
         saveCallCount++
     }
 
+    override fun getUserRoleSync(): String? = savedRole
+
+    override suspend fun saveUserRole(roleName: String) {
+        savedRole = roleName
+    }
+
     override suspend fun clear() {
         savedJson = null
+        savedRole = null
         clearCallCount++
     }
 }

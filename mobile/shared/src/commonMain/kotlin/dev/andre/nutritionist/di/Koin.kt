@@ -2,10 +2,14 @@ package dev.andre.nutritionist.di
 
 import dev.andre.nutritionist.data.local.AppDatabase
 import dev.andre.nutritionist.data.local.DatabaseBuilder
+import dev.andre.nutritionist.data.local.DiaryInitialSeeder
+import dev.andre.nutritionist.data.local.RoomDiaryInitialSeeder
+import dev.andre.nutritionist.data.local.dao.FavoriteProductDao
 import dev.andre.nutritionist.data.local.dao.LocalMealPlanDao
 import dev.andre.nutritionist.data.local.dao.LocalRecipeDao
 import dev.andre.nutritionist.data.local.dao.MealRecordDao
 import dev.andre.nutritionist.data.local.dao.ProfileDao
+import dev.andre.nutritionist.data.local.dao.SavedRecipeDao
 import dev.andre.nutritionist.data.repository.CatalogRepositoryImpl
 import dev.andre.nutritionist.data.repository.CoachingRepositoryImpl
 import dev.andre.nutritionist.data.repository.DiaryRepositoryImpl
@@ -13,6 +17,7 @@ import dev.andre.nutritionist.data.repository.MealPlanRepositoryImpl
 import dev.andre.nutritionist.data.repository.ProfileRepositoryImpl
 import dev.andre.nutritionist.data.repository.RecipeCatalogRepositoryImpl
 import dev.andre.nutritionist.data.repository.RecipeRepositoryImpl
+import dev.andre.nutritionist.domain.auth.UserIdProvider
 import dev.andre.nutritionist.domain.coroutines.CoroutineDispatchers
 import dev.andre.nutritionist.domain.coroutines.DefaultCoroutineDispatchers
 import dev.andre.nutritionist.domain.repository.CatalogRepository
@@ -23,7 +28,41 @@ import dev.andre.nutritionist.domain.repository.ProfileRepository
 import dev.andre.nutritionist.domain.repository.RecipeCatalogRepository
 import dev.andre.nutritionist.domain.repository.RecipeRepository
 import dev.andre.nutritionist.domain.usecase.ApplyMealPlanDayToDiaryUseCase
+import dev.andre.nutritionist.domain.usecase.GenerateBudgetMenuUseCase
+import dev.andre.nutritionist.domain.usecase.GetNutritionAnalyticsUseCase
 import dev.andre.nutritionist.domain.usecase.LogRecipeToDiaryUseCase
+import dev.andre.nutritionist.presentation.addmeal.AddMealCommandsFlowHandler
+import dev.andre.nutritionist.presentation.addmeal.AddMealUiStateMapper
+import dev.andre.nutritionist.presentation.addmeal.AddMealUpdate
+import dev.andre.nutritionist.presentation.addmeal.AddMealViewModel
+import dev.andre.nutritionist.presentation.airecipe.MenuCommandsFlowHandler
+import dev.andre.nutritionist.presentation.airecipe.MenuUiStateMapper
+import dev.andre.nutritionist.presentation.airecipe.MenuUpdate
+import dev.andre.nutritionist.presentation.airecipe.MenuViewModel
+import dev.andre.nutritionist.presentation.catalog.CatalogSearchCommandsFlowHandler
+import dev.andre.nutritionist.presentation.catalog.CatalogSearchUiStateMapper
+import dev.andre.nutritionist.presentation.catalog.CatalogSearchUpdate
+import dev.andre.nutritionist.presentation.catalog.CatalogSearchViewModel
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuUpdate
+import dev.andre.nutritionist.presentation.coaching.CoachStudentMenuViewModel
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsUpdate
+import dev.andre.nutritionist.presentation.coaching.CoachStudentsViewModel
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingCommandsFlowHandler
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingUiStateMapper
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingUpdate
+import dev.andre.nutritionist.presentation.coaching.StudentCoachingViewModel
+import dev.andre.nutritionist.presentation.dashboard.DiaryCommandsFlowHandler
+import dev.andre.nutritionist.presentation.dashboard.DiaryUiStateMapper
+import dev.andre.nutritionist.presentation.dashboard.DiaryUpdate
+import dev.andre.nutritionist.presentation.dashboard.DiaryViewModel
+import dev.andre.nutritionist.presentation.mealplans.MealPlansCommandsFlowHandler
+import dev.andre.nutritionist.presentation.mealplans.MealPlansUiStateMapper
+import dev.andre.nutritionist.presentation.mealplans.MealPlansUpdate
+import dev.andre.nutritionist.presentation.mealplans.MealPlansViewModel
 import dev.andre.nutritionist.presentation.profile.ProfileCommandsFlowHandler
 import dev.andre.nutritionist.presentation.profile.ProfileUiStateMapper
 import dev.andre.nutritionist.presentation.profile.ProfileUpdate
@@ -36,6 +75,20 @@ import org.koin.dsl.module
 val domainModule: Module = module {
     factory { LogRecipeToDiaryUseCase(diaryRepository = get(), dispatchers = get()) }
     factory { ApplyMealPlanDayToDiaryUseCase(diaryRepository = get(), dispatchers = get()) }
+    factory {
+        GenerateBudgetMenuUseCase(
+            recipeRepository = get(),
+            catalogRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory {
+        GetNutritionAnalyticsUseCase(
+            diaryRepository = get(),
+            profileRepository = get(),
+            dispatchers = get(),
+        )
+    }
 }
 
 val localDataModule: Module = module {
@@ -44,6 +97,9 @@ val localDataModule: Module = module {
     single<MealRecordDao> { get<AppDatabase>().mealRecordDao() }
     single<LocalRecipeDao> { get<AppDatabase>().localRecipeDao() }
     single<LocalMealPlanDao> { get<AppDatabase>().localMealPlanDao() }
+    single<FavoriteProductDao> { get<AppDatabase>().favoriteProductDao() }
+    single<SavedRecipeDao> { get<AppDatabase>().savedRecipeDao() }
+    single<DiaryInitialSeeder> { RoomDiaryInitialSeeder(mealRecordDao = get(), dispatchers = get()) }
 }
 
 val dataModule: Module = module {
@@ -59,17 +115,20 @@ val dataModule: Module = module {
             dao = get(),
             remoteDataSource = get(),
             dispatchers = get(),
+            syncScheduler = getOrNull(),
         )
     }
     single<CatalogRepository> {
         CatalogRepositoryImpl(
             remoteDataSource = get(),
+            favoriteProductDao = get(),
             dispatchers = get(),
         )
     }
     single<RecipeRepository> {
         RecipeRepositoryImpl(
             remoteDataSource = get(),
+            savedRecipeDao = get(),
             dispatchers = get(),
         )
     }
@@ -100,6 +159,125 @@ val presentationModule: Module = module {
     factory { ProfileCommandsFlowHandler(profileRepository = get(), dispatchers = get()) }
     factory { ProfileUiStateMapper() }
     factory { ProfileViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
+
+    factory { CatalogSearchUpdate() }
+    factory { CatalogSearchCommandsFlowHandler(catalogRepository = get(), dispatchers = get()) }
+    factory { CatalogSearchUiStateMapper() }
+    factory {
+        CatalogSearchViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { MenuUpdate() }
+    factory { MenuCommandsFlowHandler(generateBudgetMenuUseCase = get(), dispatchers = get()) }
+    factory { MenuUiStateMapper() }
+    factory { MenuViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
+
+    factory { DiaryUpdate() }
+    factory {
+        DiaryCommandsFlowHandler(
+            diaryRepository = get(),
+            dispatchers = get(),
+            profileRepository = getOrNull(),
+            userIdProvider = { getOrNull<UserIdProvider>()?.getUserId() },
+            diaryInitialSeeder = getOrNull(),
+        )
+    }
+    factory { DiaryUiStateMapper() }
+    factory { DiaryViewModel(update = get(), commandsFlowHandler = get(), uiStateMapper = get()) }
+
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeUpdate() }
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeCommandsFlowHandler(get(), get(), get()) }
+    factory { dev.andre.nutritionist.presentation.airecipe.AiRecipeUiStateMapper() }
+    factory { params -> dev.andre.nutritionist.presentation.airecipe.AiRecipeViewModel(params.get(), get(), get(), get()) }
+
+    factory { AddMealUpdate() }
+    factory {
+        AddMealCommandsFlowHandler(
+            catalogRepository = get(),
+            recipeCatalogRepository = get(),
+            diaryRepository = get(),
+            logRecipeToDiaryUseCase = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { AddMealUiStateMapper() }
+    factory {
+        AddMealViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { CoachStudentsUpdate() }
+    factory { CoachStudentsCommandsFlowHandler(coachingRepository = get(), dispatchers = get()) }
+    factory { CoachStudentsUiStateMapper() }
+    factory {
+        CoachStudentsViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { StudentCoachingUpdate() }
+    factory {
+        StudentCoachingCommandsFlowHandler(
+            coachingRepository = get(),
+            mealPlanRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { StudentCoachingUiStateMapper() }
+    factory {
+        StudentCoachingViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { CoachStudentMenuUpdate() }
+    factory {
+        CoachStudentMenuCommandsFlowHandler(
+            coachingRepository = get(),
+            mealPlanRepository = get(),
+            diaryRepository = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { CoachStudentMenuUiStateMapper() }
+    factory {
+        CoachStudentMenuViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
+
+    factory { MealPlansUpdate() }
+    factory {
+        MealPlansCommandsFlowHandler(
+            mealPlanRepository = get(),
+            recipeCatalogRepository = get(),
+            coachingRepository = get(),
+            logRecipeToDiaryUseCase = get(),
+            applyMealPlanDayToDiaryUseCase = get(),
+            dispatchers = get(),
+        )
+    }
+    factory { MealPlansUiStateMapper() }
+    factory {
+        MealPlansViewModel(
+            update = get(),
+            commandsFlowHandler = get(),
+            uiStateMapper = get(),
+        )
+    }
 }
 
 val sharedModule: Module = module {

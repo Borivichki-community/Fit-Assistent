@@ -13,6 +13,7 @@ enum class SyncStatus {
     PENDING,
     SYNCED,
     FAILED,
+    DELETED_PENDING,
 }
 
 data class MealRecord(

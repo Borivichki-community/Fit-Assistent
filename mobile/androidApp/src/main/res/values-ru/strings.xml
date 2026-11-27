@@ -12,8 +12,8 @@
     <string name="nav_dashboard">Главная</string>
     <string name="nav_profile">Профиль</string>
     <string name="nav_diary">Дневник</string>
-    <string name="nav_recipes">Блюда</string>
-    <string name="nav_statistics">Статистика</string>
+    <string name="nav_recipes">Рационы</string>
+    <string name="nav_statistics">Аналитика</string>
     <string name="action_menu">Меню</string>
 
     <!-- Главный экран / Дашборд -->
@@ -149,6 +149,8 @@
     <string name="validation_error_code_invalid">Код должен содержать 4–6 цифр</string>
 
     <!-- Сплэш-экран -->
+    <string name="splash_title">Fit Assistant</string>
+    <string name="splash_subtitle">Точный КБЖУ · Умный бюджет</string>
     <string name="splash_logo_title">fit-assistent</string>
     <string name="splash_greeting">Здравствуйте!</string>
 
@@ -188,4 +190,132 @@
     <string name="btn_quick_copy">Копировать</string>
     <string name="dashboard_empty_meal">Пусто</string>
     <string name="portion_format">%1$d порция</string>
+
+    <!-- Выбор роли -->
+    <string name="role_selection_title">Выберите свою роль</string>
+    <string name="role_selection_subtitle">Это поможет настроить интерфейс под ваши задачи</string>
+    <string name="role_client_title">Пользователь</string>
+    <string name="role_client_desc">Отслеживайте питание, КБЖУ и бюджет на продукты</string>
+    <string name="role_coach_title">Тренер</string>
+    <string name="role_coach_desc">Создавайте рационы и ведите учеников</string>
+    <string name="role_badge_client">ПОЛЬЗОВАТЕЛЬ</string>
+    <string name="role_badge_coach">ТРЕНЕР</string>
+
+    <!-- Редизайн Профиля (fitapp_8) -->
+    <string name="profile_eyebrow">FITAPP ПРОФИЛЬ</string>
+    <string name="profile_edit_data">Редактировать данные</string>
+    <string name="profile_health_params">ПАРАМЕТРЫ ЗДОРОВЬЯ</string>
+    <string name="profile_target_weight_format">Целевой вес: %1$s</string>
+    <string name="profile_per_day_format">%1$s / день</string>
+    <string name="profile_biometrics_format">%1$s • %2$s</string>
+    <string name="profile_daily_kbju_title">СУТОЧНАЯ НОРМА КБЖУ</string>
+    <string name="profile_macro_proteins">Белки</string>
+    <string name="profile_macro_fats">Жиры</string>
+    <string name="profile_macro_carbs">Углеводы</string>
+    <string name="profile_menu_settings_desc">Аккаунт, интеграции, безопасность</string>
+    <string name="profile_menu_meal_plan">План питания и цели</string>
+    <string name="profile_fill_survey_desc">Обновить анкету и параметры тела</string>
+    <string name="profile_menu_notifications_desc">Напоминания о приёмах пищи и воде</string>
+    <string name="profile_notifications_on">Вкл</string>
+    <string name="profile_menu_help_desc">Частые вопросы, поддержка куратора</string>
+    <string name="profile_unit_kg">кг</string>
+    <string name="profile_per_day_unit">₽ / день</string>
+
+    <!-- Редизайн Дневника питания (fitapp_1) -->
+    <string name="diary_active_plans_count">2 активных</string>
+    <string name="diary_daily_norm_title">СУТОЧНАЯ НОРМА</string>
+    <string name="diary_day_label">день</string>
+    <string name="diary_total_cost_label">Общая стоимость блюд:</string>
+    <string name="diary_empty_ai_title">Ничего не запланировано</string>
+    <string name="diary_empty_ai_subtitle">Вы можете сгенерировать персональный приём пищи с ИИ или составить меню вручную</string>
+    <string name="diary_btn_ai_generate">Сгенерировать с ИИ</string>
+    <string name="diary_btn_create_manually">Создать вручную</string>
+    <string name="diary_quick_presets_label">Быстрый выбор:</string>
+    <string name="diary_preset_oatmeal">🥣 Овсянка + ягоды</string>
+    <string name="diary_preset_omelette">🍳 Омлет со шпинатом</string>
+    <string name="diary_empty_lunch_subtitle">Добавьте блюдо на обед</string>
+    <string name="diary_empty_dinner_title">Ничего не добавлено</string>
+    <string name="diary_empty_dinner_subtitle">Рекомендуется ~ 600 ккал</string>
+    <string name="diary_empty_snack_title">Перекус не внесен</string>
+    <string name="diary_empty_snack_subtitle">Орехи, фрукты или протеин</string>
+    <string name="diary_btn_fill">Заполнить</string>
+    <string name="diary_balance_share_title">Доля в дневном балансе:</string>
+    <string name="diary_tag_healthy">#ПП</string>
+    <string name="diary_btn_in_favorites">В избранном</string>
+    <string name="diary_prev_week">Предыдущая неделя</string>
+    <string name="diary_next_week">Следующая неделя</string>
+    <string name="diary_delete_meal">Удалить блюдо</string>
+    <string name="diary_favorite">Избранное</string>
+    <string name="diary_edit">Редактировать</string>
+
+    <!-- Шторка добавления блюда (fitapp_4) -->
+    <string name="add_meal_search_placeholder">Поиск продуктов или рецептов</string>
+    <string name="add_meal_action_ai">Сгенерировать с ИИ</string>
+    <string name="add_meal_action_photo">Сделать фото</string>
+    <string name="add_meal_action_assistant">Умный ассистент</string>
+    <string name="add_meal_saved_food_title">Моя сохранённая еда</string>
+    <string name="add_meal_saved_food_subtitle">Кулинарная Книга, Сохраненная Еда</string>
+    <string name="add_meal_close">Закрыть</string>
+    <string name="add_meal_clear_search">Очистить поиск</string>
+    <string name="add_meal_empty_results">Ничего не найдено</string>
+    <string name="add_meal_empty_subtitle">Попробуйте изменить запрос или проверьте подключение</string>
+
+    <!-- Тренер <-> Клиент MVP -->
+    <string name="coaching_section_title">Тренер и меню</string>
+    <string name="coaching_role_badge_format">Текущая роль: %1$s</string>
+    <string name="coaching_role_coach">Тренер</string>
+    <string name="coaching_role_client">Клиент</string>
+    <string name="coaching_switch_role">Переключить роль (Отладка)</string>
+    <string name="coaching_mode_coach_title">Режим тренера (Ученики и меню)</string>
+    <string name="coaching_mode_student_title">Мои тренеры и доступы</string>
+    <string name="coaching_mode_plans_title">Меню и общий доступ</string>
+
+    <string name="coach_students_title">Ученики и приглашения</string>
+    <string name="coach_students_invite_placeholder">ID, логин или email ученика</string>
+    <string name="coach_students_allow_diary">Доступ к дневнику</string>
+    <string name="coach_students_invite_btn">Пригласить ученика</string>
+    <string name="coach_students_open_diary">Открыть дневник</string>
+    <string name="coach_students_assign_menu">Назначить меню</string>
+    <string name="coach_students_empty">Пока нет привязанных учеников</string>
+
+    <string name="student_coaching_title">Мои тренеры и доступы</string>
+    <string name="student_coaching_my_id_label">Мой ID ученика (передайте тренеру)</string>
+    <string name="student_coaching_copy_id">Копировать</string>
+    <string name="student_coaching_id_copied">ID ученика скопирован</string>
+    <string name="student_coaching_pending_header">Входящие приглашения</string>
+    <string name="student_coaching_active_header">Активные тренеры</string>
+    <string name="student_coaching_plans_header">Доступные меню</string>
+    <string name="student_coaching_accept">Принять</string>
+    <string name="student_coaching_decline">Отклонить</string>
+    <string name="student_coaching_revoke">Отвязать тренера</string>
+    <string name="student_coaching_open_menu">Открыть меню</string>
+    <string name="student_coaching_plan_id_placeholder">ID меню (planId)</string>
+    <string name="student_coaching_allow_diary_checkbox">Разрешить просмотр дневника</string>
+
+    <string name="coach_menu_title">Меню и дневник ученика</string>
+    <string name="coach_menu_plan_section">План (назначенное меню)</string>
+    <string name="coach_menu_fact_section">Факт (дневник за день)</string>
+    <string name="coach_menu_assign_section">Назначить меню</string>
+    <string name="coach_menu_grant_btn">Выдать доступ к меню</string>
+    <string name="coach_menu_revoke_btn">Отозвать доступ</string>
+    <string name="coach_menu_expires_placeholder">Срок действия в днях (опционально)</string>
+
+    <string name="meal_plans_title">Меню и публикация</string>
+    <string name="meal_plans_create_section">Создать меню</string>
+    <string name="meal_plans_name_placeholder">Название меню</string>
+    <string name="meal_plans_desc_placeholder">Описание (необязательно)</string>
+    <string name="meal_plans_price_placeholder">Цена (₽)</string>
+    <string name="meal_plans_day_1">Меню на день</string>
+    <string name="meal_plans_day_7">Меню на неделю</string>
+    <string name="meal_plans_create_btn">Создать меню</string>
+    <string name="meal_plans_publish_btn">Опубликовать в общий доступ</string>
+    <string name="meal_plans_subscribe_btn">Подписаться / Получить доступ</string>
+    <string name="meal_plans_apply_day_btn">Применить День 1 в дневник</string>
+    <string name="meal_plans_recipes_section">Публичные и мои рецепты</string>
+    <string name="meal_plans_quick_recipe_btn">Создать тестовый рецепт</string>
+    <string name="meal_plans_fork_btn">Добавить к себе (Форк)</string>
+    <string name="meal_plans_log_diary_btn">Записать блюдо в дневник</string>
+    <string name="meal_plans_search_placeholder">Поиск меню и рецептов</string>
+    <string name="common_back">Назад</string>
+    <string name="common_search">Найти</string>
 </resources>

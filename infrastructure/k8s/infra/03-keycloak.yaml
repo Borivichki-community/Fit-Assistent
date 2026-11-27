@@ -47,6 +47,10 @@ data:
           {
             "name": "ROLE_PREMIUM",
             "description": "Premium subscriber role"
+          },
+          {
+            "name": "ROLE_COACH",
+            "description": "Coach role for creating meal plans and managing clients"
           }
         ]
       },
@@ -120,6 +124,26 @@ data:
             "ROLE_USER",
             "ROLE_PREMIUM"
           ]
+        },
+        {
+          "username": "coach",
+          "enabled": true,
+          "email": "coach@example.com",
+          "firstName": "Coach",
+          "lastName": "User",
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "coach123",
+              "temporary": false
+            }
+          ],
+          "realmRoles": [
+            "ROLE_USER",
+            "ROLE_COACH",
+            "ROLE_PREMIUM"
+          ]
         }
       ]
     }
@@ -179,6 +203,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "start-dev"
+            - "--import-realm"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false

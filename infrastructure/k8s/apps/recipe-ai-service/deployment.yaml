@@ -47,6 +47,10 @@ spec:
             - configMapRef:
                 name: recipe-ai-service-config
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod,gateway
+            - name: RECIPE_LLM_MODEL
+              value: gemini-flash-lite-latest
             - name: RECIPE_LLM_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -59,6 +63,10 @@ spec:
             limits:
               cpu: 1000m
               memory: 768Mi
+          volumeMounts:
+            - name: gateway-tls
+              mountPath: /run/recipe-tls
+              readOnly: true
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
@@ -83,3 +91,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
+      volumes:
+        - name: gateway-tls
+          secret:
+            secretName: recipe-server-tls

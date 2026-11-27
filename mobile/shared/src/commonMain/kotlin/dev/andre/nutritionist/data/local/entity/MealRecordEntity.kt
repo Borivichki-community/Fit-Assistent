@@ -21,4 +21,5 @@ data class MealRecordEntity(
     val carbs: Double,
     @ColumnInfo(name = "cost_amount_minor") val costAmountMinor: Long? = null,
     @ColumnInfo(name = "cost_currency") val costCurrency: String? = null,
+    @ColumnInfo(name = "is_deleted", defaultValue = "0") val isDeleted: Boolean = false,
 )
